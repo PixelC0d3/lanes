@@ -15,6 +15,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.Presentation;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 
 /**
@@ -23,6 +24,8 @@ import com.intellij.openapi.project.Project;
  * @author Ruslan Khmelyuk
  */
 public class StopRunningMultirunConfigurationsAction extends AnAction {
+
+    private static final Logger LOG = Logger.getInstance(StopRunningMultirunConfigurationsAction.class);
 
     private final ConcurrentHashMap<Project, List<ProcessHandler>> processes = new ConcurrentHashMap<>();
     private final AtomicBoolean stopStartingConfigurations = new AtomicBoolean(false);
@@ -57,10 +60,10 @@ public class StopRunningMultirunConfigurationsAction extends AnAction {
         if (e.getProject() == null) return;
 
         stopStartingConfigurations.set(true);
-        System.out.println("Asked to stop running multirun configurations.");
+        LOG.debug("Asked to stop running multirun configurations.");
         List<ProcessHandler> processesToStop = processes.get(e.getProject());
         if (processesToStop == null || processesToStop.isEmpty()) {
-            System.out.println("Nothing to stop");
+            LOG.debug("Nothing to stop");
             return;
         }
         List<ProcessHandler> stoppedProcesses = new ArrayList<>();
@@ -71,7 +74,7 @@ public class StopRunningMultirunConfigurationsAction extends AnAction {
         }
         processesToStop.removeAll(stoppedProcesses);
 
-        System.out.println("Stopped " + stoppedProcesses.size() + " processes");
+        LOG.debug("Stopped " + stoppedProcesses.size() + " processes");
     }
 
     public void addProcess(Project project, ProcessHandler process) {

@@ -14,7 +14,9 @@ public class RunConfigurationHelper {
                 return true;
             }
             if (each instanceof MultirunRunConfiguration) {
-                return containsLoopies((MultirunRunConfiguration) each, target);
+                if (containsLoopies((MultirunRunConfiguration) each, target)) {
+                    return true;
+                }
             }
         }
         return false;
