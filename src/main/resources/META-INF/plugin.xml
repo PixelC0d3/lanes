@@ -1,13 +1,20 @@
 <idea-plugin url="https://github.com/WelingtonMonteiro/multiple_run">
-    <!-- The id is kept as-is on purpose: changing it would break updates over an installed
-         version and orphan existing Multirun run configurations saved in user projects. -->
-    <id>com.khmelyuk.multirun</id>
+    <!-- Unique Marketplace id of this fork (the original Multirun owns com.khmelyuk.multirun).
+         The run configuration type id ("Multirun") is intentionally kept, so run configurations
+         saved with the original plugin keep working - which also means the original Multirun
+         plugin must be uninstalled before installing this one. -->
+    <id>io.github.welingtonmonteiro.multiplerun</id>
     <name>Multiple Run</name>
     <!-- version is injected from build.gradle (project.version) by patchPluginXml -->
-    <vendor url="http://www.khmelyuk.com">Ruslan Khmeliuk</vendor>
+    <vendor url="https://github.com/WelingtonMonteiro" email="welington.rmonteiro@gmail.com">Welington Monteiro</vendor>
 
     <description>
         <![CDATA[
+        <p>Fork of the <a href="https://github.com/rkhmelyuk/multirun">Multirun</a> plugin by Ruslan Khmeliuk, with
+        additional features such as an environment variables override applied to all grouped configurations.
+        It replaces the original plugin (uninstall Multirun before installing this one); existing Multirun
+        run configurations keep working.</p>
+
         <p>Run multiple run configurations at once: group multiple run configurations and start them in a single click.
         Not only application and test run configurations can be grouped, but other Multirun configurations can be organized
         into single run configuration.</p>
