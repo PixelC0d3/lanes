@@ -43,13 +43,19 @@ import com.intellij.ui.content.Content;
  */
 public class MultirunRunnerState implements RunProfileState {
 
+    /** How long to wait for the previously running processes to die before starting again. */
+    private static final long RESTART_TERMINATION_TIMEOUT_MS = 10_000;
+
     private final double delayTime;
     private final boolean reuseTabs;
     private final boolean reuseTabsWithFailure;
     private final boolean startOneByOne;
     private final boolean markFailedProcess;
     private final boolean hideSuccessProcess;
+    private final boolean restartRunning;
     private final EnvironmentVariablesData envData;
+    private final Project project;
+    private final String configurationName;
     private final List<RunConfiguration> runConfigurations;
     private final StopRunningMultirunConfigurationsAction stopRunningMultirunConfiguration;
 
@@ -57,7 +63,8 @@ public class MultirunRunnerState implements RunProfileState {
                                boolean startOneByOne, double delayTime,
                                boolean reuseTabs, boolean reuseTabsWithFailure,
                                boolean markFailedProcess, boolean hideSuccessProcess,
-                               EnvironmentVariablesData envData) {
+                               EnvironmentVariablesData envData,
+                               boolean restartRunning, Project project, String configurationName) {
 
         this.delayTime = delayTime;
         this.reuseTabs = reuseTabs;
@@ -67,6 +74,9 @@ public class MultirunRunnerState implements RunProfileState {
         this.markFailedProcess = markFailedProcess;
         this.hideSuccessProcess = hideSuccessProcess;
         this.envData = envData == null ? EnvironmentVariablesData.DEFAULT : envData;
+        this.restartRunning = restartRunning;
+        this.project = project;
+        this.configurationName = configurationName;
 
         ActionManager actionManager = ActionManager.getInstance();
         stopRunningMultirunConfiguration = (StopRunningMultirunConfigurationsAction) actionManager.getAction("stopRunningMultirunConfiguration");
@@ -76,9 +86,27 @@ public class MultirunRunnerState implements RunProfileState {
     @Override
     public ExecutionResult execute(Executor executor, @NotNull ProgramRunner programRunner) {
         stopRunningMultirunConfiguration.beginStartingConfigurations();
-        ApplicationManager.getApplication().executeOnPooledThread(() -> runConfigurations(executor, runConfigurations, 0));
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            if (restartRunning) {
+                // like the built-in Compound configuration: stop what this Multirun started
+                // before and only then start again, so ports/resources are released
+                waitForTermination(stopRunningMultirunConfiguration.stopProcessesOf(project, configurationName));
+            }
+            runConfigurations(executor, runConfigurations, 0);
+        });
 
         return null;
+    }
+
+    private static void waitForTermination(List<ProcessHandler> handlers) {
+        final long deadline = System.currentTimeMillis() + RESTART_TERMINATION_TIMEOUT_MS;
+        for (ProcessHandler handler : handlers) {
+            final long remaining = deadline - System.currentTimeMillis();
+            if (remaining <= 0) {
+                break;
+            }
+            handler.waitFor(remaining);
+        }
     }
 
     private void runConfigurations(final Executor executor, final List<RunConfiguration> runConfigurations, final int index) {
@@ -226,7 +254,7 @@ public class MultirunRunnerState implements RunProfileState {
                                     }
                                 });
                             }
-                            stopRunningMultirunConfiguration.addProcess(project, processHandler);
+                            stopRunningMultirunConfiguration.addProcess(project, configurationName, processHandler);
 
                             final boolean moreConfigurationsToRun = index + 1 < runConfigurations.size();
                             if (startOneByOne && moreConfigurationsToRun) {

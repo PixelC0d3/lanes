@@ -1,7 +1,9 @@
 package com.khmelyuk.multirun;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -27,7 +29,8 @@ public class StopRunningMultirunConfigurationsAction extends AnAction {
 
     private static final Logger LOG = Logger.getInstance(StopRunningMultirunConfigurationsAction.class);
 
-    private final ConcurrentHashMap<Project, List<ProcessHandler>> processes = new ConcurrentHashMap<>();
+    /** Processes started by Multirun, grouped by project and by the Multirun configuration that started them. */
+    private final ConcurrentHashMap<Project, ConcurrentHashMap<String, List<ProcessHandler>>> processes = new ConcurrentHashMap<>();
     private final AtomicBoolean stopStartingConfigurations = new AtomicBoolean(false);
     private final AtomicInteger startingCounter = new AtomicInteger(0);
 
@@ -41,13 +44,15 @@ public class StopRunningMultirunConfigurationsAction extends AnAction {
         if (e.getProject() == null) return;
 
         final Presentation presentation = e.getPresentation();
-        final List<ProcessHandler> processes = this.processes.get(e.getProject());
-        presentation.setEnabled(startingCounter.get() > 0 || hasNonTerminatedProcesses(processes));
+        presentation.setEnabled(startingCounter.get() > 0 || hasNonTerminatedProcesses(e.getProject()));
     }
 
-    private boolean hasNonTerminatedProcesses(List<ProcessHandler> processes) {
-        if (processes != null && !processes.isEmpty()) {
-            for(ProcessHandler each : processes) {
+    private boolean hasNonTerminatedProcesses(Project project) {
+        final Map<String, List<ProcessHandler>> byConfiguration = processes.get(project);
+        if (byConfiguration == null) return false;
+
+        for (List<ProcessHandler> list : byConfiguration.values()) {
+            for (ProcessHandler each : list) {
                 if (!each.isProcessTerminated()) {
                     return true;
                 }
@@ -61,38 +66,67 @@ public class StopRunningMultirunConfigurationsAction extends AnAction {
 
         stopStartingConfigurations.set(true);
         LOG.debug("Asked to stop running multirun configurations.");
-        List<ProcessHandler> processesToStop = processes.get(e.getProject());
-        if (processesToStop == null || processesToStop.isEmpty()) {
+        final Map<String, List<ProcessHandler>> byConfiguration = processes.get(e.getProject());
+        if (byConfiguration == null || byConfiguration.isEmpty()) {
             LOG.debug("Nothing to stop");
             return;
         }
-        List<ProcessHandler> stoppedProcesses = new ArrayList<>();
-        for (ProcessHandler process : processesToStop) {
-
-            stop(process);
-            stoppedProcesses.add(process);
+        int stoppedCount = 0;
+        for (List<ProcessHandler> list : byConfiguration.values()) {
+            List<ProcessHandler> stoppedProcesses = new ArrayList<>();
+            for (ProcessHandler process : list) {
+                stop(process);
+                stoppedProcesses.add(process);
+            }
+            list.removeAll(stoppedProcesses);
+            stoppedCount += stoppedProcesses.size();
         }
-        processesToStop.removeAll(stoppedProcesses);
 
-        LOG.debug("Stopped " + stoppedProcesses.size() + " processes");
+        LOG.debug("Stopped " + stoppedCount + " processes");
     }
 
-    public void addProcess(Project project, ProcessHandler process) {
+    /**
+     * Stops the still-running processes started earlier by the given Multirun configuration
+     * and returns them, so the caller can wait for their termination. Used by the restart
+     * behavior; does not raise the stop flag, so a starting Multirun is not interrupted.
+     */
+    public List<ProcessHandler> stopProcessesOf(Project project, String configurationName) {
+        final Map<String, List<ProcessHandler>> byConfiguration = processes.get(project);
+        if (byConfiguration == null) return Collections.emptyList();
+        final List<ProcessHandler> list = byConfiguration.get(configurationName);
+        if (list == null || list.isEmpty()) return Collections.emptyList();
+
+        final List<ProcessHandler> stopped = new ArrayList<>();
+        for (ProcessHandler each : list) {
+            if (!each.isProcessTerminated()) {
+                stop(each);
+                stopped.add(each);
+            }
+        }
+        list.clear();
+        LOG.debug("Restart: stopped " + stopped.size() + " processes of '" + configurationName + "'");
+        return stopped;
+    }
+
+    public void addProcess(Project project, String configurationName, ProcessHandler process) {
         if (process == null) return;
 
         if (stopStartingConfigurations.get()) {
             stop(process);
             return;
         }
-        this.processes.putIfAbsent(project, new CopyOnWriteArrayList<>());
-        this.processes.get(project).add(process);
+        processes.computeIfAbsent(project, p -> new ConcurrentHashMap<>())
+                 .computeIfAbsent(configurationName, k -> new CopyOnWriteArrayList<>())
+                 .add(process);
     }
 
     public void removeProcess(final Project project, final ProcessHandler process) {
         if (process == null) return;
 
-        if (this.processes.containsKey(project)) {
-            this.processes.get(project).remove(process);
+        final Map<String, List<ProcessHandler>> byConfiguration = processes.get(project);
+        if (byConfiguration == null) return;
+        for (List<ProcessHandler> list : byConfiguration.values()) {
+            list.remove(process);
         }
     }
 

@@ -39,6 +39,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private JCheckBox reuseTabs;
     private JCheckBox reuseTabsWithFailure;
     private JCheckBox startOneByOne;
+    private JCheckBox restartRunning;
     private JCheckBox markFailedProcess;
     private JCheckBox hideSuccessProcess;
     private JCheckBox configurationsListChanged;
@@ -91,6 +92,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
             reuseTabs.setSelected(this.configuration.isReuseTabs());
             reuseTabsWithFailure.setSelected(this.configuration.isReuseTabsWithFailure());
             startOneByOne.setSelected(this.configuration.isStartOneByOne());
+            restartRunning.setSelected(this.configuration.isRestartRunning());
             markFailedProcess.setSelected(this.configuration.isMarkFailedProcess());
             hideSuccessProcess.setSelected(this.configuration.isHideSuccessProcess());
             delayTime.setEnabled(startOneByOne.isSelected());
@@ -107,6 +109,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         multirunRunConfiguration.setReuseTabs(reuseTabs.isSelected());
         multirunRunConfiguration.setReuseTabsWithFailure(reuseTabsWithFailure.isSelected());
         multirunRunConfiguration.setStartOneByOne(startOneByOne.isSelected());
+        multirunRunConfiguration.setRestartRunning(restartRunning.isSelected());
         multirunRunConfiguration.setMarkFailedProcess(markFailedProcess.isSelected());
         multirunRunConfiguration.setHideSuccessProcess(hideSuccessProcess.isSelected());
         double delayTimeSeconds = 0;
