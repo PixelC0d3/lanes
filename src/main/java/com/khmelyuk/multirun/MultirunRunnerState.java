@@ -79,7 +79,8 @@ public class MultirunRunnerState implements RunProfileState {
         this.configurationName = configurationName;
 
         ActionManager actionManager = ActionManager.getInstance();
-        stopRunningMultirunConfiguration = (StopRunningMultirunConfigurationsAction) actionManager.getAction("stopRunningMultirunConfiguration");
+        stopRunningMultirunConfiguration = (StopRunningMultirunConfigurationsAction)
+                actionManager.getAction(StopRunningMultirunConfigurationsAction.ACTION_ID);
     }
 
     @Nullable

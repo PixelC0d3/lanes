@@ -41,6 +41,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.16.1</strong>:</p>
+        <ul>
+            <li>Use an own id for the "Stop Multiple Run" action, fixing the "ID is already taken" PluginException
+                on startup when the original Multirun plugin is installed alongside. Note: the two plugins still
+                cannot run together (they share the run configuration type) - uninstall the original Multirun.</li>
+        </ul>
         <p><strong>1.16</strong>:</p>
         <ul>
             <li>New: restart behavior, like the built-in Compound configuration. Running a Multirun that is already
@@ -235,8 +241,9 @@
     <depends>com.intellij.modules.lang</depends>
 
     <actions>
-        <!-- Add your actions here -->
-        <action id="stopRunningMultirunConfiguration" class="com.khmelyuk.multirun.StopRunningMultirunConfigurationsAction"
+        <!-- id must stay in sync with StopRunningMultirunConfigurationsAction.ACTION_ID;
+             namespaced to avoid colliding with the original Multirun plugin's action id -->
+        <action id="MultipleRun.StopRunning" class="com.khmelyuk.multirun.StopRunningMultirunConfigurationsAction"
                 text="Stop Multiple Run" description="Stop running Multiple Run configurations" icon="/actions/suspend.png">
             <add-to-group group-id="RunMenu" relative-to-action="Stop" anchor="after"/>
             <keyboard-shortcut keymap="$default" first-keystroke="shift alt K"/>
