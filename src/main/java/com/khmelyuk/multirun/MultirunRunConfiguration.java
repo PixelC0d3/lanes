@@ -2,6 +2,7 @@ package com.khmelyuk.multirun;
 
 import com.intellij.execution.Executor;
 import com.intellij.execution.RunManager;
+import com.intellij.execution.configuration.EnvironmentVariablesData;
 import com.intellij.execution.configurations.*;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.runners.ProgramRunner;
@@ -17,8 +18,10 @@ import org.jetbrains.annotations.Nullable;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class MultirunRunConfiguration extends RunConfigurationBase implements RunnerSettings {
 
@@ -28,6 +31,9 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public static final String PROP_MARK_FAILED_PROCESS = "markFailedProcess";
     public static final String PROP_HIDE_SUCCESS_PROCESS = "hideSuccessProcess";
     public static final String PROP_DELAY_TIME = "delayTime";
+    public static final String ELEMENT_ENVS = "envs";
+    public static final String ELEMENT_ENV = "env";
+    public static final String PROP_PASS_PARENT_ENVS = "passParentEnvs";
 
     private double delayTime = 0;
     private boolean reuseTabs = true;
@@ -35,6 +41,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     private boolean startOneByOne = true;
     private boolean markFailedProcess = true;
     private boolean hideSuccessProcess = false;
+    private EnvironmentVariablesData envData = EnvironmentVariablesData.DEFAULT;
     private List<RunConfigurationInternal> runConfigurations = new ArrayList<>();
 
     public MultirunRunConfiguration(Project project, ConfigurationFactory factory, String name) {
@@ -125,6 +132,14 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         this.delayTime = delayTime;
     }
 
+    public EnvironmentVariablesData getEnvData() {
+        return envData;
+    }
+
+    public void setEnvData(EnvironmentVariablesData envData) {
+        this.envData = envData == null ? EnvironmentVariablesData.DEFAULT : envData;
+    }
+
     @Override
     public SettingsEditor<? extends RunConfiguration> getConfigurationEditor() {
         return new MultirunRunConfigurationEditor(getProject());
@@ -163,11 +178,20 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
                 continue;
             }
             final Element eachElement = (Element) each;
-            if (!eachElement.getName().equals("runConfiguration")) {
-                continue;
+            if (eachElement.getName().equals("runConfiguration")) {
+                runConfigurations.add(new RunConfigurationInternal(eachElement.getAttributeValue("name"),
+                                                                   eachElement.getAttributeValue("type")));
+            } else if (eachElement.getName().equals(ELEMENT_ENVS)) {
+                final Map<String, String> envs = new LinkedHashMap<>();
+                for (Element env : eachElement.getChildren(ELEMENT_ENV)) {
+                    final String name = env.getAttributeValue("name");
+                    if (name != null) {
+                        envs.put(name, env.getAttributeValue("value", ""));
+                    }
+                }
+                final boolean passParentEnvs = !"false".equals(eachElement.getAttributeValue(PROP_PASS_PARENT_ENVS));
+                envData = EnvironmentVariablesData.create(envs, passParentEnvs);
             }
-            runConfigurations.add(new RunConfigurationInternal(eachElement.getAttributeValue("name"),
-                                                               eachElement.getAttributeValue("type")));
         }
     }
 
@@ -190,6 +214,18 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
             configurations.add(runConfiguration);
         }
         element.setContent(configurations);
+
+        if (RunConfigurationHelper.isEnvOverrideActive(envData)) {
+            final Element envsElement = new Element(ELEMENT_ENVS);
+            envsElement.setAttribute(PROP_PASS_PARENT_ENVS, String.valueOf(envData.isPassParentEnvs()));
+            for (Map.Entry<String, String> entry : envData.getEnvs().entrySet()) {
+                final Element env = new Element(ELEMENT_ENV);
+                env.setAttribute("name", entry.getKey());
+                env.setAttribute("value", entry.getValue());
+                envsElement.addContent(env);
+            }
+            element.addContent(envsElement);
+        }
     }
 
     @Nullable
@@ -209,7 +245,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public RunProfileState getState(@NotNull Executor executor, @NotNull ExecutionEnvironment executionEnvironment) {
         return new MultirunRunnerState(getRunConfigurations(), startOneByOne, delayTime,
                                        reuseTabs, reuseTabsWithFailure,
-                                       markFailedProcess, hideSuccessProcess);
+                                       markFailedProcess, hideSuccessProcess, envData);
     }
 
     @Override

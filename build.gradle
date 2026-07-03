@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.khmelyuk'
-version = '1.14.2'
+version = '1.15.0'
 
 repositories {
     mavenCentral()
@@ -15,7 +15,7 @@ java {
 }
 
 intellij {
-    pluginName = 'multirun'
+    pluginName = 'multiple_run'
     version = '2023.3'
     // Bundled plugin that provides com.intellij.profiler.DefaultProfilerExecutorGroup
     plugins = ['com.jetbrains.performancePlugin.async']
