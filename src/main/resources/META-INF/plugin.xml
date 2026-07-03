@@ -1,7 +1,7 @@
 <idea-plugin url="https://plugins.jetbrains.com/plugin/7248-multirun">
     <id>com.khmelyuk.multirun</id>
     <name>Multirun</name>
-    <version>1.14.1</version>
+    <!-- version is injected from build.gradle (project.version) by patchPluginXml -->
     <vendor url="http://www.khmelyuk.com">Ruslan Khmeliuk</vendor>
 
     <description>
@@ -32,6 +32,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.14.2</strong>:</p>
+        <ul>
+            <li>Fix cycle detection when a Multirun contains multiple nested Multirun configurations.</li>
+            <li>Fix delay value being reset to 0 in locales that use a comma as the decimal separator.</li>
+            <li>Run tab updates (icon/name/pin) now happen on the EDT to avoid "must be called on EDT" errors.</li>
+            <li>Build against IntelliJ Platform 2023.3 with Gradle 8.5; drop internal *Impl API usage and other cleanups.</li>
+        </ul>
         <p><strong>1.14.1</strong>:</p>
         <ul>
             <li>Parsing the delay with respect to current locale.</li>
@@ -187,13 +194,6 @@
          on how to target different products -->
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.lang</depends>
-
-    <application-components>
-    </application-components>
-
-    <project-components>
-
-    </project-components>
 
     <actions>
         <!-- Add your actions here -->

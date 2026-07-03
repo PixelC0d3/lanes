@@ -2,8 +2,23 @@ plugins {
     id "org.jetbrains.intellij" version "1.16.0"
 }
 
+group = 'com.khmelyuk'
+version = '1.14.2'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
 intellij {
     pluginName = 'multirun'
+    version = '2023.3'
+    // Bundled plugin that provides com.intellij.profiler.DefaultProfilerExecutorGroup
+    plugins = ['com.jetbrains.performancePlugin.async']
     updateSinceUntilBuild = false
 }
 
@@ -15,5 +30,8 @@ if (propertiesFile.exists()) {
 }
 
 publishPlugin {
-    token properties.getProperty('hub.token')
+    def hubToken = properties.getProperty('hub.token')
+    if (hubToken != null) {
+        token = hubToken
+    }
 }

@@ -18,8 +18,11 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.text.NumberFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Locale;
 
 /**
  * For to edit multirun run configuration.
@@ -107,8 +110,10 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         double delayTimeSeconds = 0;
         if (delayTime.getText() != null && !delayTime.getText().isEmpty()) {
             try {
-                delayTimeSeconds = Double.parseDouble(delayTime.getText());
-            } catch (Exception e) {
+                // Parse with the current locale so it matches the value shown in the field
+                // (resetEditorFrom formats it with the default locale, e.g. "0,0" in pt-BR).
+                delayTimeSeconds = NumberFormat.getInstance(Locale.getDefault()).parse(delayTime.getText()).doubleValue();
+            } catch (ParseException e) {
                 // well ignore if the value is not a number
             }
         }

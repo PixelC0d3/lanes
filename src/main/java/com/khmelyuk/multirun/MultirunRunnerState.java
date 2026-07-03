@@ -11,13 +11,13 @@ import com.intellij.execution.ExecutionResult;
 import com.intellij.execution.ExecutionTarget;
 import com.intellij.execution.ExecutionTargetManager;
 import com.intellij.execution.Executor;
+import com.intellij.execution.RunManager;
 import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.RunnerRegistry;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.execution.configurations.RunProfileState;
 import com.intellij.execution.impl.RunDialog;
 import com.intellij.execution.impl.RunManagerImpl;
-import com.intellij.execution.impl.RunnerAndConfigurationSettingsImpl;
 import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
 import com.intellij.execution.process.ProcessHandler;
@@ -27,7 +27,6 @@ import com.intellij.execution.runners.ProgramRunner;
 import com.intellij.execution.ui.RunContentDescriptor;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionManager;
-import com.intellij.openapi.actionSystem.impl.ActionManagerImpl;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
@@ -65,7 +64,7 @@ public class MultirunRunnerState implements RunProfileState {
         this.markFailedProcess = markFailedProcess;
         this.hideSuccessProcess = hideSuccessProcess;
 
-        ActionManager actionManager = ActionManagerImpl.getInstance();
+        ActionManager actionManager = ActionManager.getInstance();
         stopRunningMultirunConfiguration = (StopRunningMultirunConfigurationsAction) actionManager.getAction("stopRunningMultirunConfiguration");
     }
 
@@ -91,11 +90,14 @@ public class MultirunRunnerState implements RunProfileState {
 
         final RunConfiguration runConfiguration = runConfigurations.get(index);
         final Project project = runConfiguration.getProject();
-        final RunnerAndConfigurationSettings configuration = new RunnerAndConfigurationSettingsImpl(
-                RunManagerImpl.getInstanceImpl(project), runConfiguration, false);
 
         boolean started = false;
         try {
+            final RunnerAndConfigurationSettings configuration = RunManager.getInstance(project).findSettings(runConfiguration);
+            // configuration is not registered anymore (e.g. it was removed) - skip it;
+            // the finally block still chains to the next configuration.
+            if (configuration == null) {return;}
+
             final ProgramRunner runner = RunnerRegistry.getInstance().getRunner(executor.getId(), runConfiguration);
             if (runner == null) {return;}
             if (!checkRunConfiguration(executor, project, configuration)) {return;}
@@ -124,13 +126,21 @@ public class MultirunRunnerState implements RunProfileState {
                                     @SuppressWarnings("ConstantConditions")
                                     @Override
                                     public void startNotified(@NotNull final ProcessEvent processEvent) {
-                                        Content content = descriptor.getAttachedContent();
-                                        if (content != null) {
-                                            content.setIcon(descriptor.getIcon());
-                                            if (!stopRunningMultirunConfiguration.canContinueStartingConfigurations()) {
-                                                // Multirun was stopped - destroy processes that are still starting up
-                                                processHandler.destroyProcess();
+                                        final Content content = descriptor.getAttachedContent();
+                                        if (content == null) {
+                                            return;
+                                        }
 
+                                        final boolean canContinue = stopRunningMultirunConfiguration.canContinueStartingConfigurations();
+                                        if (!canContinue) {
+                                            // Multirun was stopped - destroy processes that are still starting up
+                                            processHandler.destroyProcess();
+                                        }
+
+                                        // All Content (tab) mutations must run on the EDT.
+                                        ApplicationManager.getApplication().invokeLater(() -> {
+                                            content.setIcon(descriptor.getIcon());
+                                            if (!canContinue) {
                                                 if (!content.isPinned() && !startOneByOne) {
                                                     // checks if not pinned, to avoid destroying already existed tab
                                                     // checks if start one by one - no need to close the console tab, as it's won't be shown
@@ -148,7 +158,7 @@ public class MultirunRunnerState implements RunProfileState {
                                                 // mark running process tab with *
                                                 content.setDisplayName(descriptor.getDisplayName() + "*");
                                             }
-                                        }
+                                        });
                                     }
 
                                     @Override
@@ -162,42 +172,41 @@ public class MultirunRunnerState implements RunProfileState {
                                     public void processWillTerminate(@NotNull ProcessEvent processEvent, boolean willBeDestroyed) {}
 
                                     private void onTermination(final ProcessEvent processEvent) {
-                                        if (descriptor.getAttachedContent() == null) {
+                                        final Content content = descriptor.getAttachedContent();
+                                        if (content == null) {
                                             return;
                                         }
 
-                                        ApplicationManager.getApplication().executeOnPooledThread(() -> {
-                                            final Content content = descriptor.getAttachedContent();
-                                            if (content == null) {return;}
+                                        // exit code is 0 if the process completed successfully
+                                        final boolean completedSuccessfully = (processEvent.getExitCode() == 0);
 
-                                            // exit code is 0 if the process completed successfully
-                                            final boolean completedSuccessfully = (processEvent.getExitCode() == 0);
-
-                                            if (hideSuccessProcess && completedSuccessfully) {
-                                                // close the tab for the success process and exit - nothing else could be done
-                                                ApplicationManager.getApplication().invokeLater(() -> {
-                                                    if (content.getManager() != null) {
-                                                        content.getManager().removeContent(content, false);
-                                                    }
-                                                });
-                                                return;
-                                            }
-
-                                            if ((completedSuccessfully && !reuseTabs) || (!completedSuccessfully && !reuseTabsWithFailure)) {
-                                                // attempt to pin tab if not completed successfully or asked not to reuse tabs
-                                                if (!stopRunningMultirunConfiguration.isStopMultirunTriggered()) {
-                                                    // ... do not pin if multirun stopped by "Stop Multirun" action.
-                                                    content.setPinned(true);
+                                        if (hideSuccessProcess && completedSuccessfully) {
+                                            // close the tab for the success process and exit - nothing else could be done
+                                            ApplicationManager.getApplication().invokeLater(() -> {
+                                                if (content.getManager() != null) {
+                                                    content.getManager().removeContent(content, false);
                                                 }
+                                            });
+                                            return;
+                                        }
+
+                                        // attempt to pin tab if not completed successfully or asked not to reuse tabs
+                                        final boolean pinTab = (completedSuccessfully && !reuseTabs) || (!completedSuccessfully && !reuseTabsWithFailure);
+                                        // add the alert icon in case if process exited with non-0 status
+                                        final boolean markFailed = markFailedProcess && !completedSuccessfully;
+
+                                        // All Content (tab) mutations must run on the EDT.
+                                        ApplicationManager.getApplication().invokeLater(() -> {
+                                            if (pinTab && !stopRunningMultirunConfiguration.isStopMultirunTriggered()) {
+                                                // ... do not pin if multirun stopped by "Stop Multirun" action.
+                                                content.setPinned(true);
                                             }
 
                                             // remove the * used to identify running process
                                             content.setDisplayName(descriptor.getDisplayName());
 
-                                            // add the alert icon in case if process existed with non-0 status
-                                            if (markFailedProcess && processEvent.getExitCode() != 0) {
-                                                ApplicationManager.getApplication().executeOnPooledThread(
-                                                        () -> content.setIcon(LayeredIcon.create(content.getIcon(), AllIcons.Nodes.TabAlert)));
+                                            if (markFailed) {
+                                                content.setIcon(LayeredIcon.create(content.getIcon(), AllIcons.Nodes.TabAlert));
                                             }
                                         });
                                     }
