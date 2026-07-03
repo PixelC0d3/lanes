@@ -1,6 +1,7 @@
 package com.khmelyuk.multirun.ui;
 
 import com.intellij.execution.RunManager;
+import com.intellij.execution.configuration.EnvironmentVariablesComponent;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.openapi.options.SettingsEditor;
 import com.intellij.openapi.project.Project;
@@ -36,6 +37,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private JPanel myMainPanel;
     private JBList<RunConfiguration> configurations;
     private JPanel collectionsPanel;
+    private JPanel envVarsPanel;
+    private EnvironmentVariablesComponent environmentVariables;
     private JCheckBox reuseTabs;
     private JCheckBox reuseTabsWithFailure;
     private JCheckBox startOneByOne;
@@ -86,6 +89,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         configurations.setCellRenderer(new RunConfigurationListCellRenderer());
 
         if (this.configuration != null) {
+            environmentVariables.setEnvData(this.configuration.getEnvData());
             delayTime.setText(String.format("%.1f", this.configuration.getDelayTime()));
             reuseTabs.setSelected(this.configuration.isReuseTabs());
             reuseTabsWithFailure.setSelected(this.configuration.isReuseTabsWithFailure());
@@ -102,6 +106,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
             return;
         }
 
+        multirunRunConfiguration.setEnvData(environmentVariables.getEnvData());
         multirunRunConfiguration.setReuseTabs(reuseTabs.isSelected());
         multirunRunConfiguration.setReuseTabsWithFailure(reuseTabsWithFailure.isSelected());
         multirunRunConfiguration.setStartOneByOne(startOneByOne.isSelected());
@@ -162,6 +167,14 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
                 delayTime.setEnabled(startOneByOne.isSelected());
             }
         });
+
+        // Environment variables applied to every configuration in the list (Multirun values win on conflicts).
+        // The component provides the same editing dialog used by the platform run configurations.
+        environmentVariables = new EnvironmentVariablesComponent();
+        environmentVariables.setLabelLocation(BorderLayout.WEST);
+        environmentVariables.getComponent().setToolTipText(
+                "These variables are applied to every configuration in the list, overriding its own variables with the same name");
+        envVarsPanel.add(environmentVariables, BorderLayout.CENTER);
 
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());

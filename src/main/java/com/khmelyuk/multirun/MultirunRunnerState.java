@@ -14,6 +14,7 @@ import com.intellij.execution.Executor;
 import com.intellij.execution.RunManager;
 import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.RunnerRegistry;
+import com.intellij.execution.configuration.EnvironmentVariablesData;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.execution.configurations.RunProfileState;
 import com.intellij.execution.impl.RunDialog;
@@ -48,13 +49,15 @@ public class MultirunRunnerState implements RunProfileState {
     private final boolean startOneByOne;
     private final boolean markFailedProcess;
     private final boolean hideSuccessProcess;
+    private final EnvironmentVariablesData envData;
     private final List<RunConfiguration> runConfigurations;
     private final StopRunningMultirunConfigurationsAction stopRunningMultirunConfiguration;
 
     public MultirunRunnerState(List<RunConfiguration> runConfigurations,
                                boolean startOneByOne, double delayTime,
                                boolean reuseTabs, boolean reuseTabsWithFailure,
-                               boolean markFailedProcess, boolean hideSuccessProcess) {
+                               boolean markFailedProcess, boolean hideSuccessProcess,
+                               EnvironmentVariablesData envData) {
 
         this.delayTime = delayTime;
         this.reuseTabs = reuseTabs;
@@ -63,6 +66,7 @@ public class MultirunRunnerState implements RunProfileState {
         this.runConfigurations = runConfigurations;
         this.markFailedProcess = markFailedProcess;
         this.hideSuccessProcess = hideSuccessProcess;
+        this.envData = envData == null ? EnvironmentVariablesData.DEFAULT : envData;
 
         ActionManager actionManager = ActionManager.getInstance();
         stopRunningMultirunConfiguration = (StopRunningMultirunConfigurationsAction) actionManager.getAction("stopRunningMultirunConfiguration");
@@ -93,12 +97,22 @@ public class MultirunRunnerState implements RunProfileState {
 
         boolean started = false;
         try {
-            final RunnerAndConfigurationSettings configuration = RunManager.getInstance(project).findSettings(runConfiguration);
-            // configuration is not registered anymore (e.g. it was removed) - skip it;
-            // the finally block still chains to the next configuration.
+            // apply the Multirun environment variables on top of the child configuration; works on a clone,
+            // so the user's configuration is never permanently modified
+            final RunConfiguration effectiveConfiguration = RunConfigurationHelper.withEnvironmentOverride(runConfiguration, envData);
+
+            final RunnerAndConfigurationSettings configuration;
+            if (effectiveConfiguration == runConfiguration) {
+                // configuration may not be registered anymore (e.g. it was removed) - skip it;
+                // the finally block still chains to the next configuration.
+                configuration = RunManager.getInstance(project).findSettings(runConfiguration);
+            } else {
+                // a clone is not registered in the RunManager, wrap it in fresh settings
+                configuration = RunManager.getInstance(project).createConfiguration(effectiveConfiguration, effectiveConfiguration.getFactory());
+            }
             if (configuration == null) {return;}
 
-            final ProgramRunner runner = RunnerRegistry.getInstance().getRunner(executor.getId(), runConfiguration);
+            final ProgramRunner runner = RunnerRegistry.getInstance().getRunner(executor.getId(), effectiveConfiguration);
             if (runner == null) {return;}
             if (!checkRunConfiguration(executor, project, configuration)) {return;}
 

@@ -32,6 +32,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.15</strong>:</p>
+        <ul>
+            <li>New: Environment variables option on the Multirun configuration. The variables are applied to every
+                configuration in the list (overriding same-named variables), including nested Multirun configurations.
+                The "Include system environment variables" flag is applied to children as well.</li>
+        </ul>
         <p><strong>1.14.2</strong>:</p>
         <ul>
             <li>Fix cycle detection when a Multirun contains multiple nested Multirun configurations.</li>

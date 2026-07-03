@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.khmelyuk'
-version = '1.14.2'
+version = '1.15.0'
 
 repositories {
     mavenCentral()

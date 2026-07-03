@@ -37,6 +37,15 @@ The delay field accepts fractional seconds (e.g. `0.5`) and behaves as follows:
 The delay field is only enabled when *Start configurations one by one* is checked, and the value
 is parsed using the current locale (so `0,5` works on locales that use a comma as the decimal separator).
 
+### Environment variables override
+- Define environment variables directly on the Multirun configuration — they are applied to
+  **every** configuration in the list, overriding the child's own variables with the same name.
+- Uses the standard IDE dialog (add variables one by one, paste, and toggle
+  *Include system environment variables*).
+- Overrides propagate through nested Multirun configurations too.
+- Works with configuration types that expose environment variables (Node.js, npm, Java
+  Application, etc.); other types run unchanged.
+
 ### Console tab handling
 - **Mark the tab of a failed configuration** — adds an alert icon to the tab of any configuration
   that exits with a non-zero status, so you can spot failures at a glance.
