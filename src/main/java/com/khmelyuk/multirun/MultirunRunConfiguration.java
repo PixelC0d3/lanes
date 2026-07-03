@@ -15,12 +15,9 @@ import org.jdom.Element;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.text.NumberFormat;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public class MultirunRunConfiguration extends RunConfigurationBase implements RunnerSettings {
@@ -53,8 +50,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         final List<RunConfiguration> allConfigurations = RunManager.getInstance(getProject()).getAllConfigurationsList();
         for (RunConfigurationInternal runConfiguration : runConfigurations) {
             for (RunConfiguration configuration : allConfigurations) {
-                if (configuration.getName().equals(runConfiguration.name) &&
-                        configuration.getType().getDisplayName().equals(runConfiguration.type)) {
+                if (configuration.getName().equals(runConfiguration.name) && typeMatches(configuration, runConfiguration)) {
                     if (configuration instanceof MultirunRunConfiguration) {
                         if (configuration.equals(this)) {
                             // exclude itself
@@ -73,6 +69,16 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         return result;
     }
 
+    private static boolean typeMatches(RunConfiguration configuration, RunConfigurationInternal saved) {
+        if (saved.typeId != null) {
+            return saved.typeId.equals(configuration.getType().getId());
+        }
+        // entries saved by older versions reference the type by its display name, which is
+        // not unique, may change between releases and is translated by language packs;
+        // they are migrated to the type id on the next save
+        return configuration.getType().getDisplayName().equals(saved.type);
+    }
+
     public void setRunConfigurations(List<RunConfiguration> runConfigurations) {
         this.runConfigurations = new ArrayList<>();
         if (runConfigurations == null) {
@@ -80,7 +86,9 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         }
 
         for (RunConfiguration configuration : runConfigurations) {
-            this.runConfigurations.add(new RunConfigurationInternal(configuration.getName(), configuration.getType().getDisplayName()));
+            this.runConfigurations.add(new RunConfigurationInternal(configuration.getName(),
+                                                                    configuration.getType().getDisplayName(),
+                                                                    configuration.getType().getId()));
         }
     }
 
@@ -132,6 +140,16 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         this.delayTime = delayTime;
     }
 
+    /**
+     * Parses a delay value accepting both '.' and ',' as the decimal separator.
+     * Locale-aware NumberFormat cannot be used here: in comma-decimal locales (German, pt-BR)
+     * its lenient parsing treats '.' as a grouping separator and turns "-1.0" into -10, which
+     * corrupts values persisted by writeExternal (always dot-formatted) and hand-typed input.
+     */
+    public static double parseDelay(String text) throws NumberFormatException {
+        return Double.parseDouble(text.trim().replace(',', '.'));
+    }
+
     public EnvironmentVariablesData getEnvData() {
         return envData;
     }
@@ -165,12 +183,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
             hideSuccessProcess = Boolean.parseBoolean(element.getAttributeValue(PROP_HIDE_SUCCESS_PROCESS));
         }
         if (element.getAttributeValue(PROP_DELAY_TIME) != null) {
-            try {
-                final NumberFormat numberFormat = NumberFormat.getInstance(Locale.getDefault());
-                delayTime = numberFormat.parse(element.getAttributeValue(PROP_DELAY_TIME)).doubleValue();
-            } catch (ParseException e) {
-                throw new NumberFormatException(e.getMessage());
-            }
+            delayTime = parseDelay(element.getAttributeValue(PROP_DELAY_TIME));
         }
 
         for (Object each : element.getContent()) {
@@ -180,7 +193,8 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
             final Element eachElement = (Element) each;
             if (eachElement.getName().equals("runConfiguration")) {
                 runConfigurations.add(new RunConfigurationInternal(eachElement.getAttributeValue("name"),
-                                                                   eachElement.getAttributeValue("type")));
+                                                                   eachElement.getAttributeValue("type"),
+                                                                   eachElement.getAttributeValue("typeId")));
             } else if (eachElement.getName().equals(ELEMENT_ENVS)) {
                 final Map<String, String> envs = new LinkedHashMap<>();
                 for (Element env : eachElement.getChildren(ELEMENT_ENV)) {
@@ -210,7 +224,12 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         for (RunConfigurationInternal each : runConfigurations) {
             Element runConfiguration = new Element("runConfiguration");
             runConfiguration.setAttribute("name", each.name);
-            runConfiguration.setAttribute("type", each.type);
+            if (each.type != null) {
+                runConfiguration.setAttribute("type", each.type);
+            }
+            if (each.typeId != null) {
+                runConfiguration.setAttribute("typeId", each.typeId);
+            }
             configurations.add(runConfiguration);
         }
         element.setContent(configurations);
@@ -257,14 +276,15 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
 
     private static class RunConfigurationInternal {
         String name;
+        /** Configuration type display name - legacy reference, kept for downgrade compatibility. */
         String type;
+        /** Configuration type id - unique and stable, preferred for matching. */
+        String typeId;
 
-        RunConfigurationInternal() {
-        }
-
-        RunConfigurationInternal(String name, String type) {
+        RunConfigurationInternal(String name, String type, String typeId) {
             this.name = name;
             this.type = type;
+            this.typeId = typeId;
         }
     }
 }

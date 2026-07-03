@@ -41,6 +41,19 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.15.2</strong>:</p>
+        <ul>
+            <li>Reference grouped run configurations by their configuration type id instead of the display name.
+                Fixes matching with plugins whose type display name differs (e.g. BashSupport Pro's Shell-compatible
+                configurations) and with translated IDEs (language packs). Existing configurations keep working and
+                are migrated automatically on the next save.</li>
+        </ul>
+        <p><strong>1.15.1</strong>:</p>
+        <ul>
+            <li>Fix delay value corruption in locales that use a comma as the decimal separator (German, pt-BR, ...):
+                the field now accepts both "." and "," and persisted values are no longer misread as tens
+                (e.g. "-1.0" turning into -10).</li>
+        </ul>
         <p><strong>1.15</strong>:</p>
         <ul>
             <li>New: Environment variables option on the Multirun configuration. The variables are applied to every
