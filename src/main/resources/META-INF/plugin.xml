@@ -41,6 +41,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.15.1</strong>:</p>
+        <ul>
+            <li>Fix delay value corruption in locales that use a comma as the decimal separator (German, pt-BR, ...):
+                the field now accepts both "." and "," and persisted values are no longer misread as tens
+                (e.g. "-1.0" turning into -10).</li>
+        </ul>
         <p><strong>1.15</strong>:</p>
         <ul>
             <li>New: Environment variables option on the Multirun configuration. The variables are applied to every

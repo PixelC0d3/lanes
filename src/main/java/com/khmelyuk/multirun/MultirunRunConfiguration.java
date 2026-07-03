@@ -15,12 +15,9 @@ import org.jdom.Element;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.text.NumberFormat;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public class MultirunRunConfiguration extends RunConfigurationBase implements RunnerSettings {
@@ -132,6 +129,16 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         this.delayTime = delayTime;
     }
 
+    /**
+     * Parses a delay value accepting both '.' and ',' as the decimal separator.
+     * Locale-aware NumberFormat cannot be used here: in comma-decimal locales (German, pt-BR)
+     * its lenient parsing treats '.' as a grouping separator and turns "-1.0" into -10, which
+     * corrupts values persisted by writeExternal (always dot-formatted) and hand-typed input.
+     */
+    public static double parseDelay(String text) throws NumberFormatException {
+        return Double.parseDouble(text.trim().replace(',', '.'));
+    }
+
     public EnvironmentVariablesData getEnvData() {
         return envData;
     }
@@ -165,12 +172,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
             hideSuccessProcess = Boolean.parseBoolean(element.getAttributeValue(PROP_HIDE_SUCCESS_PROCESS));
         }
         if (element.getAttributeValue(PROP_DELAY_TIME) != null) {
-            try {
-                final NumberFormat numberFormat = NumberFormat.getInstance(Locale.getDefault());
-                delayTime = numberFormat.parse(element.getAttributeValue(PROP_DELAY_TIME)).doubleValue();
-            } catch (ParseException e) {
-                throw new NumberFormatException(e.getMessage());
-            }
+            delayTime = parseDelay(element.getAttributeValue(PROP_DELAY_TIME));
         }
 
         for (Object each : element.getContent()) {
