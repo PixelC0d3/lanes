@@ -58,7 +58,13 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - Running configurations are marked with a `*` in the tab title while they are still running.
 - When tab re-use is disabled, tabs are pinned so they are not recycled.
 
-### Stopping
+### Restarting and stopping
+- **Restart on rerun** (enabled by default) — running a Multirun that is already running first stops
+  the processes it started before, waits for them to terminate, and then starts everything again —
+  just like the built-in Compound configuration. No need to stop the services manually before
+  rebuilding/rerunning. Only the processes of the restarted Multirun are stopped; other running
+  Multirun groups are untouched. Can be disabled per configuration with the
+  *Restart running configurations before starting* option.
 - **Stop Multirun** action stops all running configurations started by Multirun (and cancels any
   that are still queued to start).
 - Available from **Run → Stop Multirun** and via shortcut:

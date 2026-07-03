@@ -41,6 +41,14 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.16</strong>:</p>
+        <ul>
+            <li>New: restart behavior, like the built-in Compound configuration. Running a Multirun that is already
+                running now stops the processes it started before (waiting for their termination) and then starts
+                again - no need to use "Stop Multirun" first. Enabled by default; can be disabled per configuration
+                with the new "Restart running configurations before starting" option. Only the processes of the
+                restarted Multirun are stopped - other running Multirun groups are not affected.</li>
+        </ul>
         <p><strong>1.15.2</strong>:</p>
         <ul>
             <li>Reference grouped run configurations by their configuration type id instead of the display name.

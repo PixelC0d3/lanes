@@ -28,6 +28,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public static final String PROP_MARK_FAILED_PROCESS = "markFailedProcess";
     public static final String PROP_HIDE_SUCCESS_PROCESS = "hideSuccessProcess";
     public static final String PROP_DELAY_TIME = "delayTime";
+    public static final String PROP_RESTART_RUNNING = "restartRunning";
     public static final String ELEMENT_ENVS = "envs";
     public static final String ELEMENT_ENV = "env";
     public static final String PROP_PASS_PARENT_ENVS = "passParentEnvs";
@@ -38,6 +39,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     private boolean startOneByOne = true;
     private boolean markFailedProcess = true;
     private boolean hideSuccessProcess = false;
+    private boolean restartRunning = true;
     private EnvironmentVariablesData envData = EnvironmentVariablesData.DEFAULT;
     private List<RunConfigurationInternal> runConfigurations = new ArrayList<>();
 
@@ -150,6 +152,14 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         return Double.parseDouble(text.trim().replace(',', '.'));
     }
 
+    public boolean isRestartRunning() {
+        return restartRunning;
+    }
+
+    public void setRestartRunning(boolean restartRunning) {
+        this.restartRunning = restartRunning;
+    }
+
     public EnvironmentVariablesData getEnvData() {
         return envData;
     }
@@ -181,6 +191,9 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         }
         if (element.getAttributeValue(PROP_HIDE_SUCCESS_PROCESS) != null) {
             hideSuccessProcess = Boolean.parseBoolean(element.getAttributeValue(PROP_HIDE_SUCCESS_PROCESS));
+        }
+        if (element.getAttributeValue(PROP_RESTART_RUNNING) != null) {
+            restartRunning = Boolean.parseBoolean(element.getAttributeValue(PROP_RESTART_RUNNING));
         }
         if (element.getAttributeValue(PROP_DELAY_TIME) != null) {
             delayTime = parseDelay(element.getAttributeValue(PROP_DELAY_TIME));
@@ -218,6 +231,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         element.setAttribute(PROP_START_ONE_BY_ONE, String.valueOf(startOneByOne));
         element.setAttribute(PROP_MARK_FAILED_PROCESS, String.valueOf(markFailedProcess));
         element.setAttribute(PROP_HIDE_SUCCESS_PROCESS, String.valueOf(hideSuccessProcess));
+        element.setAttribute(PROP_RESTART_RUNNING, String.valueOf(restartRunning));
         element.setAttribute(PROP_DELAY_TIME, String.valueOf(delayTime));
 
         final List<Element> configurations = new ArrayList<Element>();
@@ -264,7 +278,8 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public RunProfileState getState(@NotNull Executor executor, @NotNull ExecutionEnvironment executionEnvironment) {
         return new MultirunRunnerState(getRunConfigurations(), startOneByOne, delayTime,
                                        reuseTabs, reuseTabsWithFailure,
-                                       markFailedProcess, hideSuccessProcess, envData);
+                                       markFailedProcess, hideSuccessProcess, envData,
+                                       restartRunning, getProject(), getName());
     }
 
     @Override
