@@ -27,6 +27,13 @@ import com.intellij.openapi.project.Project;
  */
 public class StopRunningMultirunConfigurationsAction extends AnAction {
 
+    /**
+     * Namespaced action id, unique to this fork. The original Multirun plugin registers its action
+     * as "stopRunningMultirunConfiguration"; reusing that id caused an ID collision PluginException
+     * on startup when both plugins were installed.
+     */
+    public static final String ACTION_ID = "MultipleRun.StopRunning";
+
     private static final Logger LOG = Logger.getInstance(StopRunningMultirunConfigurationsAction.class);
 
     /** Processes started by Multirun, grouped by project and by the Multirun configuration that started them. */
