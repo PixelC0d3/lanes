@@ -65,9 +65,9 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   rebuilding/rerunning. Only the processes of the restarted Multirun are stopped; other running
   Multirun groups are untouched. Can be disabled per configuration with the
   *Restart running configurations before starting* option.
-- **Stop Multirun** action stops all running configurations started by Multirun (and cancels any
-  that are still queued to start).
-- Available from **Run → Stop Multirun** and via shortcut:
+- **Stop Multiple Run** action stops all running configurations started by the plugin (and cancels
+  any that are still queued to start).
+- Available from **Run → Stop Multiple Run** and via shortcut:
   - Windows/Linux: <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>K</kbd>
   - macOS: <kbd>Control</kbd>+<kbd>Alt</kbd>+<kbd>K</kbd>
 
@@ -98,7 +98,7 @@ Compatible with builds since `233` (**2023.3** and newer).
 ## Usage
 
 1. `Run → Edit Configurations…`
-2. Click **+** and add a new **Multirun** configuration.
+2. Click **+** and add a new **Multiple Run** configuration.
 3. Use the list toolbar to add the run configurations you want to launch.
 4. Pick the options you need (parallel vs one-by-one, delay, tab handling, marking failures, …).
 5. Apply and run the Multirun configuration like any other configuration.

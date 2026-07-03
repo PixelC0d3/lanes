@@ -77,8 +77,11 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         }
         // entries saved by older versions reference the type by its display name, which is
         // not unique, may change between releases and is translated by language packs;
-        // they are migrated to the type id on the next save
-        return configuration.getType().getDisplayName().equals(saved.type);
+        // they are migrated to the type id on the next save. The id comparison also covers
+        // display names that were later rebranded (e.g. "Multirun" -> "Multiple Run", where
+        // the id is still "Multirun").
+        return configuration.getType().getDisplayName().equals(saved.type)
+                || configuration.getType().getId().equals(saved.type);
     }
 
     public void setRunConfigurations(List<RunConfiguration> runConfigurations) {

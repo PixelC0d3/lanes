@@ -11,13 +11,15 @@ import org.jetbrains.annotations.NotNull;
 public class MultirunConfigurationType extends SimpleConfigurationType implements ConfigurationType {
 
     public MultirunConfigurationType() {
-        super("Multirun", "Multirun", "Run multiple configurations",
+        // the type id stays "Multirun" on purpose: it is persisted in every saved run
+        // configuration, so changing it would orphan them; only the display name is rebranded
+        super("Multirun", "Multiple Run", "Run multiple run configurations at once",
               NotNullLazyValue.createValue(() -> AllIcons.Actions.Rerun));
     }
 
     @Override
     public @NotNull
     RunConfiguration createTemplateConfiguration(@NotNull final Project project) {
-        return new MultirunRunConfiguration(project, this, "Multirun");
+        return new MultirunRunConfiguration(project, this, "Multiple Run");
     }
 }

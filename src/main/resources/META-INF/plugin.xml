@@ -28,8 +28,8 @@
         <p>Usage:</p>
         <ol>
             <li>Run -> Edit Configurations...</li>
-            <li>Find and add a new Multirun configuration</li>
-            <li>Add other run configurations to the Multirun configuration</li>
+            <li>Find and add a new Multiple Run configuration</li>
+            <li>Add other run configurations to the Multiple Run configuration</li>
             <li>Pick options you'd like</li>
             <li>Ready to use</li>
         </ol>
@@ -48,6 +48,9 @@
                 again - no need to use "Stop Multirun" first. Enabled by default; can be disabled per configuration
                 with the new "Restart running configurations before starting" option. Only the processes of the
                 restarted Multirun are stopped - other running Multirun groups are not affected.</li>
+            <li>The run configuration type is now shown as "Multiple Run" in the Add New Configuration list
+                (the internal type id is unchanged, existing configurations keep working). The stop action is
+                now "Stop Multiple Run".</li>
         </ul>
         <p><strong>1.15.2</strong>:</p>
         <ul>
@@ -234,7 +237,7 @@
     <actions>
         <!-- Add your actions here -->
         <action id="stopRunningMultirunConfiguration" class="com.khmelyuk.multirun.StopRunningMultirunConfigurationsAction"
-                text="Stop Multirun" description="Stop running Multirun configurations" icon="/actions/suspend.png">
+                text="Stop Multiple Run" description="Stop running Multiple Run configurations" icon="/actions/suspend.png">
             <add-to-group group-id="RunMenu" relative-to-action="Stop" anchor="after"/>
             <keyboard-shortcut keymap="$default" first-keystroke="shift alt K"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="control alt K"/>
