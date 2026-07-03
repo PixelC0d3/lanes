@@ -1,6 +1,8 @@
-<idea-plugin url="https://plugins.jetbrains.com/plugin/7248-multirun">
+<idea-plugin url="https://github.com/WelingtonMonteiro/multiple_run">
+    <!-- The id is kept as-is on purpose: changing it would break updates over an installed
+         version and orphan existing Multirun run configurations saved in user projects. -->
     <id>com.khmelyuk.multirun</id>
-    <name>Multirun</name>
+    <name>Multiple Run</name>
     <!-- version is injected from build.gradle (project.version) by patchPluginXml -->
     <vendor url="http://www.khmelyuk.com">Ruslan Khmeliuk</vendor>
 

@@ -1,7 +1,8 @@
-Multirun
-========
+Multiple Run
+============
 
 IntelliJ-based IDE plugin to execute multiple Run Configurations in a single click.
+Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) plugin.
 
 IntelliJ ships with a built-in [Compound run/debug configuration](https://www.jetbrains.com/help/idea/run-debug-configuration-compound.html),
 but if you need more flexibility and control over *how* the configurations are executed
