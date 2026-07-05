@@ -196,9 +196,10 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     protected void disposeEditor() {
     }
 
-    private static class RunConfigurationListCellRenderer extends ListCellRendererWrapper<RunConfiguration> {
+    private static class RunConfigurationListCellRenderer extends SimpleListCellRenderer<RunConfiguration> {
         @Override
-        public void customize(JList list, RunConfiguration data, int index, boolean selected, boolean hasFocus) {
+        public void customize(@NotNull JList<? extends RunConfiguration> list, RunConfiguration data, int index,
+                              boolean selected, boolean hasFocus) {
             if (data != null) {
                 setIcon(data.getIcon());
                 setText("Run '" + data.getName() + "'");

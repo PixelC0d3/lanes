@@ -13,14 +13,13 @@ import com.intellij.execution.ExecutionTargetManager;
 import com.intellij.execution.Executor;
 import com.intellij.execution.RunManager;
 import com.intellij.execution.RunnerAndConfigurationSettings;
-import com.intellij.execution.RunnerRegistry;
 import com.intellij.execution.configuration.EnvironmentVariablesData;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.execution.configurations.RunProfileState;
 import com.intellij.execution.impl.RunDialog;
 import com.intellij.execution.impl.RunManagerImpl;
-import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
+import com.intellij.execution.process.ProcessListener;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.runners.ExecutionUtil;
@@ -141,7 +140,7 @@ public class MultirunRunnerState implements RunProfileState {
             }
             if (configuration == null) {return;}
 
-            final ProgramRunner runner = RunnerRegistry.getInstance().getRunner(executor.getId(), effectiveConfiguration);
+            final ProgramRunner runner = ProgramRunner.getRunner(executor.getId(), effectiveConfiguration);
             if (runner == null) {return;}
             if (!checkRunConfiguration(executor, project, configuration)) {return;}
 
@@ -165,7 +164,7 @@ public class MultirunRunnerState implements RunProfileState {
 
                             final ProcessHandler processHandler = descriptor.getProcessHandler();
                             if (processHandler != null) {
-                                processHandler.addProcessListener(new ProcessAdapter() {
+                                processHandler.addProcessListener(new ProcessListener() {
                                     @SuppressWarnings("ConstantConditions")
                                     @Override
                                     public void startNotified(@NotNull final ProcessEvent processEvent) {
@@ -210,9 +209,6 @@ public class MultirunRunnerState implements RunProfileState {
                                         processTerminated.set(true);
                                         stopRunningMultirunConfiguration.removeProcess(project, processEvent.getProcessHandler());
                                     }
-
-                                    @Override
-                                    public void processWillTerminate(@NotNull ProcessEvent processEvent, boolean willBeDestroyed) {}
 
                                     private void onTermination(final ProcessEvent processEvent) {
                                         final Content content = descriptor.getAttachedContent();
