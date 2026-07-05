@@ -30,6 +30,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public static final String PROP_DELAY_TIME = "delayTime";
     public static final String PROP_RESTART_RUNNING = "restartRunning";
     public static final String PROP_ENV_FILE = "envFile";
+    public static final String PROP_SAVE_OUTPUT_DIR = "saveOutputDir";
     public static final String ELEMENT_ENVS = "envs";
     public static final String ELEMENT_ENV = "env";
     public static final String PROP_PASS_PARENT_ENVS = "passParentEnvs";
@@ -42,6 +43,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     private boolean hideSuccessProcess = false;
     private boolean restartRunning = true;
     private String envFilePath = "";
+    private String saveOutputDir = "";
     private EnvironmentVariablesData envData = EnvironmentVariablesData.DEFAULT;
     private List<RunConfigurationInternal> runConfigurations = new ArrayList<>();
 
@@ -173,6 +175,14 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         this.envFilePath = envFilePath == null ? "" : envFilePath.trim();
     }
 
+    public String getSaveOutputDir() {
+        return saveOutputDir;
+    }
+
+    public void setSaveOutputDir(String saveOutputDir) {
+        this.saveOutputDir = saveOutputDir == null ? "" : saveOutputDir.trim();
+    }
+
     public EnvironmentVariablesData getEnvData() {
         return envData;
     }
@@ -210,6 +220,9 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         }
         if (element.getAttributeValue(PROP_ENV_FILE) != null) {
             setEnvFilePath(element.getAttributeValue(PROP_ENV_FILE));
+        }
+        if (element.getAttributeValue(PROP_SAVE_OUTPUT_DIR) != null) {
+            setSaveOutputDir(element.getAttributeValue(PROP_SAVE_OUTPUT_DIR));
         }
         if (element.getAttributeValue(PROP_DELAY_TIME) != null) {
             delayTime = parseDelay(element.getAttributeValue(PROP_DELAY_TIME));
@@ -251,6 +264,9 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         element.setAttribute(PROP_DELAY_TIME, String.valueOf(delayTime));
         if (!envFilePath.isEmpty()) {
             element.setAttribute(PROP_ENV_FILE, envFilePath);
+        }
+        if (!saveOutputDir.isEmpty()) {
+            element.setAttribute(PROP_SAVE_OUTPUT_DIR, saveOutputDir);
         }
 
         final List<Element> configurations = new ArrayList<Element>();
@@ -298,7 +314,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         return new MultirunRunnerState(getRunConfigurations(), startOneByOne, delayTime,
                                        reuseTabs, reuseTabsWithFailure,
                                        markFailedProcess, hideSuccessProcess, envData, envFilePath,
-                                       restartRunning, getProject(), getName());
+                                       saveOutputDir, restartRunning, getProject(), getName());
     }
 
     @Override

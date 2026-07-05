@@ -192,6 +192,26 @@ public class RunConfigurationHelperTest {
         assertFalse("pass-parent-envs flag must come from the override", merged.isPassParentEnvs());
     }
 
+    // --- consoleLogFileName (save console logs feature) ------------------------------------
+
+    @Test
+    public void consoleLogFileNameKeepsSafeNames() {
+        assertEquals("eparts-api.log", RunConfigurationHelper.consoleLogFileName("eparts-api"));
+        assertEquals("My App 2.log", RunConfigurationHelper.consoleLogFileName("My App 2"));
+    }
+
+    @Test
+    public void consoleLogFileNameSanitizesUnsafeCharacters() {
+        assertEquals("api_v2_ prod_.log", RunConfigurationHelper.consoleLogFileName("api/v2: prod*"));
+    }
+
+    @Test
+    public void consoleLogFileNameFallsBackForBlankNames() {
+        assertEquals("configuration.log", RunConfigurationHelper.consoleLogFileName(""));
+        assertEquals("configuration.log", RunConfigurationHelper.consoleLogFileName("   "));
+        assertEquals("configuration.log", RunConfigurationHelper.consoleLogFileName(null));
+    }
+
     // --- parseDelay (locale tolerance) ----------------------------------------------------
 
     @Test

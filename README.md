@@ -62,6 +62,11 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - **Re-use tabs of failed configurations** — optionally reuse tabs for failed runs too.
 - Running configurations are marked with a `*` in the tab title while they are still running.
 - When tab re-use is disabled, tabs are pinned so they are not recycled.
+- **Save console logs to folder** — point the *Save console logs to* field to a folder and the
+  console output of every configuration in the list is also written there as
+  `<configuration name>.log`, using the IDE's standard *save console output to file* mechanism
+  (the same one behind the Logs tab of individual run configurations). Relative paths are
+  resolved against the project root.
 
 ### Restarting and stopping
 - **Restart on rerun** (enabled by default) — running a Multirun that is already running first stops
