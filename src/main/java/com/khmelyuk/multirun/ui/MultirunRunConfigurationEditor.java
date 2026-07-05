@@ -7,7 +7,9 @@ import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.options.SettingsEditor;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.InputValidator;
 import com.intellij.openapi.ui.LabeledComponent;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.popup.PopupChooserBuilder;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -26,6 +28,9 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * For to edit multirun run configuration.
@@ -52,6 +57,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private JCheckBox configurationsListChanged;
     private JTextField delayTime;
     private MultirunRunConfiguration configuration;
+    /** Per-child memory (heap) cap in MB, edited through the list's pencil button. */
+    private Map<String, Integer> memoryLimits = new LinkedHashMap<>();
 
     public MultirunRunConfigurationEditor(final Project project) {
         this.project = project;
@@ -91,12 +98,13 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
                 fireEditorStateChanged();
             }
         });
-        configurations.setCellRenderer(new RunConfigurationListCellRenderer());
+        configurations.setCellRenderer(new RunConfigurationListCellRenderer(() -> memoryLimits));
 
         if (this.configuration != null) {
             environmentVariables.setEnvData(this.configuration.getEnvData());
             envFile.setText(this.configuration.getEnvFilePath());
             saveOutputDir.setText(this.configuration.getSaveOutputDir());
+            memoryLimits = this.configuration.getMemoryLimits();
             delayTime.setText(String.format("%.1f", this.configuration.getDelayTime()));
             reuseTabs.setSelected(this.configuration.isReuseTabs());
             reuseTabsWithFailure.setSelected(this.configuration.isReuseTabsWithFailure());
@@ -117,6 +125,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         multirunRunConfiguration.setEnvData(environmentVariables.getEnvData());
         multirunRunConfiguration.setEnvFilePath(envFile.getText());
         multirunRunConfiguration.setSaveOutputDir(saveOutputDir.getText());
+        multirunRunConfiguration.setMemoryLimits(memoryLimits);
         multirunRunConfiguration.setReuseTabs(reuseTabs.isSelected());
         multirunRunConfiguration.setReuseTabsWithFailure(reuseTabsWithFailure.isSelected());
         multirunRunConfiguration.setStartOneByOne(startOneByOne.isSelected());
@@ -171,6 +180,10 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
                     .showUnderneathOf(button.getContextComponent());
         });
         myDecorator.setAddActionUpdater(e -> !getConfigurationsToAdd().isEmpty());
+
+        // pencil button: per-application memory (heap) cap, the process-level analog of docker's mem_limit
+        myDecorator.setEditAction(button -> editMemoryLimit());
+        myDecorator.setEditActionUpdater(e -> configurations.getSelectedValue() != null);
 
         startOneByOne.addActionListener(new AbstractAction() {
             @Override
@@ -251,17 +264,80 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         configurationsListChanged.setSelected(!configurationsListChanged.isSelected());
     }
 
+    private void editMemoryLimit() {
+        final RunConfiguration selected = configurations.getSelectedValue();
+        if (selected == null) {
+            return;
+        }
+        final Integer current = memoryLimits.get(selected.getName());
+        final String answer = Messages.showInputDialog(
+                project,
+                "Memory limit in MB for '" + selected.getName() + "' (empty or 0 = no limit).\n"
+                        + "Applied at launch as NODE_OPTIONS --max-old-space-size (Node.js) and "
+                        + "JAVA_TOOL_OPTIONS -Xmx (JVM) - the process-level analog of docker's mem_limit.",
+                "Memory Limit",
+                null,
+                current == null ? "" : String.valueOf(current),
+                new InputValidator() {
+                    @Override
+                    public boolean checkInput(String input) {
+                        if (input == null || input.trim().isEmpty()) {
+                            return true;
+                        }
+                        try {
+                            return Integer.parseInt(input.trim()) >= 0;
+                        } catch (NumberFormatException e) {
+                            return false;
+                        }
+                    }
+
+                    @Override
+                    public boolean canClose(String input) {
+                        return checkInput(input);
+                    }
+                });
+        if (answer == null) {
+            return; // cancelled
+        }
+        final String trimmed = answer.trim();
+        if (trimmed.isEmpty() || Integer.parseInt(trimmed) <= 0) {
+            memoryLimits.remove(selected.getName());
+        } else {
+            memoryLimits.put(selected.getName(), Integer.parseInt(trimmed));
+        }
+        configurations.repaint();
+        markConfigurationsChanged();
+    }
+
     @Override
     protected void disposeEditor() {
     }
 
     private static class RunConfigurationListCellRenderer extends SimpleListCellRenderer<RunConfiguration> {
+        /** Optional lookup for the per-child memory caps; null in the "add configuration" popup. */
+        private final Supplier<Map<String, Integer>> memoryLimits;
+
+        RunConfigurationListCellRenderer() {
+            this(null);
+        }
+
+        RunConfigurationListCellRenderer(Supplier<Map<String, Integer>> memoryLimits) {
+            this.memoryLimits = memoryLimits;
+        }
+
         @Override
         public void customize(@NotNull JList<? extends RunConfiguration> list, RunConfiguration data, int index,
                               boolean selected, boolean hasFocus) {
             if (data != null) {
                 setIcon(data.getIcon());
-                setText("Run '" + data.getName() + "'");
+                String text = "Run '" + data.getName() + "'";
+                if (memoryLimits != null) {
+                    final Integer limitMb = memoryLimits.get().get(data.getName());
+                    if (limitMb != null && limitMb > 0) {
+                        text += "   [" + limitMb + " MB]";
+                    }
+                }
+                setText(text);
             }
         }
     }

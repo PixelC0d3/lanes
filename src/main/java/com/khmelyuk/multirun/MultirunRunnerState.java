@@ -1,6 +1,8 @@
 package com.khmelyuk.multirun;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.jetbrains.annotations.NotNull;
@@ -55,6 +57,7 @@ public class MultirunRunnerState implements RunProfileState {
     private final EnvironmentVariablesData envData;
     private final String envFilePath;
     private final String saveOutputDir;
+    private final Map<String, Integer> memoryLimits;
     private final Project project;
     private final String configurationName;
     private final List<RunConfiguration> runConfigurations;
@@ -68,8 +71,8 @@ public class MultirunRunnerState implements RunProfileState {
                                boolean reuseTabs, boolean reuseTabsWithFailure,
                                boolean markFailedProcess, boolean hideSuccessProcess,
                                EnvironmentVariablesData envData, String envFilePath,
-                               String saveOutputDir, boolean restartRunning,
-                               Project project, String configurationName) {
+                               String saveOutputDir, Map<String, Integer> memoryLimits,
+                               boolean restartRunning, Project project, String configurationName) {
 
         this.delayTime = delayTime;
         this.reuseTabs = reuseTabs;
@@ -84,6 +87,7 @@ public class MultirunRunnerState implements RunProfileState {
         // resolved here once: relative folders behave like the env file (project-root based)
         this.saveOutputDir = saveOutputDir == null || saveOutputDir.trim().isEmpty()
                 ? "" : RunConfigurationHelper.resolveEnvFile(saveOutputDir, project).getPath();
+        this.memoryLimits = memoryLimits == null ? Collections.emptyMap() : memoryLimits;
         this.restartRunning = restartRunning;
         this.project = project;
         this.configurationName = configurationName;
@@ -140,7 +144,13 @@ public class MultirunRunnerState implements RunProfileState {
         try {
             // apply the Multirun environment variables on top of the child configuration; works on a clone,
             // so the user's configuration is never permanently modified
-            RunConfiguration effectiveConfiguration = RunConfigurationHelper.withEnvironmentOverride(runConfiguration, effectiveEnvData);
+            EnvironmentVariablesData childEnvData = effectiveEnvData;
+            final Integer memoryLimitMb = memoryLimits.get(runConfiguration.getName());
+            if (memoryLimitMb != null && memoryLimitMb > 0) {
+                // per-application heap cap (~docker mem_limit) via NODE_OPTIONS/JAVA_TOOL_OPTIONS
+                childEnvData = RunConfigurationHelper.withMemoryLimit(childEnvData, memoryLimitMb);
+            }
+            RunConfiguration effectiveConfiguration = RunConfigurationHelper.withEnvironmentOverride(runConfiguration, childEnvData);
             if (!saveOutputDir.isEmpty()) {
                 final RunConfiguration target = effectiveConfiguration == runConfiguration
                         ? runConfiguration.clone()

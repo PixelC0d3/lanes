@@ -192,6 +192,38 @@ public class RunConfigurationHelperTest {
         assertFalse("pass-parent-envs flag must come from the override", merged.isPassParentEnvs());
     }
 
+    // --- withMemoryLimit (per-application memory cap) ---------------------------------------
+
+    @Test
+    public void memoryLimitSetsNodeAndJvmOptions() {
+        final EnvironmentVariablesData result =
+                RunConfigurationHelper.withMemoryLimit(EnvironmentVariablesData.DEFAULT, 1024);
+
+        assertEquals("--max-old-space-size=1024", result.getEnvs().get("NODE_OPTIONS"));
+        assertEquals("-Xmx1024m", result.getEnvs().get("JAVA_TOOL_OPTIONS"));
+        assertTrue(result.isPassParentEnvs());
+    }
+
+    @Test
+    public void memoryLimitAppendsToExistingOptions() {
+        final EnvironmentVariablesData base =
+                EnvironmentVariablesData.create(singletonMap("NODE_OPTIONS", "--enable-source-maps"), true);
+
+        final EnvironmentVariablesData result = RunConfigurationHelper.withMemoryLimit(base, 512);
+
+        assertEquals("user options must be preserved",
+                     "--enable-source-maps --max-old-space-size=512", result.getEnvs().get("NODE_OPTIONS"));
+    }
+
+    @Test
+    public void memoryLimitActivatesTheOverride() {
+        final EnvironmentVariablesData result =
+                RunConfigurationHelper.withMemoryLimit(EnvironmentVariablesData.DEFAULT, 256);
+
+        assertTrue("a memory limit alone must trigger the injection",
+                   RunConfigurationHelper.isEnvOverrideActive(result));
+    }
+
     // --- consoleLogFileName (save console logs feature) ------------------------------------
 
     @Test

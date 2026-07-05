@@ -34,6 +34,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public static final String ELEMENT_ENVS = "envs";
     public static final String ELEMENT_ENV = "env";
     public static final String PROP_PASS_PARENT_ENVS = "passParentEnvs";
+    public static final String PROP_MEM_LIMIT_MB = "memLimitMb";
 
     private double delayTime = 0;
     private boolean reuseTabs = true;
@@ -45,6 +46,8 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     private String envFilePath = "";
     private String saveOutputDir = "";
     private EnvironmentVariablesData envData = EnvironmentVariablesData.DEFAULT;
+    /** Per-child memory (heap) cap in MB, keyed by configuration name; absent or <=0 means no limit. */
+    private Map<String, Integer> memoryLimits = new LinkedHashMap<>();
     private List<RunConfigurationInternal> runConfigurations = new ArrayList<>();
 
     public MultirunRunConfiguration(Project project, ConfigurationFactory factory, String name) {
@@ -175,6 +178,21 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         this.envFilePath = envFilePath == null ? "" : envFilePath.trim();
     }
 
+    public Map<String, Integer> getMemoryLimits() {
+        return new LinkedHashMap<>(memoryLimits);
+    }
+
+    public void setMemoryLimits(Map<String, Integer> memoryLimits) {
+        this.memoryLimits = new LinkedHashMap<>();
+        if (memoryLimits != null) {
+            for (Map.Entry<String, Integer> each : memoryLimits.entrySet()) {
+                if (each.getValue() != null && each.getValue() > 0) {
+                    this.memoryLimits.put(each.getKey(), each.getValue());
+                }
+            }
+        }
+    }
+
     public String getSaveOutputDir() {
         return saveOutputDir;
     }
@@ -237,6 +255,14 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
                 runConfigurations.add(new RunConfigurationInternal(eachElement.getAttributeValue("name"),
                                                                    eachElement.getAttributeValue("type"),
                                                                    eachElement.getAttributeValue("typeId")));
+                final String memLimit = eachElement.getAttributeValue(PROP_MEM_LIMIT_MB);
+                if (memLimit != null) {
+                    try {
+                        memoryLimits.put(eachElement.getAttributeValue("name"), Integer.parseInt(memLimit));
+                    } catch (NumberFormatException ignored) {
+                        // a malformed limit simply means no limit
+                    }
+                }
             } else if (eachElement.getName().equals(ELEMENT_ENVS)) {
                 final Map<String, String> envs = new LinkedHashMap<>();
                 for (Element env : eachElement.getChildren(ELEMENT_ENV)) {
@@ -279,6 +305,10 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
             if (each.typeId != null) {
                 runConfiguration.setAttribute("typeId", each.typeId);
             }
+            final Integer memLimit = memoryLimits.get(each.name);
+            if (memLimit != null && memLimit > 0) {
+                runConfiguration.setAttribute(PROP_MEM_LIMIT_MB, String.valueOf(memLimit));
+            }
             configurations.add(runConfiguration);
         }
         element.setContent(configurations);
@@ -314,7 +344,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         return new MultirunRunnerState(getRunConfigurations(), startOneByOne, delayTime,
                                        reuseTabs, reuseTabsWithFailure,
                                        markFailedProcess, hideSuccessProcess, envData, envFilePath,
-                                       saveOutputDir, restartRunning, getProject(), getName());
+                                       saveOutputDir, getMemoryLimits(), restartRunning, getProject(), getName());
     }
 
     @Override

@@ -43,6 +43,23 @@ public class RunConfigurationHelper {
     }
 
     /**
+     * Adds a per-application memory (heap) cap to the environment override - the closest process-level
+     * equivalent of Docker's mem_limit. Node.js processes honor NODE_OPTIONS --max-old-space-size and
+     * JVM processes honor JAVA_TOOL_OPTIONS -Xmx; both are appended to any value already present, so
+     * user-provided options are preserved. Swap/reservation limits have no per-process equivalent.
+     */
+    public static EnvironmentVariablesData withMemoryLimit(EnvironmentVariablesData envData, int limitMb) {
+        final Map<String, String> merged = new LinkedHashMap<>(envData.getEnvs());
+        merged.put("NODE_OPTIONS", appendOption(merged.get("NODE_OPTIONS"), "--max-old-space-size=" + limitMb));
+        merged.put("JAVA_TOOL_OPTIONS", appendOption(merged.get("JAVA_TOOL_OPTIONS"), "-Xmx" + limitMb + "m"));
+        return EnvironmentVariablesData.create(merged, envData.isPassParentEnvs());
+    }
+
+    private static String appendOption(String current, String option) {
+        return current == null || current.trim().isEmpty() ? option : current + " " + option;
+    }
+
+    /**
      * Parses a dotenv-style file: KEY=VALUE lines; blank lines and "#" comment lines are skipped,
      * an optional "export " prefix is accepted and matching single/double quotes around values are stripped.
      */
