@@ -92,6 +92,8 @@ public class RunConfigurationHelper {
         final File file = resolveEnvFile(envFilePath, project);
         try {
             final Map<String, String> fileVars = parseEnvFile(file);
+            // info level on purpose: key names only (never values), to diagnose injection issues from idea.log
+            LOG.info("Multirun env file '" + file + "' loaded, keys=" + fileVars.keySet());
             if (fileVars.isEmpty()) {
                 return envData;
             }
@@ -118,7 +120,12 @@ public class RunConfigurationHelper {
      * returned unchanged.
      */
     public static RunConfiguration withEnvironmentOverride(RunConfiguration configuration, EnvironmentVariablesData override) {
+        // info-level logs below carry key names only (never values); they exist to diagnose,
+        // straight from idea.log, which injection strategy each child configuration took
+        final String logPrefix = "Multirun env override for '" + configuration.getName()
+                + "' (" + configuration.getClass().getSimpleName() + "): ";
         if (!isEnvOverrideActive(override)) {
+            LOG.info(logPrefix + "inactive, running unchanged");
             return configuration;
         }
 
@@ -126,6 +133,7 @@ public class RunConfigurationHelper {
             // propagate to nested Multirun configurations; their own runner state applies it to their children
             final MultirunRunConfiguration clone = (MultirunRunConfiguration) configuration.clone();
             clone.setEnvData(mergeEnvData(clone.getEnvData(), override));
+            LOG.info(logPrefix + "propagated to nested Multirun, keys=" + clone.getEnvData().getEnvs().keySet());
             return clone;
         }
 
@@ -136,17 +144,22 @@ public class RunConfigurationHelper {
             merged.putAll(override.getEnvs());
             params.setEnvs(merged);
             params.setPassParentEnvs(override.isPassParentEnvs());
+            LOG.info(logPrefix + "applied via CommonProgramRunConfigurationParameters, keys=" + merged.keySet());
             return clone;
         }
 
         // Some configuration types (e.g. Node.js in WebStorm) expose environment variables without
         // implementing CommonProgramRunConfigurationParameters - handle them reflectively.
-        if (applyViaEnvData(clone, override) || applyViaEnvsMap(clone, override)) {
+        if (applyViaEnvData(clone, override)) {
+            LOG.info(logPrefix + "applied via setEnvData reflection, keys=" + override.getEnvs().keySet());
+            return clone;
+        }
+        if (applyViaEnvsMap(clone, override)) {
+            LOG.info(logPrefix + "applied via setEnvs reflection, keys=" + override.getEnvs().keySet());
             return clone;
         }
 
-        LOG.debug("Multirun: configuration type does not expose environment variables, running unchanged: "
-                          + configuration.getType().getDisplayName());
+        LOG.warn(logPrefix + "configuration type does not expose environment variables, running unchanged");
         return configuration;
     }
 
