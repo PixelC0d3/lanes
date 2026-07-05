@@ -130,7 +130,7 @@ export JAVA_HOME=/path/to/jbr
 The plugin version is managed from `build.gradle` (`version = '…'`) and injected into
 `plugin.xml` at build time by `patchPluginXml`.
 
-## Credits
+## Credits By
 
 Originally created by **Ruslan Khmeliuk** ([rkhmelyuk/multirun](https://github.com/rkhmelyuk/multirun)).
 See the original [wiki](https://github.com/rkhmelyuk/multirun/wiki) for additional documentation.
