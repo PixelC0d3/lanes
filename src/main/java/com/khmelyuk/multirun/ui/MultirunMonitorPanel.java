@@ -1,6 +1,7 @@
 package com.khmelyuk.multirun.ui;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -15,6 +16,7 @@ import javax.swing.Timer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import com.intellij.execution.runners.ExecutionUtil;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.ActionManager;
@@ -39,10 +41,10 @@ import com.khmelyuk.multirun.StopRunningMultirunConfigurationsAction;
 
 /**
  * The "Multiple Run Monitor" tool window content: a docker-stats-like table with the
- * applications started by Multiple Run and their live memory/CPU usage and listening ports,
- * refreshed automatically every couple of seconds. Rows can be stopped gracefully or
- * force-killed (whole process tree), and any process squatting a TCP port can be killed
- * through the "Kill Process on Port" action.
+ * applications started by Multiple Run and their live memory/CPU usage, listening ports
+ * and uptime, refreshed automatically every couple of seconds. Rows can be restarted
+ * individually, stopped gracefully or force-killed (whole process tree), and any process
+ * squatting a TCP port can be killed through the "Kill Process on Port" action.
  */
 public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Disposable {
 
@@ -53,15 +55,17 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         final MultirunProcessRegistry.Entry entry;
         final String pid;
         final String ports;
+        final String uptime;
         final String memUsage;
         final String memPercent;
         final String cpuPercent;
 
-        Row(MultirunProcessRegistry.Entry entry, String pid, String ports,
+        Row(MultirunProcessRegistry.Entry entry, String pid, String ports, String uptime,
             String memUsage, String memPercent, String cpuPercent) {
             this.entry = entry;
             this.pid = pid;
             this.ports = ports;
+            this.uptime = uptime;
             this.memUsage = memUsage;
             this.memPercent = memPercent;
             this.cpuPercent = cpuPercent;
@@ -74,15 +78,20 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     private final Timer timer;
     private final AtomicBoolean sampling = new AtomicBoolean();
 
+    /** CPU time per pid at the previous sample - the baseline for the docker-style CPU %. */
+    private Map<Long, Double> prevCpuSecondsByPid = java.util.Collections.emptyMap();
+    private long prevSampleNanos;
+
     public MultirunMonitorPanel(@NotNull Project project) {
         super(false, true);
         this.project = project;
 
         model = new ListTableModel<>(
                 column("Name", 220, row -> row.entry.appName),
-                column("Multiple Run", 150, row -> row.entry.multirunName),
+                column("Multiple Run", 140, row -> row.entry.multirunName),
                 column("PID", 70, row -> row.pid),
                 column("Ports", 110, row -> row.ports),
+                column("Uptime", 80, row -> row.uptime),
                 column("Mem Usage / Limit", 160, row -> row.memUsage),
                 column("Mem %", 70, row -> row.memPercent),
                 column("CPU %", 70, row -> row.cpuPercent));
@@ -90,6 +99,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         table.getEmptyText().setText("No applications started by Multiple Run are running");
 
         final DefaultActionGroup rowActions = new DefaultActionGroup();
+        rowActions.add(new RestartSelectedAction());
         rowActions.add(new StopSelectedAction());
         rowActions.add(new KillSelectedAction());
 
@@ -141,6 +151,35 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     @Nullable
     private Row selectedRow() {
         return table.getSelectedObject();
+    }
+
+    /** Restarts only the selected application; the rest of the group keeps running. */
+    private final class RestartSelectedAction extends DumbAwareAction {
+        RestartSelectedAction() {
+            super("Restart", "Stop the selected application and start it again (the rest of the group keeps running)",
+                  AllIcons.Actions.Restart);
+        }
+
+        @Override
+        public @NotNull ActionUpdateThread getActionUpdateThread() {
+            return ActionUpdateThread.EDT;
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent e) {
+            final Row row = selectedRow();
+            e.getPresentation().setEnabled(row != null && row.entry.environment != null);
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent e) {
+            final Row row = selectedRow();
+            if (row != null && row.entry.environment != null) {
+                // the IDE stops the old process and runs the same environment again; the run
+                // callback then re-registers the new process in the monitor automatically
+                ExecutionUtil.restart(row.entry.environment);
+            }
+        }
     }
 
     /** Graceful stop of the selected application - same as the red stop button of its tab. */
@@ -287,8 +326,12 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         });
     }
 
-    /** Builds the display rows; runs on a pooled thread (process tree walk + one ps and one lsof call). */
-    private static List<Row> buildRows(List<MultirunProcessRegistry.Entry> entries) {
+    /**
+     * Builds the display rows; runs on a pooled thread (process tree walk + one ps and one
+     * lsof call). Also keeps the previous CPU-time sample, so CPU % is the instantaneous
+     * docker-stats-style delta between two refreshes - not the lifetime average.
+     */
+    private List<Row> buildRows(List<MultirunProcessRegistry.Entry> entries) {
         final long hostTotalKb = ProcessStatsSampler.hostTotalMemoryKb();
 
         // resolve the process tree of every entry first, then sample everything in single ps/lsof calls
@@ -301,6 +344,10 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         }
         final Map<Long, ProcessStatsSampler.Stats> statsByPid = ProcessStatsSampler.samplePids(allPids);
         final Map<Long, Set<Integer>> portsByPid = ProcessStatsSampler.sampleListeningPorts(allPids);
+
+        final long nowNanos = System.nanoTime();
+        final double elapsedSeconds = prevSampleNanos == 0 ? -1 : (nowNanos - prevSampleNanos) / 1_000_000_000.0;
+        final Map<Long, Double> prevCpu = prevCpuSecondsByPid;
 
         final List<Row> rows = new ArrayList<>(entries.size());
         for (MultirunProcessRegistry.Entry entry : entries) {
@@ -317,6 +364,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             }
             final String portsText = treePorts.isEmpty()
                     ? "-" : treePorts.stream().map(String::valueOf).collect(Collectors.joining(", "));
+            final String uptimeText = ProcessStatsSampler.formatUptime(System.currentTimeMillis() - entry.startedAtMs);
 
             final String limitText = entry.memoryLimitMb != null
                     ? ProcessStatsSampler.formatMemory(entry.memoryLimitMb * 1024L)
@@ -328,15 +376,25 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 memUsage = ProcessStatsSampler.formatMemory(stats.rssKb) + " / " + limitText;
                 final double percent = ProcessStatsSampler.memoryPercent(stats.rssKb, entry.memoryLimitMb, hostTotalKb);
                 memPercent = percent < 0 ? "n/a" : String.format(Locale.US, "%.2f%%", percent);
-                cpuPercent = String.format(Locale.US, "%.2f%%", stats.cpuPercent);
+                final double deltaCpuSeconds = ProcessStatsSampler.cpuDeltaSeconds(statsByPid, prevCpu, treePids);
+                cpuPercent = (deltaCpuSeconds >= 0 && elapsedSeconds > 0)
+                        ? String.format(Locale.US, "%.2f%%", deltaCpuSeconds / elapsedSeconds * 100)
+                        : "n/a";
             } else {
                 memUsage = "n/a / " + limitText;
                 memPercent = "n/a";
                 cpuPercent = "n/a";
             }
             rows.add(new Row(entry, rootPid > 0 ? String.valueOf(rootPid) : "n/a",
-                             portsText, memUsage, memPercent, cpuPercent));
+                             portsText, uptimeText, memUsage, memPercent, cpuPercent));
         }
+
+        // baseline for the next refresh
+        final Map<Long, Double> newPrev = new HashMap<>();
+        statsByPid.forEach((pid, stats) -> newPrev.put(pid, stats.cpuTimeSeconds));
+        prevCpuSecondsByPid = newPrev;
+        prevSampleNanos = nowNanos;
+
         return rows;
     }
 

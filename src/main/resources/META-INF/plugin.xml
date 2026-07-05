@@ -41,6 +41,17 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.22</strong>:</p>
+        <ul>
+            <li>Multiple Run Monitor: Restart action per row - stop and start again only the selected
+                application, the rest of the group keeps running.</li>
+            <li>Multiple Run Monitor: CPU % is now instantaneous (delta between two samples, like
+                docker stats) instead of the average since the process started.</li>
+            <li>New: memory limit alert. When an application with a configured memory limit crosses 90%
+                of it, the IDE shows a warning notification - even with the monitor closed. One alert
+                per process.</li>
+            <li>Multiple Run Monitor: new "Uptime" column.</li>
+        </ul>
         <p><strong>1.21</strong>:</p>
         <ul>
             <li>Multiple Run Monitor: new "Ports" column showing the TCP ports each application is
@@ -309,5 +320,7 @@
         <toolWindow id="Multiple Run Monitor" anchor="bottom" canCloseContents="false"
                     icon="AllIcons.Toolwindows.ToolWindowRun"
                     factoryClass="com.khmelyuk.multirun.ui.MultirunMonitorToolWindowFactory"/>
+        <!-- balloon warnings raised by the memory limit watcher -->
+        <notificationGroup id="Multiple Run" displayType="BALLOON"/>
     </extensions>
 </idea-plugin>

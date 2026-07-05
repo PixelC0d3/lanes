@@ -180,12 +180,16 @@ public class MultirunRunnerState implements RunProfileState {
             executionEnvironment.setCallback(
                     new ProgramRunner.Callback() {
                         private final AtomicBoolean processTerminated = new AtomicBoolean(false);
+                        private final AtomicBoolean firstStart = new AtomicBoolean(true);
 
                         @SuppressWarnings("ConstantConditions")
                         @Override
                         public void processStarted(final RunContentDescriptor descriptor) {
+                            // false when the app is restarted individually from the monitor tool
+                            // window: the callback fires again, but the one-by-one chain must not
+                            final boolean initialStart = firstStart.compareAndSet(true, false);
                             if (descriptor == null) {
-                                if (startOneByOne) {
+                                if (initialStart && startOneByOne) {
                                     // start next configuration..
                                     ApplicationManager.getApplication().executeOnPooledThread(
                                             () -> runConfigurations(executor, runConfigurations, index + 1));
@@ -286,7 +290,13 @@ public class MultirunRunnerState implements RunProfileState {
                             if (processHandler != null) {
                                 // feed the "Multiple Run Monitor" tool window with live processes
                                 MultirunProcessRegistry.register(project, configurationName,
-                                                                 runConfiguration.getName(), processHandler, memoryLimitMb);
+                                                                 runConfiguration.getName(), processHandler,
+                                                                 memoryLimitMb, executionEnvironment);
+                            }
+                            if (!initialStart) {
+                                // individual restart from the monitor: only re-track the new
+                                // process, never chain the next configurations again
+                                return;
                             }
 
                             final boolean moreConfigurationsToRun = index + 1 < runConfigurations.size();

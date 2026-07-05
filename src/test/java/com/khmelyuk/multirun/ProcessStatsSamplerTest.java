@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -21,23 +22,34 @@ public class ProcessStatsSamplerTest {
     // --- parsePsOutput --------------------------------------------------------------------
 
     @Test
-    public void parsesPidRssAndCpuColumns() {
+    public void parsesPidRssAndCpuTimeColumns() {
         final Map<Long, ProcessStatsSampler.Stats> stats = ProcessStatsSampler.parsePsOutput(
-                Arrays.asList("  1234 151200  1.5", "5678 30720 0.0"));
+                Arrays.asList("  1234 151200  00:01:30", "5678 30720 00:00:00"));
 
         assertEquals(2, stats.size());
         assertEquals(151200, stats.get(1234L).rssKb);
-        assertEquals(1.5, stats.get(1234L).cpuPercent, 0.0001);
+        assertEquals(90.0, stats.get(1234L).cpuTimeSeconds, 0.0001);
         assertEquals(30720, stats.get(5678L).rssKb);
     }
 
     @Test
-    public void toleratesCommaDecimalSeparatorInCpuColumn() {
-        // ps honors the locale on some systems (pt-BR/German print "1,5")
+    public void toleratesCommaDecimalSeparatorInCpuTime() {
+        // macOS prints mm:ss.xx and ps honors the locale on some systems (pt-BR/German -> "0:01,50")
         final Map<Long, ProcessStatsSampler.Stats> stats =
-                ProcessStatsSampler.parsePsOutput(Arrays.asList("1234 1024 1,5"));
+                ProcessStatsSampler.parsePsOutput(Arrays.asList("1234 1024 0:01,50"));
 
-        assertEquals(1.5, stats.get(1234L).cpuPercent, 0.0001);
+        assertEquals(1.5, stats.get(1234L).cpuTimeSeconds, 0.0001);
+    }
+
+    // --- parseCpuTime -----------------------------------------------------------------------
+
+    @Test
+    public void parsesLinuxAndMacCpuTimeFormats() {
+        assertEquals(12.0, ProcessStatsSampler.parseCpuTime("00:00:12"), 0.0001);
+        assertEquals(7384.0, ProcessStatsSampler.parseCpuTime("02:03:04"), 0.0001);
+        assertEquals(93784.0, ProcessStatsSampler.parseCpuTime("1-02:03:04"), 0.0001);   // Linux, with days
+        assertEquals(12.34, ProcessStatsSampler.parseCpuTime("0:12.34"), 0.0001);        // macOS
+        assertEquals(-1.0, ProcessStatsSampler.parseCpuTime("abc"), 0.0001);
     }
 
     @Test
@@ -59,22 +71,71 @@ public class ProcessStatsSamplerTest {
     @Test
     public void aggregateSumsTheWholeProcessTree() {
         final Map<Long, ProcessStatsSampler.Stats> byPid = ProcessStatsSampler.parsePsOutput(
-                Arrays.asList("100 1000 1.0", "101 2000 2.0", "999 50000 9.0"));
+                Arrays.asList("100 1000 00:00:01", "101 2000 00:00:02", "999 50000 00:00:09"));
         final Set<Long> tree = new LinkedHashSet<>(Arrays.asList(100L, 101L));
 
         final ProcessStatsSampler.Stats stats = ProcessStatsSampler.aggregate(byPid, tree);
 
         assertEquals("the npm wrapper and its node child must be summed", 3000, stats.rssKb);
-        assertEquals(3.0, stats.cpuPercent, 0.0001);
+        assertEquals(3.0, stats.cpuTimeSeconds, 0.0001);
     }
 
     @Test
     public void aggregateReturnsNullWhenNoPidWasSampled() {
         final Map<Long, ProcessStatsSampler.Stats> byPid =
-                ProcessStatsSampler.parsePsOutput(Arrays.asList("999 1 0.0"));
+                ProcessStatsSampler.parsePsOutput(Arrays.asList("999 1 00:00:00"));
 
         assertNull("a dead process tree must show as n/a, not as 0",
                    ProcessStatsSampler.aggregate(byPid, new LinkedHashSet<>(Arrays.asList(100L))));
+    }
+
+    // --- cpuDeltaSeconds (docker-style instantaneous CPU %) ----------------------------------
+
+    @Test
+    public void cpuDeltaSumsOnlyPidsPresentInBothSamples() {
+        final Map<Long, ProcessStatsSampler.Stats> current = ProcessStatsSampler.parsePsOutput(
+                Arrays.asList("100 1000 00:00:05", "101 2000 00:00:07", "102 500 00:00:09"));
+        final Map<Long, Double> previous = new java.util.HashMap<>();
+        previous.put(100L, 4.0);
+        previous.put(101L, 6.5);
+        // 102 is a fresh child: no baseline yet, must not distort the delta
+
+        final Set<Long> tree = new LinkedHashSet<>(Arrays.asList(100L, 101L, 102L));
+
+        assertEquals(1.5, ProcessStatsSampler.cpuDeltaSeconds(current, previous, tree), 0.0001);
+    }
+
+    @Test
+    public void cpuDeltaIsUnknownOnTheFirstSample() {
+        final Map<Long, ProcessStatsSampler.Stats> current =
+                ProcessStatsSampler.parsePsOutput(Arrays.asList("100 1000 00:00:05"));
+
+        assertEquals("without a baseline there is no rate yet", -1.0,
+                     ProcessStatsSampler.cpuDeltaSeconds(current, new java.util.HashMap<>(),
+                                                         new LinkedHashSet<>(Arrays.asList(100L))), 0.0001);
+    }
+
+    // --- formatUptime -------------------------------------------------------------------------
+
+    @Test
+    public void formatsUptimeLikeDockerPs() {
+        assertEquals("42s", ProcessStatsSampler.formatUptime(42_000));
+        assertEquals("5m 12s", ProcessStatsSampler.formatUptime((5 * 60 + 12) * 1000L));
+        assertEquals("2h 08m", ProcessStatsSampler.formatUptime((2 * 3600 + 8 * 60) * 1000L));
+        assertEquals("3d 4h", ProcessStatsSampler.formatUptime((3 * 86400 + 4 * 3600) * 1000L));
+        assertEquals("n/a", ProcessStatsSampler.formatUptime(-1));
+    }
+
+    // --- MemoryLimitWatcher.isNearLimit (90% alert) -------------------------------------------
+
+    @Test
+    public void alertsAtNinetyPercentOfTheLimit() {
+        // 90% of a 100 MB limit = 92160 KB
+        assertTrue(MemoryLimitWatcher.isNearLimit(92_160, 100));
+        assertTrue(MemoryLimitWatcher.isNearLimit(102_400, 100));
+        assertFalse("below the threshold there must be no alert", MemoryLimitWatcher.isNearLimit(92_159, 100));
+        assertFalse("unknown usage must not alert", MemoryLimitWatcher.isNearLimit(-1, 100));
+        assertFalse("no limit, no alert", MemoryLimitWatcher.isNearLimit(92_160, 0));
     }
 
     // --- formatMemory (docker stats style) --------------------------------------------------
