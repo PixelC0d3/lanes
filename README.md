@@ -53,11 +53,11 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   Application, etc.); other types run unchanged.
 
 ### Per-application memory limit
-- Select a configuration in the list and use the **pencil** toolbar button to set a memory (heap)
-  cap in MB for it — the process-level analog of Docker's `mem_limit`.
+- The configurations list is a table with an editable **Memory limit (MB)** column — click the
+  cell next to an application and type the cap (empty = no limit). The process-level analog of
+  Docker's `mem_limit`.
 - Applied at launch through the environment: `NODE_OPTIONS --max-old-space-size=<MB>` (Node.js)
   and `JAVA_TOOL_OPTIONS -Xmx<MB>m` (JVM); existing options in those variables are preserved.
-- The list shows the configured limit next to each entry (e.g. `Run 'eparts-api'   [1024 MB]`).
 - Note: unlike Docker, a plain OS process has no enforced swap/reservation limits — this caps the
   runtime heap, which is what usually matters for Node/JVM apps in development.
 

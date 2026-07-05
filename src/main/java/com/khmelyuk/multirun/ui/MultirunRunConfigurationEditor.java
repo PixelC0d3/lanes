@@ -7,14 +7,15 @@ import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.options.SettingsEditor;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.InputValidator;
 import com.intellij.openapi.ui.LabeledComponent;
-import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.popup.PopupChooserBuilder;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.*;
 import com.intellij.ui.components.JBList;
+import com.intellij.ui.table.TableView;
+import com.intellij.util.ui.ColumnInfo;
+import com.intellij.util.ui.ListTableModel;
 import com.khmelyuk.multirun.MultirunRunConfiguration;
 import com.khmelyuk.multirun.RunConfigurationHelper;
 
@@ -22,15 +23,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import javax.swing.event.ListDataEvent;
-import javax.swing.event.ListDataListener;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.function.Supplier;
 
 /**
  * For to edit multirun run configuration.
@@ -42,7 +41,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
 
     private Project project;
     private JPanel myMainPanel;
-    private JBList<RunConfiguration> configurations;
+    private TableView<RunConfiguration> configurations;
+    private ListTableModel<RunConfiguration> configurationsModel;
     private JPanel collectionsPanel;
     private JPanel envVarsPanel;
     private EnvironmentVariablesComponent environmentVariables;
@@ -57,7 +57,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private JCheckBox configurationsListChanged;
     private JTextField delayTime;
     private MultirunRunConfiguration configuration;
-    /** Per-child memory (heap) cap in MB, edited through the list's pencil button. */
+    /** Per-child memory (heap) cap in MB, edited inline in the "Memory limit" table column. */
     private Map<String, Integer> memoryLimits = new LinkedHashMap<>();
 
     public MultirunRunConfigurationEditor(final Project project) {
@@ -70,41 +70,12 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
             this.configuration = multirunRunConfiguration;
         }
 
-        final DefaultListModel<RunConfiguration> listModel = new DefaultListModel<>();
         if (this.configuration != null) {
-            for (RunConfiguration each : this.configuration.getRunConfigurations()) {
-                listModel.addElement(each);
-            }
-        }
-        configurations.setModel(listModel);
-        configurations.getModel().addListDataListener(new ListDataListener() {
-            @Override
-            public void intervalAdded(ListDataEvent e) {
-                contentsChanged(e);
-            }
-
-            @Override
-            public void intervalRemoved(ListDataEvent e) {
-                contentsChanged(e);
-            }
-
-            @Override
-            public void contentsChanged(ListDataEvent e) {
-                RunConfiguration[] buffer = new RunConfiguration[configurations.getModel().getSize()];
-                ((DefaultListModel<RunConfiguration>) configurations.getModel()).copyInto(buffer);
-                if (MultirunRunConfigurationEditor.this.configuration != null) {
-                    configuration.setRunConfigurations(Arrays.asList(buffer));
-                }
-                fireEditorStateChanged();
-            }
-        });
-        configurations.setCellRenderer(new RunConfigurationListCellRenderer(() -> memoryLimits));
-
-        if (this.configuration != null) {
+            memoryLimits = this.configuration.getMemoryLimits();
+            configurationsModel.setItems(new ArrayList<>(this.configuration.getRunConfigurations()));
             environmentVariables.setEnvData(this.configuration.getEnvData());
             envFile.setText(this.configuration.getEnvFilePath());
             saveOutputDir.setText(this.configuration.getSaveOutputDir());
-            memoryLimits = this.configuration.getMemoryLimits();
             delayTime.setText(String.format("%.1f", this.configuration.getDelayTime()));
             reuseTabs.setSelected(this.configuration.isReuseTabs());
             reuseTabsWithFailure.setSelected(this.configuration.isReuseTabsWithFailure());
@@ -144,21 +115,33 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         }
         multirunRunConfiguration.setDelayTime(delayTimeSeconds);
 
-        RunConfiguration[] buffer = new RunConfiguration[configurations.getModel().getSize()];
-        ((DefaultListModel<RunConfiguration>) configurations.getModel()).copyInto(buffer);
-        MultirunRunConfigurationEditor.this.configuration.setRunConfigurations(Arrays.asList(buffer));
+        // commit a possibly in-progress cell edit so typed limits are not lost on Apply/Run
+        if (configurations.isEditing()) {
+            configurations.stopEditing();
+        }
+        MultirunRunConfigurationEditor.this.configuration.setRunConfigurations(configurationsModel.getItems());
     }
 
     @NotNull
     @Override
     protected JComponent createEditor() {
-        configurations = new JBList<>();
+        configurationsModel = new ListTableModel<>(new ConfigurationColumn(), new MemoryLimitColumn());
+        configurations = new TableView<>(configurationsModel);
+        configurations.setShowGrid(false);
         configurations.getEmptyText().setText("Add run configurations to this list");
+        // commit the cell editor when the table loses focus, so typed limits are kept
+        configurations.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
+        configurationsModel.addTableModelListener(e -> {
+            if (MultirunRunConfigurationEditor.this.configuration != null) {
+                configuration.setRunConfigurations(configurationsModel.getItems());
+            }
+            fireEditorStateChanged();
+        });
         final ToolbarDecorator myDecorator = ToolbarDecorator.createDecorator(configurations);
         myDecorator.initPosition();
 
         myDecorator.setRemoveAction(anActionButton -> {
-            ListUtil.removeSelectedItems(configurations);
+            TableUtil.removeSelectedItems(configurations);
             markConfigurationsChanged();
         });
         myDecorator.setAddAction(button -> {
@@ -170,7 +153,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
                         for (int index : selectedIndices) {
                             RunConfiguration selectedRunConfiguration = list.getModel().getElementAt(index);
                             if (selectedRunConfiguration != null) {
-                                ((DefaultListModel<RunConfiguration>) configurations.getModel()).addElement(selectedRunConfiguration);
+                                configurationsModel.addRow(selectedRunConfiguration);
                             }
 
                             markConfigurationsChanged();
@@ -180,10 +163,6 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
                     .showUnderneathOf(button.getContextComponent());
         });
         myDecorator.setAddActionUpdater(e -> !getConfigurationsToAdd().isEmpty());
-
-        // pencil button: per-application memory (heap) cap, the process-level analog of docker's mem_limit
-        myDecorator.setEditAction(button -> editMemoryLimit());
-        myDecorator.setEditActionUpdater(e -> configurations.getSelectedValue() != null);
 
         startOneByOne.addActionListener(new AbstractAction() {
             @Override
@@ -264,80 +243,88 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         configurationsListChanged.setSelected(!configurationsListChanged.isSelected());
     }
 
-    private void editMemoryLimit() {
-        final RunConfiguration selected = configurations.getSelectedValue();
-        if (selected == null) {
-            return;
-        }
-        final Integer current = memoryLimits.get(selected.getName());
-        final String answer = Messages.showInputDialog(
-                project,
-                "Memory limit in MB for '" + selected.getName() + "' (empty or 0 = no limit).\n"
-                        + "Applied at launch as NODE_OPTIONS --max-old-space-size (Node.js) and "
-                        + "JAVA_TOOL_OPTIONS -Xmx (JVM) - the process-level analog of docker's mem_limit.",
-                "Memory Limit",
-                null,
-                current == null ? "" : String.valueOf(current),
-                new InputValidator() {
-                    @Override
-                    public boolean checkInput(String input) {
-                        if (input == null || input.trim().isEmpty()) {
-                            return true;
-                        }
-                        try {
-                            return Integer.parseInt(input.trim()) >= 0;
-                        } catch (NumberFormatException e) {
-                            return false;
-                        }
-                    }
-
-                    @Override
-                    public boolean canClose(String input) {
-                        return checkInput(input);
-                    }
-                });
-        if (answer == null) {
-            return; // cancelled
-        }
-        final String trimmed = answer.trim();
-        if (trimmed.isEmpty() || Integer.parseInt(trimmed) <= 0) {
-            memoryLimits.remove(selected.getName());
-        } else {
-            memoryLimits.put(selected.getName(), Integer.parseInt(trimmed));
-        }
-        configurations.repaint();
-        markConfigurationsChanged();
-    }
-
     @Override
     protected void disposeEditor() {
     }
 
+    /** First table column: icon + "Run 'name'", read-only. */
+    private static class ConfigurationColumn extends ColumnInfo<RunConfiguration, String> {
+        ConfigurationColumn() {
+            super("Run Configuration");
+        }
+
+        @Override
+        public String valueOf(RunConfiguration configuration) {
+            return "Run '" + configuration.getName() + "'";
+        }
+
+        @Override
+        public TableCellRenderer getRenderer(final RunConfiguration configuration) {
+            return new DefaultTableCellRenderer() {
+                @Override
+                public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                               boolean hasFocus, int row, int column) {
+                    super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                    setIcon(configuration.getIcon());
+                    return this;
+                }
+            };
+        }
+    }
+
+    /** Second table column: per-application memory (heap) cap in MB, edited inline. */
+    private class MemoryLimitColumn extends ColumnInfo<RunConfiguration, String> {
+        MemoryLimitColumn() {
+            super("Memory limit (MB)");
+        }
+
+        @Override
+        public String valueOf(RunConfiguration configuration) {
+            final Integer limitMb = memoryLimits.get(configuration.getName());
+            return limitMb == null ? "" : String.valueOf(limitMb);
+        }
+
+        @Override
+        public boolean isCellEditable(RunConfiguration configuration) {
+            return true;
+        }
+
+        @Override
+        public void setValue(RunConfiguration configuration, String value) {
+            try {
+                final int parsed = value == null || value.trim().isEmpty() ? 0 : Integer.parseInt(value.trim());
+                if (parsed <= 0) {
+                    memoryLimits.remove(configuration.getName());
+                } else {
+                    memoryLimits.put(configuration.getName(), parsed);
+                }
+                markConfigurationsChanged();
+            } catch (NumberFormatException ignored) {
+                // non-numeric input keeps the previous value
+            }
+        }
+
+        @Override
+        public String getTooltipText() {
+            return "Heap cap applied at launch as NODE_OPTIONS --max-old-space-size (Node.js) and "
+                    + "JAVA_TOOL_OPTIONS -Xmx (JVM) - the process-level analog of docker's mem_limit. "
+                    + "Empty = no limit";
+        }
+
+        @Override
+        public int getWidth(JTable table) {
+            return 140;
+        }
+    }
+
+    /** Renderer for the "add configuration" popup list. */
     private static class RunConfigurationListCellRenderer extends SimpleListCellRenderer<RunConfiguration> {
-        /** Optional lookup for the per-child memory caps; null in the "add configuration" popup. */
-        private final Supplier<Map<String, Integer>> memoryLimits;
-
-        RunConfigurationListCellRenderer() {
-            this(null);
-        }
-
-        RunConfigurationListCellRenderer(Supplier<Map<String, Integer>> memoryLimits) {
-            this.memoryLimits = memoryLimits;
-        }
-
         @Override
         public void customize(@NotNull JList<? extends RunConfiguration> list, RunConfiguration data, int index,
                               boolean selected, boolean hasFocus) {
             if (data != null) {
                 setIcon(data.getIcon());
-                String text = "Run '" + data.getName() + "'";
-                if (memoryLimits != null) {
-                    final Integer limitMb = memoryLimits.get().get(data.getName());
-                    if (limitMb != null && limitMb > 0) {
-                        text += "   [" + limitMb + " MB]";
-                    }
-                }
-                setText(text);
+                setText("Run '" + data.getName() + "'");
             }
         }
     }
