@@ -283,6 +283,11 @@ public class MultirunRunnerState implements RunProfileState {
                                 });
                             }
                             stopRunningMultirunConfiguration.addProcess(project, configurationName, processHandler);
+                            if (processHandler != null) {
+                                // feed the "Multiple Run Monitor" tool window with live processes
+                                MultirunProcessRegistry.register(project, configurationName,
+                                                                 runConfiguration.getName(), processHandler, memoryLimitMb);
+                            }
 
                             final boolean moreConfigurationsToRun = index + 1 < runConfigurations.size();
                             if (startOneByOne && moreConfigurationsToRun) {
