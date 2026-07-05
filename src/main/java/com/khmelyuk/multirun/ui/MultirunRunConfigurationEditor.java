@@ -193,7 +193,10 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
                         + "Relative paths are resolved against the project root");
         envFile.addActionListener(e -> {
             final VirtualFile chosen = FileChooser.chooseFile(
-                    FileChooserDescriptorFactory.createSingleFileDescriptor().withTitle("Select Environment File"),
+                    FileChooserDescriptorFactory.createSingleFileDescriptor()
+                                                .withTitle("Select Environment File")
+                                                // .env files are dotfiles, hidden by the chooser by default
+                                                .withShowHiddenFiles(true),
                     project, null);
             if (chosen != null) {
                 envFile.setText(chosen.getPresentableUrl());
