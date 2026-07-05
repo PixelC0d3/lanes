@@ -41,6 +41,16 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.21</strong>:</p>
+        <ul>
+            <li>Multiple Run Monitor: new "Ports" column showing the TCP ports each application is
+                listening on (like the PORTS column of docker ps).</li>
+            <li>Multiple Run Monitor: Stop and Force Kill actions per row (toolbar and right-click) -
+                Force Kill sends SIGKILL to the whole process tree of the selected application.</li>
+            <li>Multiple Run Monitor: "Kill Process on Port" action - type a TCP port and kill whatever
+                process is listening on it (with confirmation), even processes not started by the
+                plugin. Goodbye EADDRINUSE.</li>
+        </ul>
         <p><strong>1.20</strong>:</p>
         <ul>
             <li>New: "Multiple Run Monitor" tool window (bottom stripe, also under Run -> Multiple Run Monitor).

@@ -65,18 +65,26 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - The **Multiple Run Monitor** tool window (bottom stripe of the IDE, or `Run → Multiple Run
   Monitor`) shows a live table with every application started by Multiple Run:
 
-  | Name | Multiple Run | PID | Mem Usage / Limit | Mem % | CPU % |
-  |------|--------------|-----|-------------------|-------|-------|
+  | Name | Multiple Run | PID | Ports | Mem Usage / Limit | Mem % | CPU % |
+  |------|--------------|-----|-------|-------------------|-------|-------|
 
 - Works like `docker stats`: memory usage is shown against the configured *Memory limit (MB)* of
   the application (or against the total machine memory when no limit is set), so you can check at
   a glance whether an app is close to its cap.
+- **Ports** lists the TCP ports each application is listening on (like the PORTS column of
+  `docker ps`), so you always know who owns a port.
 - Each application is measured as a **whole process tree** (e.g. the `npm` wrapper plus the actual
   `node` child processes), refreshed automatically every 2 seconds. Rows disappear when the
   process terminates.
-- The tool window toolbar has a manual refresh button and the *Stop Multiple Run* action.
-- Sampling uses the OS `ps` command (Linux/macOS); on systems without it the table shows `n/a`.
-  CPU % is the average since the process started (as reported by `ps`).
+- **Stop / Force Kill per row** (toolbar or right-click): *Stop* asks the application to terminate
+  (same as the stop button of its run tab); *Force Kill* sends SIGKILL to the whole process tree
+  of the selected application, after confirmation — for processes that refuse to die.
+- **Kill Process on Port…** — type a TCP port and the plugin finds whatever process is listening
+  on it (even one not started by Multiple Run), shows PID + command for confirmation and kills it.
+  The quickest cure for `EADDRINUSE: address already in use`.
+- The tool window toolbar also has a manual refresh button and the *Stop Multiple Run* action.
+- Sampling uses the OS `ps` and `lsof` commands (Linux/macOS); on systems without them the table
+  shows `n/a`. CPU % is the average since the process started (as reported by `ps`).
 
 ### Console tab handling
 - **Mark the tab of a failed configuration** — adds an alert icon to the tab of any configuration

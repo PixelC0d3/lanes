@@ -123,6 +123,35 @@ public class ProcessStatsSamplerTest {
                    ProcessStatsSampler.processTreePids(myPid).contains(myPid));
     }
 
+    // --- parseLsofOutput (Ports column / kill-by-port) ---------------------------------------
+
+    @Test
+    public void parsesLsofListenLinesIntoPidToPorts() {
+        final Map<Long, Set<Integer>> ports = ProcessStatsSampler.parseLsofOutput(Arrays.asList(
+                "COMMAND   PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME",
+                "node    41234 wm   23u  IPv6 123456      0t0  TCP *:3015 (LISTEN)",
+                "node    41234 wm   24u  IPv4 123457      0t0  TCP 127.0.0.1:9229 (LISTEN)",
+                "java     5555 wm   88u  IPv6    999      0t0  TCP [::1]:8080 (LISTEN)"));
+
+        assertEquals(2, ports.size());
+        assertEquals(new java.util.TreeSet<>(Arrays.asList(3015, 9229)), ports.get(41234L));
+        assertEquals(new java.util.TreeSet<>(Arrays.asList(8080)), ports.get(5555L));
+    }
+
+    @Test
+    public void lsofParserSkipsMalformedLines() {
+        final Map<Long, Set<Integer>> ports = ProcessStatsSampler.parseLsofOutput(
+                Arrays.asList("", "garbage without columns", "node abc def"));
+
+        assertTrue(ports.isEmpty());
+    }
+
+    @Test
+    public void parsesTersePidOutput() {
+        assertEquals(Arrays.asList(41234L, 5555L),
+                     ProcessStatsSampler.parseTersePids(Arrays.asList("41234", " 5555 ", "", "noise")));
+    }
+
     // --- samplePids (integration with the real ps, available on Linux/macOS) ----------------
 
     @Test

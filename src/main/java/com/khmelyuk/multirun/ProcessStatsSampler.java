@@ -64,29 +64,7 @@ public final class ProcessStatsSampler {
             return java.util.Collections.emptyMap();
         }
         final String pidList = pids.stream().map(String::valueOf).collect(Collectors.joining(","));
-        final List<String> lines = new ArrayList<>();
-        try {
-            final Process ps = new ProcessBuilder("ps", "-o", "pid=,rss=,%cpu=", "-p", pidList)
-                    .redirectErrorStream(true)
-                    .start();
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(ps.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    lines.add(line);
-                }
-            }
-            if (!ps.waitFor(PS_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                ps.destroyForcibly();
-            }
-        } catch (IOException e) {
-            LOG.debug("Multiple Run monitor: ps is not available", e);
-            return java.util.Collections.emptyMap();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return java.util.Collections.emptyMap();
-        }
-        return parsePsOutput(lines);
+        return parsePsOutput(runCommand("ps", "-o", "pid=,rss=,%cpu=", "-p", pidList));
     }
 
     /**
@@ -151,6 +129,94 @@ public final class ProcessStatsSampler {
             return -1;
         }
         return rssKb * 100.0 / baseKb;
+    }
+
+    /**
+     * TCP ports in LISTEN state per pid, like the PORTS column of `docker ps`.
+     * Uses {@code lsof -nP -a -p <pids> -iTCP -sTCP:LISTEN}; empty on platforms without lsof.
+     */
+    public static Map<Long, Set<Integer>> sampleListeningPorts(Collection<Long> pids) {
+        if (pids.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        final String pidList = pids.stream().map(String::valueOf).collect(Collectors.joining(","));
+        return parseLsofOutput(runCommand("lsof", "-nP", "-a", "-p", pidList, "-iTCP", "-sTCP:LISTEN"));
+    }
+
+    /** Pids listening on the given TCP port ({@code lsof -t}); used by "Kill Process on Port". */
+    public static List<Long> pidsListeningOnPort(int port) {
+        return parseTersePids(runCommand("lsof", "-t", "-iTCP:" + port, "-sTCP:LISTEN"));
+    }
+
+    /**
+     * Parses regular {@code lsof -iTCP -sTCP:LISTEN} lines
+     * ("{@code node 41234 user 23u IPv6 ... TCP *:3015 (LISTEN)}") into pid -> listening ports.
+     * The pid is the first numeric token (command names may contain spaces); the port is the
+     * digits after the last ':' of the address token, so IPv4, IPv6 and wildcard forms all work.
+     */
+    public static Map<Long, Set<Integer>> parseLsofOutput(List<String> lines) {
+        final Map<Long, Set<Integer>> ports = new LinkedHashMap<>();
+        for (String line : lines) {
+            final String[] parts = line.trim().split("\\s+");
+            Long pid = null;
+            Integer port = null;
+            for (String part : parts) {
+                if (pid == null) {
+                    try {
+                        pid = Long.parseLong(part);
+                        continue;
+                    } catch (NumberFormatException ignored) {
+                        // still inside the command name
+                    }
+                }
+                final int colon = part.lastIndexOf(':');
+                if (colon >= 0 && colon < part.length() - 1) {
+                    final String candidate = part.substring(colon + 1);
+                    if (!candidate.isEmpty() && candidate.chars().allMatch(Character::isDigit)) {
+                        port = Integer.parseInt(candidate);
+                    }
+                }
+            }
+            if (pid != null && port != null) {
+                ports.computeIfAbsent(pid, p -> new java.util.TreeSet<>()).add(port);
+            }
+        }
+        return ports;
+    }
+
+    /** Parses {@code lsof -t} output: one pid per line, anything else is skipped. */
+    public static List<Long> parseTersePids(List<String> lines) {
+        final List<Long> pids = new ArrayList<>();
+        for (String line : lines) {
+            try {
+                pids.add(Long.parseLong(line.trim()));
+            } catch (NumberFormatException ignored) {
+                // blank or noise line
+            }
+        }
+        return pids;
+    }
+
+    private static List<String> runCommand(String... command) {
+        final List<String> lines = new ArrayList<>();
+        try {
+            final Process process = new ProcessBuilder(command).redirectErrorStream(false).start();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    lines.add(line);
+                }
+            }
+            if (!process.waitFor(PS_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+            }
+        } catch (IOException e) {
+            LOG.debug("Multiple Run monitor: command not available: " + command[0], e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return lines;
     }
 
     /** Total physical memory of the machine in KB, or -1 when unknown. */
