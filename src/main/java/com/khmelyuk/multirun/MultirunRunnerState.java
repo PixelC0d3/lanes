@@ -53,16 +53,20 @@ public class MultirunRunnerState implements RunProfileState {
     private final boolean hideSuccessProcess;
     private final boolean restartRunning;
     private final EnvironmentVariablesData envData;
+    private final String envFilePath;
     private final Project project;
     private final String configurationName;
     private final List<RunConfiguration> runConfigurations;
     private final StopRunningMultirunConfigurationsAction stopRunningMultirunConfiguration;
 
+    /** envData with the env file applied under it; recomputed on every run so file edits are picked up. */
+    private volatile EnvironmentVariablesData effectiveEnvData;
+
     public MultirunRunnerState(List<RunConfiguration> runConfigurations,
                                boolean startOneByOne, double delayTime,
                                boolean reuseTabs, boolean reuseTabsWithFailure,
                                boolean markFailedProcess, boolean hideSuccessProcess,
-                               EnvironmentVariablesData envData,
+                               EnvironmentVariablesData envData, String envFilePath,
                                boolean restartRunning, Project project, String configurationName) {
 
         this.delayTime = delayTime;
@@ -73,6 +77,8 @@ public class MultirunRunnerState implements RunProfileState {
         this.markFailedProcess = markFailedProcess;
         this.hideSuccessProcess = hideSuccessProcess;
         this.envData = envData == null ? EnvironmentVariablesData.DEFAULT : envData;
+        this.envFilePath = envFilePath == null ? "" : envFilePath;
+        this.effectiveEnvData = this.envData;
         this.restartRunning = restartRunning;
         this.project = project;
         this.configurationName = configurationName;
@@ -87,6 +93,8 @@ public class MultirunRunnerState implements RunProfileState {
     public ExecutionResult execute(Executor executor, @NotNull ProgramRunner programRunner) {
         stopRunningMultirunConfiguration.beginStartingConfigurations();
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            // read the env file fresh on every run (file IO, so off the EDT)
+            effectiveEnvData = RunConfigurationHelper.withEnvFile(envData, envFilePath, project);
             if (restartRunning) {
                 // like the built-in Compound configuration: stop what this Multirun started
                 // before and only then start again, so ports/resources are released
@@ -127,7 +135,7 @@ public class MultirunRunnerState implements RunProfileState {
         try {
             // apply the Multirun environment variables on top of the child configuration; works on a clone,
             // so the user's configuration is never permanently modified
-            final RunConfiguration effectiveConfiguration = RunConfigurationHelper.withEnvironmentOverride(runConfiguration, envData);
+            final RunConfiguration effectiveConfiguration = RunConfigurationHelper.withEnvironmentOverride(runConfiguration, effectiveEnvData);
 
             final RunnerAndConfigurationSettings configuration;
             if (effectiveConfiguration == runConfiguration) {

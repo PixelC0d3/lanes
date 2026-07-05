@@ -41,6 +41,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.17</strong>:</p>
+        <ul>
+            <li>New: Environment file option. Point the Multiple Run configuration to a .env file (browse button
+                or type the path; relative paths resolve against the project root) and its KEY=VALUE entries are
+                applied to every configuration in the list. The file is re-read on every run; variables configured
+                manually in the Environment variables field win over the file on conflicts.</li>
+        </ul>
         <p><strong>1.16.2</strong>:</p>
         <ul>
             <li>Migrate off deprecated platform APIs flagged by the Marketplace verifier
