@@ -41,12 +41,21 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.18</strong>:</p>
+        <ul>
+            <li>New: Save console logs option. Point the configuration to a folder and the console output of every
+                configuration in the list is also written there as &lt;name&gt;.log, using the IDE's standard
+                "save console output to file" mechanism. Relative paths resolve against the project root.</li>
+        </ul>
         <p><strong>1.17</strong>:</p>
         <ul>
             <li>New: Environment file option. Point the Multiple Run configuration to a .env file (browse button
                 or type the path; relative paths resolve against the project root) and its KEY=VALUE entries are
                 applied to every configuration in the list. The file is re-read on every run; variables configured
                 manually in the Environment variables field win over the file on conflicts.</li>
+            <li>Environment override now also reaches npm/pnpm/yarn run configurations.</li>
+            <li>Diagnostics: idea.log records which injection strategy each grouped configuration took
+                (variable names only, never values).</li>
         </ul>
         <p><strong>1.16.2</strong>:</p>
         <ul>

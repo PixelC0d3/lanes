@@ -42,6 +42,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private JPanel envVarsPanel;
     private EnvironmentVariablesComponent environmentVariables;
     private TextFieldWithBrowseButton envFile;
+    private TextFieldWithBrowseButton saveOutputDir;
     private JCheckBox reuseTabs;
     private JCheckBox reuseTabsWithFailure;
     private JCheckBox startOneByOne;
@@ -95,6 +96,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         if (this.configuration != null) {
             environmentVariables.setEnvData(this.configuration.getEnvData());
             envFile.setText(this.configuration.getEnvFilePath());
+            saveOutputDir.setText(this.configuration.getSaveOutputDir());
             delayTime.setText(String.format("%.1f", this.configuration.getDelayTime()));
             reuseTabs.setSelected(this.configuration.isReuseTabs());
             reuseTabsWithFailure.setSelected(this.configuration.isReuseTabsWithFailure());
@@ -114,6 +116,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
 
         multirunRunConfiguration.setEnvData(environmentVariables.getEnvData());
         multirunRunConfiguration.setEnvFilePath(envFile.getText());
+        multirunRunConfiguration.setSaveOutputDir(saveOutputDir.getText());
         multirunRunConfiguration.setReuseTabs(reuseTabs.isSelected());
         multirunRunConfiguration.setReuseTabsWithFailure(reuseTabsWithFailure.isSelected());
         multirunRunConfiguration.setStartOneByOne(startOneByOne.isSelected());
@@ -205,7 +208,32 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         final LabeledComponent<TextFieldWithBrowseButton> envFileComponent =
                 LabeledComponent.create(envFile, "Environment file:");
         envFileComponent.setLabelLocation(BorderLayout.WEST);
-        envVarsPanel.add(envFileComponent, BorderLayout.SOUTH);
+
+        // Optional folder where each configuration's console is also saved as <name>.log,
+        // through the IDE's native "save console output to file" mechanism (Logs tab).
+        saveOutputDir = new TextFieldWithBrowseButton();
+        saveOutputDir.getTextField().setToolTipText(
+                "When set, the console output of every configuration in the list is also saved to this folder "
+                        + "as <configuration name>.log - same mechanism as the Logs tab of individual run "
+                        + "configurations. Relative paths are resolved against the project root");
+        saveOutputDir.addActionListener(e -> {
+            final VirtualFile chosen = FileChooser.chooseFile(
+                    FileChooserDescriptorFactory.createSingleFolderDescriptor()
+                                                .withTitle("Select Folder for Console Logs")
+                                                .withShowHiddenFiles(true),
+                    project, null);
+            if (chosen != null) {
+                saveOutputDir.setText(chosen.getPresentableUrl());
+            }
+        });
+        final LabeledComponent<TextFieldWithBrowseButton> saveOutputComponent =
+                LabeledComponent.create(saveOutputDir, "Save console logs to:");
+        saveOutputComponent.setLabelLocation(BorderLayout.WEST);
+
+        final JPanel filesPanel = new JPanel(new GridLayout(2, 1));
+        filesPanel.add(envFileComponent);
+        filesPanel.add(saveOutputComponent);
+        envVarsPanel.add(filesPanel, BorderLayout.SOUTH);
 
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());

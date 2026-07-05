@@ -54,6 +54,7 @@ public class MultirunRunnerState implements RunProfileState {
     private final boolean restartRunning;
     private final EnvironmentVariablesData envData;
     private final String envFilePath;
+    private final String saveOutputDir;
     private final Project project;
     private final String configurationName;
     private final List<RunConfiguration> runConfigurations;
@@ -67,7 +68,8 @@ public class MultirunRunnerState implements RunProfileState {
                                boolean reuseTabs, boolean reuseTabsWithFailure,
                                boolean markFailedProcess, boolean hideSuccessProcess,
                                EnvironmentVariablesData envData, String envFilePath,
-                               boolean restartRunning, Project project, String configurationName) {
+                               String saveOutputDir, boolean restartRunning,
+                               Project project, String configurationName) {
 
         this.delayTime = delayTime;
         this.reuseTabs = reuseTabs;
@@ -79,6 +81,9 @@ public class MultirunRunnerState implements RunProfileState {
         this.envData = envData == null ? EnvironmentVariablesData.DEFAULT : envData;
         this.envFilePath = envFilePath == null ? "" : envFilePath;
         this.effectiveEnvData = this.envData;
+        // resolved here once: relative folders behave like the env file (project-root based)
+        this.saveOutputDir = saveOutputDir == null || saveOutputDir.trim().isEmpty()
+                ? "" : RunConfigurationHelper.resolveEnvFile(saveOutputDir, project).getPath();
         this.restartRunning = restartRunning;
         this.project = project;
         this.configurationName = configurationName;
@@ -135,7 +140,15 @@ public class MultirunRunnerState implements RunProfileState {
         try {
             // apply the Multirun environment variables on top of the child configuration; works on a clone,
             // so the user's configuration is never permanently modified
-            final RunConfiguration effectiveConfiguration = RunConfigurationHelper.withEnvironmentOverride(runConfiguration, effectiveEnvData);
+            RunConfiguration effectiveConfiguration = RunConfigurationHelper.withEnvironmentOverride(runConfiguration, effectiveEnvData);
+            if (!saveOutputDir.isEmpty()) {
+                final RunConfiguration target = effectiveConfiguration == runConfiguration
+                        ? runConfiguration.clone()
+                        : effectiveConfiguration;
+                if (RunConfigurationHelper.applySaveOutput(target, saveOutputDir, runConfiguration.getName())) {
+                    effectiveConfiguration = target;
+                }
+            }
 
             final RunnerAndConfigurationSettings configuration;
             if (effectiveConfiguration == runConfiguration) {

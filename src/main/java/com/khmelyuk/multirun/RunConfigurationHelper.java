@@ -11,6 +11,7 @@ import java.util.Map;
 import com.intellij.execution.CommonProgramRunConfigurationParameters;
 import com.intellij.execution.configuration.EnvironmentVariablesData;
 import com.intellij.execution.configurations.RunConfiguration;
+import com.intellij.execution.configurations.RunConfigurationBase;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 
@@ -104,6 +105,31 @@ public class RunConfigurationHelper {
             LOG.warn("Multirun: cannot read env file '" + file + "', continuing without it", e);
             return envData;
         }
+    }
+
+    /** File name (without directory) used when saving a child configuration console; safe across OSes. */
+    public static String consoleLogFileName(String configurationName) {
+        final String sanitized = configurationName == null
+                ? "" : configurationName.trim().replaceAll("[^a-zA-Z0-9-_. ]", "_");
+        return (sanitized.isEmpty() ? "configuration" : sanitized) + ".log";
+    }
+
+    /**
+     * Enables the platform's "save console output to file" (same mechanism as the Logs tab of
+     * individual run configurations) on the given, already cloned, configuration - writing to
+     * {@code directory}/{@code <configuration name>}.log. Returns false (leaving the configuration
+     * untouched) for types not based on RunConfigurationBase.
+     */
+    public static boolean applySaveOutput(RunConfiguration configuration, String directory, String configurationName) {
+        if (!(configuration instanceof RunConfigurationBase)) {
+            LOG.warn("Multirun save console for '" + configurationName
+                             + "': configuration type does not support output files, skipping");
+            return false;
+        }
+        final RunConfigurationBase<?> base = (RunConfigurationBase<?>) configuration;
+        base.setSaveOutputToFile(true);
+        base.setFileOutputPath(new File(directory, consoleLogFileName(configurationName)).getPath());
+        return true;
     }
 
     /** Base variables first, then {@code override} wins on conflicts; the pass-parent-envs flag comes from {@code override}. */
