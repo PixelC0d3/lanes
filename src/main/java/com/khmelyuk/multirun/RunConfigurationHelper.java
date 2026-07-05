@@ -158,9 +158,62 @@ public class RunConfigurationHelper {
             LOG.info(logPrefix + "applied via setEnvs reflection, keys=" + override.getEnvs().keySet());
             return clone;
         }
+        if (applyViaRunSettings(clone, override)) {
+            LOG.info(logPrefix + "applied via run settings builder reflection, keys=" + override.getEnvs().keySet());
+            return clone;
+        }
 
         LOG.warn(logPrefix + "configuration type does not expose environment variables, running unchanged");
         return configuration;
+    }
+
+    /**
+     * getRunSettings()/setRunSettings(...) convention where the settings object is immutable and
+     * rebuilt through toBuilder()/build(), with an envData property (npm/pnpm/yarn run configurations).
+     */
+    private static boolean applyViaRunSettings(RunConfiguration configuration, EnvironmentVariablesData override) {
+        try {
+            final Object settings = configuration.getClass().getMethod("getRunSettings").invoke(configuration);
+            if (settings == null) {
+                return false;
+            }
+            final Object current = settings.getClass().getMethod("getEnvData").invoke(settings);
+            final EnvironmentVariablesData base = current instanceof EnvironmentVariablesData
+                    ? (EnvironmentVariablesData) current
+                    : EnvironmentVariablesData.DEFAULT;
+
+            final Object builder = settings.getClass().getMethod("toBuilder").invoke(settings);
+            final Method envDataSetter = findSingleArgMethod(builder.getClass(), EnvironmentVariablesData.class,
+                                                             "setEnvData", "envData");
+            if (envDataSetter == null) {
+                return false;
+            }
+            envDataSetter.invoke(builder, mergeEnvData(base, override));
+            final Object newSettings = builder.getClass().getMethod("build").invoke(builder);
+
+            final Method setter = findSingleArgMethod(configuration.getClass(), newSettings.getClass(), "setRunSettings");
+            if (setter == null) {
+                return false;
+            }
+            setter.invoke(configuration, newSettings);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** First public method with one of the given names taking exactly one parameter compatible with {@code argType}. */
+    private static Method findSingleArgMethod(Class<?> owner, Class<?> argType, String... names) {
+        for (String name : names) {
+            for (Method method : owner.getMethods()) {
+                if (method.getName().equals(name)
+                        && method.getParameterCount() == 1
+                        && method.getParameterTypes()[0].isAssignableFrom(argType)) {
+                    return method;
+                }
+            }
+        }
+        return null;
     }
 
     /** getEnvData()/setEnvData(EnvironmentVariablesData) convention (Node.js and other JS run configurations). */
