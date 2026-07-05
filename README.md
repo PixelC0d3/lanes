@@ -65,17 +65,23 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - The **Multiple Run Monitor** tool window (bottom stripe of the IDE, or `Run → Multiple Run
   Monitor`) shows a live table with every application started by Multiple Run:
 
-  | Name | Multiple Run | PID | Ports | Mem Usage / Limit | Mem % | CPU % |
-  |------|--------------|-----|-------|-------------------|-------|-------|
+  | Name | Multiple Run | PID | Ports | Uptime | Mem Usage / Limit | Mem % | CPU % |
+  |------|--------------|-----|-------|--------|-------------------|-------|-------|
 
 - Works like `docker stats`: memory usage is shown against the configured *Memory limit (MB)* of
   the application (or against the total machine memory when no limit is set), so you can check at
   a glance whether an app is close to its cap.
 - **Ports** lists the TCP ports each application is listening on (like the PORTS column of
-  `docker ps`), so you always know who owns a port.
+  `docker ps`), so you always know who owns a port. **Uptime** shows how long the app has been
+  running.
+- **CPU %** is instantaneous, computed from the CPU-time delta between two consecutive samples —
+  the same method docker stats uses (it can exceed 100% on multi-core machines). The first refresh
+  shows `n/a` while the baseline is collected.
 - Each application is measured as a **whole process tree** (e.g. the `npm` wrapper plus the actual
   `node` child processes), refreshed automatically every 2 seconds. Rows disappear when the
   process terminates.
+- **Restart per row** (toolbar or right-click) — stops and starts again *only* the selected
+  application; the rest of the group keeps running untouched.
 - **Stop / Force Kill per row** (toolbar or right-click): *Stop* asks the application to terminate
   (same as the stop button of its run tab); *Force Kill* sends SIGKILL to the whole process tree
   of the selected application, after confirmation — for processes that refuse to die.
@@ -84,7 +90,13 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   The quickest cure for `EADDRINUSE: address already in use`.
 - The tool window toolbar also has a manual refresh button and the *Stop Multiple Run* action.
 - Sampling uses the OS `ps` and `lsof` commands (Linux/macOS); on systems without them the table
-  shows `n/a`. CPU % is the average since the process started (as reported by `ps`).
+  shows `n/a`.
+
+### Memory limit alert
+- When an application with a configured *Memory limit (MB)* crosses **90%** of it, the IDE raises
+  a warning notification (balloon + Notifications tool window) — you don't need to keep the
+  monitor open. The check runs in the background every 10 seconds; each process is alerted at
+  most once (a restart re-arms the alert).
 
 ### Console tab handling
 - **Mark the tab of a failed configuration** — adds an alert icon to the tab of any configuration

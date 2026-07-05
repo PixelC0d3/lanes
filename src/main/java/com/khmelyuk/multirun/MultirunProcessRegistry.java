@@ -2,6 +2,7 @@ package com.khmelyuk.multirun;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,6 +15,7 @@ import com.intellij.execution.process.BaseProcessHandler;
 import com.intellij.execution.process.ProcessEvent;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.process.ProcessListener;
+import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.openapi.project.Project;
 
 /**
@@ -30,13 +32,17 @@ public final class MultirunProcessRegistry {
         public final ProcessHandler handler;
         /** Configured memory cap in MB, or null when the application has no limit. */
         public final Integer memoryLimitMb;
+        /** The environment the app was launched with; lets the monitor restart just this app. */
+        public final ExecutionEnvironment environment;
         public final long startedAtMs;
 
-        Entry(String multirunName, String appName, ProcessHandler handler, Integer memoryLimitMb) {
+        Entry(String multirunName, String appName, ProcessHandler handler,
+              Integer memoryLimitMb, ExecutionEnvironment environment) {
             this.multirunName = multirunName;
             this.appName = appName;
             this.handler = handler;
             this.memoryLimitMb = memoryLimitMb;
+            this.environment = environment;
             this.startedAtMs = System.currentTimeMillis();
         }
     }
@@ -47,8 +53,9 @@ public final class MultirunProcessRegistry {
     }
 
     public static void register(@NotNull Project project, String multirunName, String appName,
-                                @NotNull ProcessHandler handler, @Nullable Integer memoryLimitMb) {
-        final Entry entry = new Entry(multirunName, appName, handler, memoryLimitMb);
+                                @NotNull ProcessHandler handler, @Nullable Integer memoryLimitMb,
+                                @Nullable ExecutionEnvironment environment) {
+        final Entry entry = new Entry(multirunName, appName, handler, memoryLimitMb, environment);
         ENTRIES.computeIfAbsent(project, p -> new CopyOnWriteArrayList<>()).add(entry);
         handler.addProcessListener(new ProcessListener() {
             @Override
@@ -60,6 +67,7 @@ public final class MultirunProcessRegistry {
         if (handler.isProcessTerminated()) {
             unregister(project, handler);
         }
+        MemoryLimitWatcher.ensureStarted();
     }
 
     public static void unregister(@NotNull Project project, @NotNull ProcessHandler handler) {
@@ -73,6 +81,18 @@ public final class MultirunProcessRegistry {
     public static List<Entry> getEntries(@NotNull Project project) {
         final List<Entry> list = ENTRIES.get(project);
         return list == null ? Collections.emptyList() : new ArrayList<>(list);
+    }
+
+    /** A copy of all live entries of all projects; used by the background memory limit watcher. */
+    @NotNull
+    public static Map<Project, List<Entry>> snapshot() {
+        final Map<Project, List<Entry>> copy = new LinkedHashMap<>();
+        ENTRIES.forEach((project, entries) -> {
+            if (!entries.isEmpty()) {
+                copy.put(project, new ArrayList<>(entries));
+            }
+        });
+        return copy;
     }
 
     /** The OS pid behind the handler, or -1 when it cannot be determined. */
