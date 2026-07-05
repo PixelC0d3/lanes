@@ -43,10 +43,10 @@
         <![CDATA[
         <p><strong>1.19</strong>:</p>
         <ul>
-            <li>New: per-application memory limit. Select a configuration in the list and use the pencil button
-                to set a heap cap in MB - applied at launch as NODE_OPTIONS --max-old-space-size (Node.js) and
-                JAVA_TOOL_OPTIONS -Xmx (JVM), the process-level analog of docker's mem_limit. The list shows the
-                configured limit next to each entry.</li>
+            <li>New: per-application memory limit. The configurations list is now a table with an editable
+                "Memory limit (MB)" column - type a heap cap right next to each application and it is applied
+                at launch as NODE_OPTIONS --max-old-space-size (Node.js) and JAVA_TOOL_OPTIONS -Xmx (JVM),
+                the process-level analog of docker's mem_limit.</li>
         </ul>
         <p><strong>1.18</strong>:</p>
         <ul>
