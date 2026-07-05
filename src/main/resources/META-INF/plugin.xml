@@ -41,6 +41,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.16.2</strong>:</p>
+        <ul>
+            <li>Migrate off deprecated platform APIs flagged by the Marketplace verifier
+                (RunnerRegistry.getRunner, ProcessAdapter, ListCellRendererWrapper), keeping the plugin
+                compatible with future IDE versions. No functional changes.</li>
+        </ul>
         <p><strong>1.16.1</strong>:</p>
         <ul>
             <li>Use an own id for the "Stop Multiple Run" action, fixing the "ID is already taken" PluginException
