@@ -61,6 +61,23 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - Note: unlike Docker, a plain OS process has no enforced swap/reservation limits — this caps the
   runtime heap, which is what usually matters for Node/JVM apps in development.
 
+### Process monitor (docker-stats style)
+- The **Multiple Run Monitor** tool window (bottom stripe of the IDE, or `Run → Multiple Run
+  Monitor`) shows a live table with every application started by Multiple Run:
+
+  | Name | Multiple Run | PID | Mem Usage / Limit | Mem % | CPU % |
+  |------|--------------|-----|-------------------|-------|-------|
+
+- Works like `docker stats`: memory usage is shown against the configured *Memory limit (MB)* of
+  the application (or against the total machine memory when no limit is set), so you can check at
+  a glance whether an app is close to its cap.
+- Each application is measured as a **whole process tree** (e.g. the `npm` wrapper plus the actual
+  `node` child processes), refreshed automatically every 2 seconds. Rows disappear when the
+  process terminates.
+- The tool window toolbar has a manual refresh button and the *Stop Multiple Run* action.
+- Sampling uses the OS `ps` command (Linux/macOS); on systems without it the table shows `n/a`.
+  CPU % is the average since the process started (as reported by `ps`).
+
 ### Console tab handling
 - **Mark the tab of a failed configuration** — adds an alert icon to the tab of any configuration
   that exits with a non-zero status, so you can spot failures at a glance.

@@ -41,6 +41,14 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.20</strong>:</p>
+        <ul>
+            <li>New: "Multiple Run Monitor" tool window (bottom stripe, also under Run -> Multiple Run Monitor).
+                A docker-stats-like live table with every application started by Multiple Run: PID,
+                memory usage vs. the configured limit (or the machine total), memory percentage and CPU.
+                Measures the whole process tree of each application (npm wrapper + node child, etc.)
+                and refreshes automatically every 2 seconds.</li>
+        </ul>
         <p><strong>1.19</strong>:</p>
         <ul>
             <li>New: per-application memory limit. The configurations list is now a table with an editable
@@ -278,10 +286,18 @@
             <keyboard-shortcut keymap="$default" first-keystroke="shift alt K"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="control alt K"/>
         </action>
+        <action id="MultipleRun.ShowMonitor" class="com.khmelyuk.multirun.ShowMultirunMonitorAction"
+                text="Multiple Run Monitor" description="Show memory and CPU usage of the applications started by Multiple Run">
+            <add-to-group group-id="RunMenu" relative-to-action="MultipleRun.StopRunning" anchor="after"/>
+        </action>
     </actions>
 
     <extensions defaultExtensionNs="com.intellij">
         <configurationType implementation="com.khmelyuk.multirun.MultirunConfigurationType"/>
         <programRunner implementation="com.khmelyuk.multirun.MultirunRunner"/>
+        <!-- docker-stats-like monitor for the processes started by the plugin -->
+        <toolWindow id="Multiple Run Monitor" anchor="bottom" canCloseContents="false"
+                    icon="AllIcons.Toolwindows.ToolWindowRun"
+                    factoryClass="com.khmelyuk.multirun.ui.MultirunMonitorToolWindowFactory"/>
     </extensions>
 </idea-plugin>
