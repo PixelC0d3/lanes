@@ -317,13 +317,32 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 final List<Row> rows = buildRows(entries);
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!project.isDisposed()) {
-                        model.setItems(rows);
+                        setItemsKeepingSelection(rows);
                     }
                 });
             } finally {
                 sampling.set(false);
             }
         });
+    }
+
+    /**
+     * Replaces the table content without losing the user's selection: rows are fresh objects
+     * on every refresh, so the selected application is matched back by its process handler.
+     */
+    private void setItemsKeepingSelection(List<Row> rows) {
+        final Row selected = table.getSelectedObject();
+        model.setItems(rows);
+        if (selected == null) {
+            return;
+        }
+        for (int i = 0; i < rows.size(); i++) {
+            if (rows.get(i).entry.handler == selected.entry.handler) {
+                final int viewIndex = table.convertRowIndexToView(i);
+                table.getSelectionModel().setSelectionInterval(viewIndex, viewIndex);
+                return;
+            }
+        }
     }
 
     /**

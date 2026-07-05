@@ -68,7 +68,67 @@ public final class ProcessStatsSampler {
             return java.util.Collections.emptyMap();
         }
         final String pidList = pids.stream().map(String::valueOf).collect(Collectors.joining(","));
-        return parsePsOutput(runCommand("ps", "-o", "pid=,rss=,time=", "-p", pidList));
+        final Map<Long, Stats> stats = parsePsOutput(runCommand("ps", "-o", "pid=,rss=,time=", "-p", pidList));
+        // the ps TIME column has 1-second resolution on Linux - useless for a CPU % computed
+        // over a 2 s window (the delta is almost always 0). /proc has 10 ms ticks: prefer it.
+        for (Map.Entry<Long, Stats> entry : stats.entrySet()) {
+            final double procSeconds = procCpuSeconds(entry.getKey());
+            if (procSeconds >= 0) {
+                entry.setValue(new Stats(entry.getValue().rssKb, procSeconds));
+            }
+        }
+        return stats;
+    }
+
+    /** Linux scheduler tick rate, needed to convert /proc cpu ticks into seconds. */
+    private static final double CLOCK_TICKS_PER_SECOND = detectClockTicksPerSecond();
+
+    private static double detectClockTicksPerSecond() {
+        for (String line : runCommand("getconf", "CLK_TCK")) {
+            try {
+                return Long.parseLong(line.trim());
+            } catch (NumberFormatException ignored) {
+                // fall through to the default
+            }
+        }
+        return 100; // the value on virtually every Linux
+    }
+
+    /** Cumulative CPU seconds of one pid from /proc (Linux); -1 where /proc does not exist. */
+    private static double procCpuSeconds(long pid) {
+        final java.io.File statFile = new java.io.File("/proc/" + pid + "/stat");
+        if (!statFile.exists()) {
+            return -1;
+        }
+        try {
+            final String line = new String(java.nio.file.Files.readAllBytes(statFile.toPath()), StandardCharsets.UTF_8);
+            final long ticks = parseProcStatCpuTicks(line);
+            return ticks < 0 ? -1 : ticks / CLOCK_TICKS_PER_SECOND;
+        } catch (IOException e) {
+            return -1;
+        }
+    }
+
+    /**
+     * Extracts utime+stime (clock ticks) from a /proc/[pid]/stat line. The command name
+     * (field 2) is parenthesized and may contain spaces, so fields are counted after the
+     * last ')': utime and stime are the 12th and 13th fields from there.
+     * Returns -1 for a malformed line.
+     */
+    public static long parseProcStatCpuTicks(String line) {
+        final int close = line.lastIndexOf(')');
+        if (close < 0) {
+            return -1;
+        }
+        final String[] fields = line.substring(close + 1).trim().split("\\s+");
+        if (fields.length < 13) {
+            return -1;
+        }
+        try {
+            return Long.parseLong(fields[11]) + Long.parseLong(fields[12]);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
     }
 
     /**
