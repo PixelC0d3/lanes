@@ -52,6 +52,15 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - Works with configuration types that expose environment variables (Node.js, npm, Java
   Application, etc.); other types run unchanged.
 
+### Per-application memory limit
+- Select a configuration in the list and use the **pencil** toolbar button to set a memory (heap)
+  cap in MB for it — the process-level analog of Docker's `mem_limit`.
+- Applied at launch through the environment: `NODE_OPTIONS --max-old-space-size=<MB>` (Node.js)
+  and `JAVA_TOOL_OPTIONS -Xmx<MB>m` (JVM); existing options in those variables are preserved.
+- The list shows the configured limit next to each entry (e.g. `Run 'eparts-api'   [1024 MB]`).
+- Note: unlike Docker, a plain OS process has no enforced swap/reservation limits — this caps the
+  runtime heap, which is what usually matters for Node/JVM apps in development.
+
 ### Console tab handling
 - **Mark the tab of a failed configuration** — adds an alert icon to the tab of any configuration
   that exits with a non-zero status, so you can spot failures at a glance.
