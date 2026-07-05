@@ -29,6 +29,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public static final String PROP_HIDE_SUCCESS_PROCESS = "hideSuccessProcess";
     public static final String PROP_DELAY_TIME = "delayTime";
     public static final String PROP_RESTART_RUNNING = "restartRunning";
+    public static final String PROP_ENV_FILE = "envFile";
     public static final String ELEMENT_ENVS = "envs";
     public static final String ELEMENT_ENV = "env";
     public static final String PROP_PASS_PARENT_ENVS = "passParentEnvs";
@@ -40,6 +41,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     private boolean markFailedProcess = true;
     private boolean hideSuccessProcess = false;
     private boolean restartRunning = true;
+    private String envFilePath = "";
     private EnvironmentVariablesData envData = EnvironmentVariablesData.DEFAULT;
     private List<RunConfigurationInternal> runConfigurations = new ArrayList<>();
 
@@ -163,6 +165,14 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         this.restartRunning = restartRunning;
     }
 
+    public String getEnvFilePath() {
+        return envFilePath;
+    }
+
+    public void setEnvFilePath(String envFilePath) {
+        this.envFilePath = envFilePath == null ? "" : envFilePath.trim();
+    }
+
     public EnvironmentVariablesData getEnvData() {
         return envData;
     }
@@ -197,6 +207,9 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         }
         if (element.getAttributeValue(PROP_RESTART_RUNNING) != null) {
             restartRunning = Boolean.parseBoolean(element.getAttributeValue(PROP_RESTART_RUNNING));
+        }
+        if (element.getAttributeValue(PROP_ENV_FILE) != null) {
+            setEnvFilePath(element.getAttributeValue(PROP_ENV_FILE));
         }
         if (element.getAttributeValue(PROP_DELAY_TIME) != null) {
             delayTime = parseDelay(element.getAttributeValue(PROP_DELAY_TIME));
@@ -236,6 +249,9 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         element.setAttribute(PROP_HIDE_SUCCESS_PROCESS, String.valueOf(hideSuccessProcess));
         element.setAttribute(PROP_RESTART_RUNNING, String.valueOf(restartRunning));
         element.setAttribute(PROP_DELAY_TIME, String.valueOf(delayTime));
+        if (!envFilePath.isEmpty()) {
+            element.setAttribute(PROP_ENV_FILE, envFilePath);
+        }
 
         final List<Element> configurations = new ArrayList<Element>();
         for (RunConfigurationInternal each : runConfigurations) {
@@ -281,7 +297,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public RunProfileState getState(@NotNull Executor executor, @NotNull ExecutionEnvironment executionEnvironment) {
         return new MultirunRunnerState(getRunConfigurations(), startOneByOne, delayTime,
                                        reuseTabs, reuseTabsWithFailure,
-                                       markFailedProcess, hideSuccessProcess, envData,
+                                       markFailedProcess, hideSuccessProcess, envData, envFilePath,
                                        restartRunning, getProject(), getName());
     }
 
@@ -289,6 +305,13 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public void checkConfiguration() throws RuntimeConfigurationException {
         if (runConfigurations.isEmpty()) {
             throw new RuntimeConfigurationError("No run configuration chosen");
+        }
+        if (!envFilePath.isEmpty()) {
+            final java.io.File envFile = RunConfigurationHelper.resolveEnvFile(envFilePath, getProject());
+            if (!envFile.isFile()) {
+                // warning, not error: the run is still allowed, the file is simply skipped
+                throw new RuntimeConfigurationWarning("Environment file not found: " + envFile);
+            }
         }
     }
 

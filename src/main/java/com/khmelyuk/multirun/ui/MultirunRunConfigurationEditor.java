@@ -3,9 +3,14 @@ package com.khmelyuk.multirun.ui;
 import com.intellij.execution.RunManager;
 import com.intellij.execution.configuration.EnvironmentVariablesComponent;
 import com.intellij.execution.configurations.RunConfiguration;
+import com.intellij.openapi.fileChooser.FileChooser;
+import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.options.SettingsEditor;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.LabeledComponent;
+import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.popup.PopupChooserBuilder;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.*;
 import com.intellij.ui.components.JBList;
 import com.khmelyuk.multirun.MultirunRunConfiguration;
@@ -36,6 +41,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private JPanel collectionsPanel;
     private JPanel envVarsPanel;
     private EnvironmentVariablesComponent environmentVariables;
+    private TextFieldWithBrowseButton envFile;
     private JCheckBox reuseTabs;
     private JCheckBox reuseTabsWithFailure;
     private JCheckBox startOneByOne;
@@ -88,6 +94,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
 
         if (this.configuration != null) {
             environmentVariables.setEnvData(this.configuration.getEnvData());
+            envFile.setText(this.configuration.getEnvFilePath());
             delayTime.setText(String.format("%.1f", this.configuration.getDelayTime()));
             reuseTabs.setSelected(this.configuration.isReuseTabs());
             reuseTabsWithFailure.setSelected(this.configuration.isReuseTabsWithFailure());
@@ -106,6 +113,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         }
 
         multirunRunConfiguration.setEnvData(environmentVariables.getEnvData());
+        multirunRunConfiguration.setEnvFilePath(envFile.getText());
         multirunRunConfiguration.setReuseTabs(reuseTabs.isSelected());
         multirunRunConfiguration.setReuseTabsWithFailure(reuseTabsWithFailure.isSelected());
         multirunRunConfiguration.setStartOneByOne(startOneByOne.isSelected());
@@ -175,6 +183,26 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         environmentVariables.getComponent().setToolTipText(
                 "These variables are applied to every configuration in the list, overriding its own variables with the same name");
         envVarsPanel.add(environmentVariables, BorderLayout.CENTER);
+
+        // Optional .env file applied under the variables above (the table values win on conflicts).
+        // Read again on every run, so file edits are picked up without touching the configuration.
+        envFile = new TextFieldWithBrowseButton();
+        envFile.getTextField().setToolTipText(
+                "Path to a .env file (KEY=VALUE lines, # comments, optional \"export\" prefix). "
+                        + "Applied to every configuration in the list; variables configured above win on conflicts. "
+                        + "Relative paths are resolved against the project root");
+        envFile.addActionListener(e -> {
+            final VirtualFile chosen = FileChooser.chooseFile(
+                    FileChooserDescriptorFactory.createSingleFileDescriptor().withTitle("Select Environment File"),
+                    project, null);
+            if (chosen != null) {
+                envFile.setText(chosen.getPresentableUrl());
+            }
+        });
+        final LabeledComponent<TextFieldWithBrowseButton> envFileComponent =
+                LabeledComponent.create(envFile, "Environment file:");
+        envFileComponent.setLabelLocation(BorderLayout.WEST);
+        envVarsPanel.add(envFileComponent, BorderLayout.SOUTH);
 
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());

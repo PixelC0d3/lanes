@@ -1,6 +1,10 @@
 package com.khmelyuk.multirun;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -8,6 +12,7 @@ import com.intellij.execution.CommonProgramRunConfigurationParameters;
 import com.intellij.execution.configuration.EnvironmentVariablesData;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.project.Project;
 
 public class RunConfigurationHelper {
 
@@ -34,6 +39,69 @@ public class RunConfigurationHelper {
     /** Whether the given data overrides anything: has variables or disables passing system environment variables. */
     public static boolean isEnvOverrideActive(EnvironmentVariablesData envData) {
         return envData != null && !(envData.getEnvs().isEmpty() && envData.isPassParentEnvs());
+    }
+
+    /**
+     * Parses a dotenv-style file: KEY=VALUE lines; blank lines and "#" comment lines are skipped,
+     * an optional "export " prefix is accepted and matching single/double quotes around values are stripped.
+     */
+    public static Map<String, String> parseEnvFile(File file) throws IOException {
+        final Map<String, String> result = new LinkedHashMap<>();
+        for (String rawLine : Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)) {
+            String line = rawLine.trim();
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+            if (line.startsWith("export ")) {
+                line = line.substring("export ".length()).trim();
+            }
+            final int eq = line.indexOf('=');
+            if (eq <= 0) {
+                continue;
+            }
+            final String key = line.substring(0, eq).trim();
+            String value = line.substring(eq + 1).trim();
+            if (value.length() >= 2
+                    && ((value.startsWith("\"") && value.endsWith("\""))
+                        || (value.startsWith("'") && value.endsWith("'")))) {
+                value = value.substring(1, value.length() - 1);
+            }
+            result.put(key, value);
+        }
+        return result;
+    }
+
+    /** Resolves the configured env file path; relative paths are resolved against the project base directory. */
+    public static File resolveEnvFile(String envFilePath, Project project) {
+        final File file = new File(envFilePath.trim());
+        if (file.isAbsolute() || project == null || project.getBasePath() == null) {
+            return file;
+        }
+        return new File(project.getBasePath(), envFilePath.trim());
+    }
+
+    /**
+     * Applies the env file (when configured) under the manually configured variables: file values are
+     * the base and the table entries win on conflicts. Returns {@code envData} unchanged when no file is
+     * configured; a missing or unreadable file is logged and skipped, so the run still starts.
+     */
+    public static EnvironmentVariablesData withEnvFile(EnvironmentVariablesData envData, String envFilePath, Project project) {
+        if (envFilePath == null || envFilePath.trim().isEmpty()) {
+            return envData;
+        }
+        final File file = resolveEnvFile(envFilePath, project);
+        try {
+            final Map<String, String> fileVars = parseEnvFile(file);
+            if (fileVars.isEmpty()) {
+                return envData;
+            }
+            final Map<String, String> merged = new LinkedHashMap<>(fileVars);
+            merged.putAll(envData.getEnvs());
+            return EnvironmentVariablesData.create(merged, envData.isPassParentEnvs());
+        } catch (IOException e) {
+            LOG.warn("Multirun: cannot read env file '" + file + "', continuing without it", e);
+            return envData;
+        }
     }
 
     /** Base variables first, then {@code override} wins on conflicts; the pass-parent-envs flag comes from {@code override}. */
