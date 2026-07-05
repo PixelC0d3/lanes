@@ -41,6 +41,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.22.1</strong>:</p>
+        <ul>
+            <li>Monitor: the selected row is no longer deselected by the automatic refresh.</li>
+            <li>Monitor: fix CPU % stuck at 0.00% on Linux - the ps TIME column only has 1-second
+                resolution, so the sampler now reads /proc/[pid]/stat (10 ms ticks) instead.</li>
+        </ul>
         <p><strong>1.22</strong>:</p>
         <ul>
             <li>Multiple Run Monitor: Restart action per row - stop and start again only the selected

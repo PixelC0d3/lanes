@@ -52,6 +52,31 @@ public class ProcessStatsSamplerTest {
         assertEquals(-1.0, ProcessStatsSampler.parseCpuTime("abc"), 0.0001);
     }
 
+    // --- parseProcStatCpuTicks (/proc precision for the instantaneous CPU %) -----------------
+
+    @Test
+    public void parsesUtimePlusStimeFromProcStat() {
+        // utime=150 (12th field after the comm) + stime=250 (13th)
+        final String line = "42 (node) S 1 42 42 0 -1 4194304 500 0 0 0 150 250 3 2 20 0 11 0 12345 100000 200";
+
+        assertEquals(400, ProcessStatsSampler.parseProcStatCpuTicks(line));
+    }
+
+    @Test
+    public void procStatCommandNameMayContainSpacesAndParentheses() {
+        // the comm field is parenthesized and can contain anything, including ') ' sequences
+        final String line = "42 (my (weird) app) S 1 42 42 0 -1 4194304 500 0 0 0 70 30 3 2 20 0 11 0 12345 100000 200";
+
+        assertEquals(100, ProcessStatsSampler.parseProcStatCpuTicks(line));
+    }
+
+    @Test
+    public void malformedProcStatGivesMinusOne() {
+        assertEquals(-1, ProcessStatsSampler.parseProcStatCpuTicks("garbage"));
+        assertEquals(-1, ProcessStatsSampler.parseProcStatCpuTicks("42 (node) S 1 42"));
+        assertEquals(-1, ProcessStatsSampler.parseProcStatCpuTicks("42 (node) S a b c d e f g h i j k l m n"));
+    }
+
     @Test
     public void skipsMalformedLines() {
         final Map<Long, ProcessStatsSampler.Stats> stats = ProcessStatsSampler.parsePsOutput(
