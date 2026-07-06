@@ -63,6 +63,8 @@ public class MultirunRunnerState implements RunProfileState {
     private final String saveOutputDir;
     private final Map<String, Integer> memoryLimits;
     private final Map<String, String> readyConditions;
+    /** Per-app env file overriding the group environment for that app, keyed by app name. */
+    private final Map<String, String> appEnvFiles;
     private final boolean restartOnCrash;
     private final int memAlertThreshold;
     private final boolean memLimitRestart;
@@ -81,6 +83,7 @@ public class MultirunRunnerState implements RunProfileState {
                                EnvironmentVariablesData envData, String envFilePath,
                                String saveOutputDir, Map<String, Integer> memoryLimits,
                                Map<String, String> readyConditions,
+                               Map<String, String> appEnvFiles,
                                boolean restartRunning, boolean restartOnCrash,
                                int memAlertThreshold, boolean memLimitRestart,
                                Project project, String configurationName) {
@@ -100,6 +103,7 @@ public class MultirunRunnerState implements RunProfileState {
                 ? "" : RunConfigurationHelper.resolveEnvFile(saveOutputDir, project).getPath();
         this.memoryLimits = memoryLimits == null ? Collections.emptyMap() : memoryLimits;
         this.readyConditions = readyConditions == null ? Collections.emptyMap() : readyConditions;
+        this.appEnvFiles = appEnvFiles == null ? Collections.emptyMap() : appEnvFiles;
         this.restartOnCrash = restartOnCrash;
         this.memAlertThreshold = memAlertThreshold;
         this.memLimitRestart = memLimitRestart;
@@ -171,6 +175,9 @@ public class MultirunRunnerState implements RunProfileState {
                 // per-application heap cap (~docker mem_limit) via NODE_OPTIONS/JAVA_TOOL_OPTIONS
                 childEnvData = RunConfigurationHelper.withMemoryLimit(childEnvData, memoryLimitMb);
             }
+            // per-application env file: overrides the group environment for this app (more specific)
+            childEnvData = RunConfigurationHelper.withAppEnvFile(
+                    childEnvData, appEnvFiles.get(runConfiguration.getName()), project);
             RunConfiguration effectiveConfiguration = RunConfigurationHelper.withEnvironmentOverride(runConfiguration, childEnvData);
             if (!saveOutputDir.isEmpty()) {
                 final RunConfiguration target = effectiveConfiguration == runConfiguration

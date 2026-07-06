@@ -70,6 +70,10 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   active profile of each running application in its *Env* column.
 - Works with configuration types that expose environment variables (Node.js, npm, Java
   Application, etc.); other types run unchanged.
+- **Per-application env file**: the applications table has an **Env file (app)** column — point an
+  app at its own `.env` file and it **overrides the group's environment** (both the variables and
+  the group env file) for that app only. Empty = use the group's environment. Re-read on every run;
+  relative paths resolve against the project root.
 
 ### Execution presets
 - Save the current **On/Off** selection of applications plus the active **environment profile** as
