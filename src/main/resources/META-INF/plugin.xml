@@ -93,9 +93,10 @@
         <p><strong>1.23</strong>:</p>
         <ul>
             <li>New: environment profiles. The Environment file field is now an editable dropdown that
-                remembers every .env file you use - switch between environments (-com / -ede / -def, ...)
-                by picking a profile, no more retyping paths. The monitor shows the active profile of
-                each running application in the new "Env" column.</li>
+                remembers every .env file you use - switch between environments (for example
+                .env.development, .env.staging, .env.production) by picking a profile, no more retyping
+                paths. The monitor shows the active profile of each running application in the new
+                "Env" column.</li>
         </ul>
         <p><strong>1.22.1</strong>:</p>
         <ul>
