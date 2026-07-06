@@ -41,6 +41,11 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.27.1</strong>:</p>
+        <ul>
+            <li>Fix: the "Memory limit (MB)" and "Ready when" cells no longer lose focus while
+                typing (the cell editor was being closed by the dialog's validation cycle).</li>
+        </ul>
         <p><strong>1.27</strong>:</p>
         <ul>
             <li>Monitor: now lists EVERY process the IDE is running - standalone (singleton) runs

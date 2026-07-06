@@ -148,10 +148,10 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         }
         multirunRunConfiguration.setDelayTime(delayTimeSeconds);
 
-        // commit a possibly in-progress cell edit so typed limits are not lost on Apply/Run
-        if (configurations.isEditing()) {
-            configurations.stopEditing();
-        }
+        // NOTE: never stopEditing() here. This method also runs for dialog validation on every
+        // user interaction, so closing the cell editor from it made the "Memory limit" and
+        // "Ready when" columns lose focus while typing. Pending cell edits are committed by the
+        // "terminateEditOnFocusLost" client property when focus moves to the Apply/Run button.
         MultirunRunConfigurationEditor.this.configuration.setRunConfigurations(configurationsModel.getItems());
     }
 
