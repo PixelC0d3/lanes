@@ -16,9 +16,17 @@ public class MultirunMonitorToolWindowFactory implements ToolWindowFactory, Dumb
 
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        final MultirunMonitorPanel panel = new MultirunMonitorPanel(project);
-        final Content content = ContentFactory.getInstance().createContent(panel, "", false);
-        content.setDisposer(panel);
-        toolWindow.getContentManager().addContent(content);
+        final ContentFactory contentFactory = ContentFactory.getInstance();
+
+        final MultirunMonitorPanel monitorPanel = new MultirunMonitorPanel(project);
+        final Content processes = contentFactory.createContent(monitorPanel, "Processes", false);
+        processes.setDisposer(monitorPanel);
+        toolWindow.getContentManager().addContent(processes);
+
+        // second tab: aggregated console output of every running app (docker compose logs -f style)
+        final AggregatedLogPanel logPanel = new AggregatedLogPanel(project);
+        final Content logs = contentFactory.createContent(logPanel, "Logs", false);
+        logs.setDisposer(logPanel);
+        toolWindow.getContentManager().addContent(logs);
     }
 }

@@ -123,6 +123,11 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - Sampling uses the OS `ps` and `lsof` commands on Linux/macOS; on **Windows** memory/CPU come
   from PowerShell `Get-Process` (the Ports column and *Kill Process on Port* need `lsof`, so they
   stay Linux/macOS-only).
+- **Aggregated logs (`docker compose logs -f` style)** — the monitor's **Logs** tab merges the
+  console output of every running application into one stream, each line prefixed with its
+  application name in a distinct color. A **filter** field narrows the view to matching lines, and
+  the toolbar has *Clear* and a *Scroll to End* toggle. The process table lives in the **Processes**
+  tab next to it.
 
 ### Memory limit alert
 - When an application with a configured *Memory limit (MB)* crosses **90%** of it, the IDE raises

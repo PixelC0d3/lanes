@@ -41,6 +41,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.28.0</strong>:</p>
+        <ul>
+            <li>New: the Multiple Run Monitor tool window has a second "Logs" tab - an aggregated view
+                of the console output of every running application, like <code>docker compose logs -f</code>.
+                Each line is prefixed with its application name in a distinct color, and a filter field
+                narrows the view to matching lines. The old table is now the "Processes" tab.</li>
+        </ul>
         <p><strong>1.27.2</strong>:</p>
         <ul>
             <li>Internal: renamed the Java package from the original author's namespace to
