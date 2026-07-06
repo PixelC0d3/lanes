@@ -1,4 +1,4 @@
-package com.khmelyuk.multirun;
+package io.github.welingtonmonteiro.multiplerun;
 
 import com.intellij.execution.configurations.ConfigurationType;
 import com.intellij.execution.configurations.RunConfiguration;

@@ -41,6 +41,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.27.2</strong>:</p>
+        <ul>
+            <li>Internal: renamed the Java package from the original author's namespace to
+                io.github.welingtonmonteiro.multiplerun. No user-facing change - existing run
+                configurations keep working (the "Multirun" configuration type id is unchanged).</li>
+        </ul>
         <p><strong>1.27.1</strong>:</p>
         <ul>
             <li>Fix: the "Memory limit (MB)" and "Ready when" cells no longer lose focus while
@@ -357,25 +363,25 @@
     <actions>
         <!-- id must stay in sync with StopRunningMultirunConfigurationsAction.ACTION_ID;
              namespaced to avoid colliding with the original Multirun plugin's action id -->
-        <action id="MultipleRun.StopRunning" class="com.khmelyuk.multirun.StopRunningMultirunConfigurationsAction"
+        <action id="MultipleRun.StopRunning" class="io.github.welingtonmonteiro.multiplerun.StopRunningMultirunConfigurationsAction"
                 text="Stop Multiple Run" description="Stop running Multiple Run configurations" icon="/actions/suspend.png">
             <add-to-group group-id="RunMenu" relative-to-action="Stop" anchor="after"/>
             <keyboard-shortcut keymap="$default" first-keystroke="shift alt K"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="control alt K"/>
         </action>
-        <action id="MultipleRun.ShowMonitor" class="com.khmelyuk.multirun.ShowMultirunMonitorAction"
+        <action id="MultipleRun.ShowMonitor" class="io.github.welingtonmonteiro.multiplerun.ShowMultirunMonitorAction"
                 text="Multiple Run Monitor" description="Show memory and CPU usage of the applications started by Multiple Run">
             <add-to-group group-id="RunMenu" relative-to-action="MultipleRun.StopRunning" anchor="after"/>
         </action>
     </actions>
 
     <extensions defaultExtensionNs="com.intellij">
-        <configurationType implementation="com.khmelyuk.multirun.MultirunConfigurationType"/>
-        <programRunner implementation="com.khmelyuk.multirun.MultirunRunner"/>
+        <configurationType implementation="io.github.welingtonmonteiro.multiplerun.MultirunConfigurationType"/>
+        <programRunner implementation="io.github.welingtonmonteiro.multiplerun.MultirunRunner"/>
         <!-- docker-stats-like monitor for the processes started by the plugin -->
         <toolWindow id="Multiple Run Monitor" anchor="bottom" canCloseContents="false"
                     icon="AllIcons.Toolwindows.ToolWindowRun"
-                    factoryClass="com.khmelyuk.multirun.ui.MultirunMonitorToolWindowFactory"/>
+                    factoryClass="io.github.welingtonmonteiro.multiplerun.ui.MultirunMonitorToolWindowFactory"/>
         <!-- balloon warnings raised by the memory limit watcher -->
         <notificationGroup id="Multiple Run" displayType="BALLOON"/>
     </extensions>

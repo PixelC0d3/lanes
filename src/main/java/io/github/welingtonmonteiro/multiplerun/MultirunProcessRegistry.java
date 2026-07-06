@@ -1,4 +1,4 @@
-package com.khmelyuk.multirun;
+package io.github.welingtonmonteiro.multiplerun;
 
 import java.util.ArrayList;
 import java.util.Collections;

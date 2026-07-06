@@ -1,4 +1,4 @@
-package com.khmelyuk.multirun.ui;
+package io.github.welingtonmonteiro.multiplerun.ui;
 
 import org.jetbrains.annotations.NotNull;
 

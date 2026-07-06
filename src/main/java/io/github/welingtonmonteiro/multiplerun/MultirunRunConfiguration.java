@@ -1,4 +1,4 @@
-package com.khmelyuk.multirun;
+package io.github.welingtonmonteiro.multiplerun;
 
 import com.intellij.execution.Executor;
 import com.intellij.execution.RunManager;
@@ -10,7 +10,7 @@ import com.intellij.openapi.options.SettingsEditor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.InvalidDataException;
 import com.intellij.openapi.util.WriteExternalException;
-import com.khmelyuk.multirun.ui.MultirunRunConfigurationEditor;
+import io.github.welingtonmonteiro.multiplerun.ui.MultirunRunConfigurationEditor;
 import org.jdom.Element;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
