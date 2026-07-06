@@ -213,6 +213,23 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         });
         myDecorator.setAddActionUpdater(e -> !getConfigurationsToAdd().isEmpty());
 
+        // Import a docker-compose.yml onto the matching run configurations (by service name):
+        // mem_limit -> Memory limit, env_file -> profile, depends_on -> order + Ready when.
+        myDecorator.addExtraAction(new AnActionButton(
+                "Import from docker-compose.yml…",
+                "Apply a docker-compose.yml to the run configurations whose name matches a service",
+                com.intellij.icons.AllIcons.Actions.Download) {
+            @Override
+            public void actionPerformed(@NotNull com.intellij.openapi.actionSystem.AnActionEvent e) {
+                importFromCompose();
+            }
+
+            @Override
+            public @NotNull com.intellij.openapi.actionSystem.ActionUpdateThread getActionUpdateThread() {
+                return com.intellij.openapi.actionSystem.ActionUpdateThread.EDT;
+            }
+        });
+
         startOneByOne.addActionListener(new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -416,6 +433,132 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private String envFileComboText() {
         final Object editorItem = envFileCombo.getEditor().getItem();
         return editorItem == null ? "" : editorItem.toString().trim();
+    }
+
+    /**
+     * Reads a docker-compose.yml and applies it to the run configurations already in the list whose
+     * name matches a service: {@code mem_limit}/{@code deploy...memory} becomes the Memory limit,
+     * {@code env_file} becomes an environment profile, and {@code depends_on} reorders the list
+     * (dependencies first) and adds a {@code port:} "Ready when" gate on services that expose a port.
+     * Services with no matching run configuration are reported and skipped.
+     */
+    private void importFromCompose() {
+        final VirtualFile chosen = FileChooser.chooseFile(
+                FileChooserDescriptorFactory.createSingleFileDescriptor()
+                                            .withTitle("Select a docker-compose.yml"),
+                project, null);
+        if (chosen == null) {
+            return;
+        }
+        final String text;
+        try {
+            text = new String(chosen.contentsToByteArray(), chosen.getCharset());
+        } catch (java.io.IOException ex) {
+            com.intellij.openapi.ui.Messages.showErrorDialog(
+                    project, "Could not read the file: " + ex.getMessage(), "Import From docker-compose");
+            return;
+        }
+        final java.util.List<io.github.welingtonmonteiro.multiplerun.ComposeImporter.Service> services;
+        try {
+            services = io.github.welingtonmonteiro.multiplerun.ComposeImporter.parse(text);
+        } catch (IllegalArgumentException ex) {
+            com.intellij.openapi.ui.Messages.showErrorDialog(project, ex.getMessage(), "Import From docker-compose");
+            return;
+        }
+        if (services.isEmpty()) {
+            com.intellij.openapi.ui.Messages.showInfoMessage(
+                    project, "No services found in the file.", "Import From docker-compose");
+            return;
+        }
+
+        final java.util.List<RunConfiguration> items = new ArrayList<>(configurationsModel.getItems());
+        final Map<String, RunConfiguration> byName = new LinkedHashMap<>();
+        for (RunConfiguration each : items) {
+            byName.put(each.getName(), each);
+        }
+
+        final java.util.List<String> matched = new ArrayList<>();
+        final java.util.List<String> unmatched = new ArrayList<>();
+        final Map<String, io.github.welingtonmonteiro.multiplerun.ComposeImporter.Service> matchedServices =
+                new LinkedHashMap<>();
+        final java.util.Set<String> distinctEnvFiles = new java.util.LinkedHashSet<>();
+
+        for (io.github.welingtonmonteiro.multiplerun.ComposeImporter.Service service : services) {
+            if (!byName.containsKey(service.name)) {
+                unmatched.add(service.name);
+                continue;
+            }
+            matched.add(service.name);
+            matchedServices.put(service.name, service);
+            if (service.memLimitMb != null) {
+                memoryLimits.put(service.name, service.memLimitMb);
+            }
+            final DefaultComboBoxModel<String> envModel = (DefaultComboBoxModel<String>) envFileCombo.getModel();
+            for (String envFile : service.envFiles) {
+                distinctEnvFiles.add(envFile);
+                if (envModel.getIndexOf(envFile) < 0) {
+                    envModel.addElement(envFile);
+                }
+            }
+        }
+
+        // depends_on among matched services: gate on the dependency (if it exposes a port) + order
+        boolean anyReadyAdded = false;
+        final Map<String, java.util.List<String>> deps = new LinkedHashMap<>();
+        for (String name : matched) {
+            final java.util.List<String> filtered = new ArrayList<>();
+            for (String dep : matchedServices.get(name).dependsOn) {
+                if (!byName.containsKey(dep)) {
+                    continue;
+                }
+                filtered.add(dep);
+                final io.github.welingtonmonteiro.multiplerun.ComposeImporter.Service depService = matchedServices.get(dep);
+                if (depService != null && !depService.ports.isEmpty() && !readyConditions.containsKey(dep)) {
+                    readyConditions.put(dep, "port:" + depService.ports.get(0));
+                    anyReadyAdded = true;
+                }
+            }
+            deps.put(name, filtered);
+        }
+
+        // reorder: matched configs in dependency order, the group's other configs kept after them
+        final java.util.List<String> order =
+                io.github.welingtonmonteiro.multiplerun.ComposeImporter.topologicalOrder(matched, deps);
+        final java.util.List<RunConfiguration> reordered = new ArrayList<>();
+        for (String name : order) {
+            reordered.add(byName.get(name));
+        }
+        for (RunConfiguration each : items) {
+            if (!order.contains(each.getName())) {
+                reordered.add(each);
+            }
+        }
+        configurationsModel.setItems(reordered);
+
+        if (distinctEnvFiles.size() == 1) {
+            // a single env file across the matched services can be set as the active profile
+            envFileCombo.setSelectedItem(distinctEnvFiles.iterator().next());
+        }
+        if (anyReadyAdded && !startOneByOne.isSelected()) {
+            // Ready when only gates in one-by-one mode, so enable it when a gate was added
+            startOneByOne.setSelected(true);
+            delayTime.setEnabled(true);
+        }
+        ((javax.swing.table.AbstractTableModel) configurationsModel).fireTableDataChanged();
+        markConfigurationsChanged();
+
+        final StringBuilder report = new StringBuilder();
+        report.append(matched.size()).append(" service(s) matched and updated");
+        if (!matched.isEmpty()) {
+            report.append(":\n  ").append(String.join(", ", matched));
+        }
+        if (!unmatched.isEmpty()) {
+            report.append("\n\n").append(unmatched.size())
+                  .append(" service(s) have no run configuration with the same name and were skipped:\n  ")
+                  .append(String.join(", ", unmatched))
+                  .append("\n\nCreate run configurations with matching names and import again.");
+        }
+        com.intellij.openapi.ui.Messages.showInfoMessage(project, report.toString(), "Import From docker-compose");
     }
 
     private void markConfigurationsChanged() {

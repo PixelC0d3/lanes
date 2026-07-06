@@ -41,6 +41,15 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.30.0</strong>:</p>
+        <ul>
+            <li>New: import from <code>docker-compose.yml</code>. The editor's list toolbar gains an
+                import button that reads a compose file and applies it to the run configurations whose
+                name matches a service: <code>mem_limit</code> (and <code>deploy.resources.limits.memory</code>)
+                becomes the Memory limit, <code>env_file</code> becomes an environment profile, and
+                <code>depends_on</code> reorders the list (dependencies first) and adds a <code>port:</code>
+                "Ready when" gate. Services without a matching run configuration are reported and skipped.</li>
+        </ul>
         <p><strong>1.29.0</strong>:</p>
         <ul>
             <li>New: execution presets. Save the current On/Off selection of applications plus the
