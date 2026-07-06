@@ -57,6 +57,9 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private JCheckBox hideSuccessProcess;
     private JCheckBox configurationsListChanged;
     private JTextField delayTime;
+    private JCheckBox restartOnCrashBox;
+    private JSpinner memThresholdSpinner;
+    private JComboBox<String> memLimitActionCombo;
     private MultirunRunConfiguration configuration;
     /** Per-child memory (heap) cap in MB, edited inline in the "Memory limit" table column. */
     private Map<String, Integer> memoryLimits = new LinkedHashMap<>();
@@ -95,6 +98,9 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
             restartRunning.setSelected(this.configuration.isRestartRunning());
             markFailedProcess.setSelected(this.configuration.isMarkFailedProcess());
             hideSuccessProcess.setSelected(this.configuration.isHideSuccessProcess());
+            restartOnCrashBox.setSelected(this.configuration.isRestartOnCrash());
+            memThresholdSpinner.setValue(this.configuration.getMemAlertThreshold());
+            memLimitActionCombo.setSelectedIndex(this.configuration.isMemLimitRestart() ? 1 : 0);
             delayTime.setEnabled(startOneByOne.isSelected());
         }
     }
@@ -127,6 +133,9 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         multirunRunConfiguration.setRestartRunning(restartRunning.isSelected());
         multirunRunConfiguration.setMarkFailedProcess(markFailedProcess.isSelected());
         multirunRunConfiguration.setHideSuccessProcess(hideSuccessProcess.isSelected());
+        multirunRunConfiguration.setRestartOnCrash(restartOnCrashBox.isSelected());
+        multirunRunConfiguration.setMemAlertThreshold((Integer) memThresholdSpinner.getValue());
+        multirunRunConfiguration.setMemLimitRestart(memLimitActionCombo.getSelectedIndex() == 1);
         double delayTimeSeconds = 0;
         if (delayTime.getText() != null && !delayTime.getText().isEmpty()) {
             try {
@@ -280,9 +289,28 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
                 LabeledComponent.create(saveOutputDir, "Save console logs to:");
         saveOutputComponent.setLabelLocation(BorderLayout.WEST);
 
-        final JPanel filesPanel = new JPanel(new GridLayout(2, 1));
+        // Restart policies (docker-like): crash restart + action when the memory limit is reached
+        restartOnCrashBox = new JCheckBox("Restart application on crash (max 3 attempts)");
+        restartOnCrashBox.setToolTipText(
+                "Like docker restart: on-failure - an application that exits with a crash code is "
+                        + "relaunched automatically, at most 3 times per run. Stops via the stop buttons "
+                        + "(SIGTERM/SIGINT/SIGKILL) never trigger a restart");
+        memThresholdSpinner = new JSpinner(new SpinnerNumberModel(90, 10, 100, 5));
+        memLimitActionCombo = new JComboBox<>(new String[]{"Notify", "Restart application"});
+        memLimitActionCombo.setToolTipText(
+                "What to do when an application with a Memory limit crosses the threshold: "
+                        + "show a warning notification or restart it (docker-like OOM handling)");
+        final JPanel policyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        policyPanel.add(restartOnCrashBox);
+        policyPanel.add(new JLabel("   At"));
+        policyPanel.add(memThresholdSpinner);
+        policyPanel.add(new JLabel("% of the memory limit:"));
+        policyPanel.add(memLimitActionCombo);
+
+        final JPanel filesPanel = new JPanel(new GridLayout(3, 1));
         filesPanel.add(envFileComponent);
         filesPanel.add(saveOutputComponent);
+        filesPanel.add(policyPanel);
         envVarsPanel.add(filesPanel, BorderLayout.SOUTH);
 
         JPanel panel = new JPanel();

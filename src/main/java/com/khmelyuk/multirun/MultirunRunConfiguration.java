@@ -38,6 +38,9 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public static final String ELEMENT_ENV_PROFILE = "envProfile";
     public static final String PROP_DISABLED = "disabled";
     public static final String PROP_READY_WHEN = "readyWhen";
+    public static final String PROP_RESTART_ON_CRASH = "restartOnCrash";
+    public static final String PROP_MEM_ALERT_THRESHOLD = "memAlertThreshold";
+    public static final String PROP_MEM_LIMIT_RESTART = "memLimitRestart";
 
     private double delayTime = 0;
     private boolean reuseTabs = true;
@@ -46,6 +49,12 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     private boolean markFailedProcess = true;
     private boolean hideSuccessProcess = false;
     private boolean restartRunning = true;
+    /** docker "restart: on-failure": relaunch an app that exits with a crash code (max 3 tries). */
+    private boolean restartOnCrash = false;
+    /** Percent of the memory limit that triggers the alert/action (docker-like OOM watermark). */
+    private int memAlertThreshold = 90;
+    /** true = restart the app when it crosses the threshold; false = just notify. */
+    private boolean memLimitRestart = false;
     private String envFilePath = "";
     /** Known .env files (environment profiles); envFilePath holds the active one. */
     private List<String> envProfiles = new ArrayList<>();
@@ -179,6 +188,30 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         this.restartRunning = restartRunning;
     }
 
+    public boolean isRestartOnCrash() {
+        return restartOnCrash;
+    }
+
+    public void setRestartOnCrash(boolean restartOnCrash) {
+        this.restartOnCrash = restartOnCrash;
+    }
+
+    public int getMemAlertThreshold() {
+        return memAlertThreshold;
+    }
+
+    public void setMemAlertThreshold(int memAlertThreshold) {
+        this.memAlertThreshold = Math.max(1, Math.min(100, memAlertThreshold));
+    }
+
+    public boolean isMemLimitRestart() {
+        return memLimitRestart;
+    }
+
+    public void setMemLimitRestart(boolean memLimitRestart) {
+        this.memLimitRestart = memLimitRestart;
+    }
+
     public String getEnvFilePath() {
         return envFilePath;
     }
@@ -307,6 +340,19 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         if (element.getAttributeValue(PROP_RESTART_RUNNING) != null) {
             restartRunning = Boolean.parseBoolean(element.getAttributeValue(PROP_RESTART_RUNNING));
         }
+        if (element.getAttributeValue(PROP_RESTART_ON_CRASH) != null) {
+            restartOnCrash = Boolean.parseBoolean(element.getAttributeValue(PROP_RESTART_ON_CRASH));
+        }
+        if (element.getAttributeValue(PROP_MEM_ALERT_THRESHOLD) != null) {
+            try {
+                setMemAlertThreshold(Integer.parseInt(element.getAttributeValue(PROP_MEM_ALERT_THRESHOLD)));
+            } catch (NumberFormatException ignored) {
+                // keep the default
+            }
+        }
+        if (element.getAttributeValue(PROP_MEM_LIMIT_RESTART) != null) {
+            memLimitRestart = Boolean.parseBoolean(element.getAttributeValue(PROP_MEM_LIMIT_RESTART));
+        }
         if (element.getAttributeValue(PROP_ENV_FILE) != null) {
             setEnvFilePath(element.getAttributeValue(PROP_ENV_FILE));
         }
@@ -370,6 +416,9 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         element.setAttribute(PROP_MARK_FAILED_PROCESS, String.valueOf(markFailedProcess));
         element.setAttribute(PROP_HIDE_SUCCESS_PROCESS, String.valueOf(hideSuccessProcess));
         element.setAttribute(PROP_RESTART_RUNNING, String.valueOf(restartRunning));
+        element.setAttribute(PROP_RESTART_ON_CRASH, String.valueOf(restartOnCrash));
+        element.setAttribute(PROP_MEM_ALERT_THRESHOLD, String.valueOf(memAlertThreshold));
+        element.setAttribute(PROP_MEM_LIMIT_RESTART, String.valueOf(memLimitRestart));
         element.setAttribute(PROP_DELAY_TIME, String.valueOf(delayTime));
         if (!envFilePath.isEmpty()) {
             element.setAttribute(PROP_ENV_FILE, envFilePath);
@@ -444,7 +493,8 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
                                        reuseTabs, reuseTabsWithFailure,
                                        markFailedProcess, hideSuccessProcess, envData, envFilePath,
                                        saveOutputDir, getMemoryLimits(), getReadyConditions(),
-                                       restartRunning, getProject(), getName());
+                                       restartRunning, restartOnCrash, memAlertThreshold, memLimitRestart,
+                                       getProject(), getName());
     }
 
     @Override

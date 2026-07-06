@@ -137,6 +137,16 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   (the same one behind the Logs tab of individual run configurations). Relative paths are
   resolved against the project root.
 
+### Restart policies (docker style)
+- **Restart application on crash** — like docker's `restart: on-failure`: an application that
+  exits with a crash code is relaunched automatically, at most 3 times per run. Intentional stops
+  (stop button, *Stop Multiple Run*, Force Kill — SIGINT/SIGTERM/SIGKILL) never trigger a restart.
+  A notification tells you when it happens. Off by default.
+- **Memory limit action** — the alert threshold is configurable (default **90%** of the
+  per-application memory limit) and you choose what happens when it is crossed: **Notify** (warning
+  balloon) or **Restart application** (docker-like OOM handling — the app is restarted before it
+  degrades into GC thrashing). One action per process; a restart re-arms it.
+
 ### Restarting and stopping
 - **Restart on rerun** (enabled by default) — running a Multirun that is already running first stops
   the processes it started before, waits for them to terminate, and then starts everything again —

@@ -171,6 +171,15 @@ public class RunConfigurationHelper {
         }
     }
 
+    /**
+     * true when an exit code looks like a crash rather than an intentional stop: 0 is success,
+     * 130/137/143 are SIGINT/SIGKILL/SIGTERM - what the IDE stop button, Stop Multiple Run and
+     * the monitor kill actions produce. Anything else is treated as a crash.
+     */
+    public static boolean isCrashExit(int exitCode) {
+        return exitCode != 0 && exitCode != 130 && exitCode != 137 && exitCode != 143;
+    }
+
     /** Short display name of the active env profile (its file name), or "-" when none is set. */
     public static String envFileDisplayName(String envFilePath) {
         if (envFilePath == null || envFilePath.trim().isEmpty()) {

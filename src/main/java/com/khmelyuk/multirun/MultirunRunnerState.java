@@ -48,6 +48,8 @@ public class MultirunRunnerState implements RunProfileState {
     private static final long RESTART_TERMINATION_TIMEOUT_MS = 10_000;
     /** Cap for a "Ready when" wait; when reached the next configuration starts anyway. */
     private static final long READY_TIMEOUT_MS = 120_000;
+    /** Max automatic relaunches of a crashed app per run session (docker restart: on-failure). */
+    private static final int MAX_CRASH_RESTARTS = 3;
 
     private final double delayTime;
     private final boolean reuseTabs;
@@ -61,6 +63,9 @@ public class MultirunRunnerState implements RunProfileState {
     private final String saveOutputDir;
     private final Map<String, Integer> memoryLimits;
     private final Map<String, String> readyConditions;
+    private final boolean restartOnCrash;
+    private final int memAlertThreshold;
+    private final boolean memLimitRestart;
     private final Project project;
     private final String configurationName;
     private final List<RunConfiguration> runConfigurations;
@@ -76,7 +81,9 @@ public class MultirunRunnerState implements RunProfileState {
                                EnvironmentVariablesData envData, String envFilePath,
                                String saveOutputDir, Map<String, Integer> memoryLimits,
                                Map<String, String> readyConditions,
-                               boolean restartRunning, Project project, String configurationName) {
+                               boolean restartRunning, boolean restartOnCrash,
+                               int memAlertThreshold, boolean memLimitRestart,
+                               Project project, String configurationName) {
 
         this.delayTime = delayTime;
         this.reuseTabs = reuseTabs;
@@ -93,6 +100,9 @@ public class MultirunRunnerState implements RunProfileState {
                 ? "" : RunConfigurationHelper.resolveEnvFile(saveOutputDir, project).getPath();
         this.memoryLimits = memoryLimits == null ? Collections.emptyMap() : memoryLimits;
         this.readyConditions = readyConditions == null ? Collections.emptyMap() : readyConditions;
+        this.restartOnCrash = restartOnCrash;
+        this.memAlertThreshold = memAlertThreshold;
+        this.memLimitRestart = memLimitRestart;
         this.restartRunning = restartRunning;
         this.project = project;
         this.configurationName = configurationName;
@@ -192,6 +202,9 @@ public class MultirunRunnerState implements RunProfileState {
                     new ProgramRunner.Callback() {
                         private final AtomicBoolean processTerminated = new AtomicBoolean(false);
                         private final AtomicBoolean firstStart = new AtomicBoolean(true);
+                        /** crash restarts of this app in this run session (docker restart: on-failure). */
+                        private final java.util.concurrent.atomic.AtomicInteger crashRestarts =
+                                new java.util.concurrent.atomic.AtomicInteger();
 
                         @SuppressWarnings("ConstantConditions")
                         @Override
@@ -266,6 +279,26 @@ public class MultirunRunnerState implements RunProfileState {
                                         onTermination(processEvent);
                                         processTerminated.set(true);
                                         stopRunningMultirunConfiguration.removeProcess(project, processEvent.getProcessHandler());
+
+                                        // docker "restart: on-failure": relaunch crashed apps, at most
+                                        // MAX_CRASH_RESTARTS times; intentional stops (0/130/137/143) never restart
+                                        if (restartOnCrash
+                                                && RunConfigurationHelper.isCrashExit(processEvent.getExitCode())
+                                                && !stopRunningMultirunConfiguration.isStopMultirunTriggered()
+                                                && crashRestarts.incrementAndGet() <= MAX_CRASH_RESTARTS) {
+                                            final int attempt = crashRestarts.get();
+                                            com.intellij.notification.NotificationGroupManager.getInstance()
+                                                    .getNotificationGroup("Multiple Run")
+                                                    .createNotification(
+                                                            "Application restarted after crash",
+                                                            "'" + runConfiguration.getName() + "' exited with code "
+                                                                    + processEvent.getExitCode() + " - restarting (attempt "
+                                                                    + attempt + "/" + MAX_CRASH_RESTARTS + ").",
+                                                            com.intellij.notification.NotificationType.WARNING)
+                                                    .notify(project);
+                                            ApplicationManager.getApplication().invokeLater(
+                                                    () -> ExecutionUtil.restart(executionEnvironment));
+                                        }
                                     }
 
                                     private void onTermination(final ProcessEvent processEvent) {
@@ -316,7 +349,8 @@ public class MultirunRunnerState implements RunProfileState {
                                                                  runConfiguration.getName(), processHandler,
                                                                  memoryLimitMb, executionEnvironment,
                                                                  RunConfigurationHelper.envFileDisplayName(envFilePath),
-                                                                 readyConditions.get(runConfiguration.getName()));
+                                                                 readyConditions.get(runConfiguration.getName()),
+                                                                 memAlertThreshold, memLimitRestart);
                             }
                             if (!initialStart) {
                                 // individual restart from the monitor: only re-track the new

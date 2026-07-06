@@ -163,6 +163,26 @@ public class ProcessStatsSamplerTest {
         assertFalse("no limit, no alert", MemoryLimitWatcher.isNearLimit(92_160, 0));
     }
 
+    @Test
+    public void alertThresholdIsConfigurable() {
+        // 80% of a 100 MB limit = 81920 KB
+        assertTrue(MemoryLimitWatcher.isNearLimit(81_920, 100, 80));
+        assertFalse(MemoryLimitWatcher.isNearLimit(81_920, 100, 90));
+        assertFalse("threshold 0 disables the alert", MemoryLimitWatcher.isNearLimit(81_920, 100, 0));
+    }
+
+    // --- isCrashExit (restart on crash policy) ------------------------------------------------
+
+    @Test
+    public void crashExitCodesTriggerRestartButIntentionalStopsDoNot() {
+        assertTrue(RunConfigurationHelper.isCrashExit(1));
+        assertTrue(RunConfigurationHelper.isCrashExit(134));   // SIGABRT (e.g. node OOM abort)
+        assertFalse("success is not a crash", RunConfigurationHelper.isCrashExit(0));
+        assertFalse("SIGINT (ctrl-c) is intentional", RunConfigurationHelper.isCrashExit(130));
+        assertFalse("SIGKILL (force kill) is intentional", RunConfigurationHelper.isCrashExit(137));
+        assertFalse("SIGTERM (stop button) is intentional", RunConfigurationHelper.isCrashExit(143));
+    }
+
     // --- formatMemory (docker stats style) --------------------------------------------------
 
     @Test

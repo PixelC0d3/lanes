@@ -41,6 +41,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.25</strong>:</p>
+        <ul>
+            <li>New: restart policies, docker style. "Restart application on crash" relaunches an app
+                that exits with a crash code (max 3 attempts per run); stops via the stop buttons never
+                trigger it. The memory limit alert threshold is now configurable (default 90%) and the
+                action can be "Notify" or "Restart application" - docker-like OOM handling.</li>
+        </ul>
         <p><strong>1.24</strong>:</p>
         <ul>
             <li>New: enable/disable checkbox per application - unchecked apps stay in the list but are
