@@ -118,8 +118,9 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   the application (or against the total machine memory when no limit is set), so you can check at
   a glance whether an app is close to its cap.
 - **Ports** lists the TCP ports each application is listening on (like the PORTS column of
-  `docker ps`), so you always know who owns a port. **Uptime** shows how long the app has been
-  running.
+  `docker ps`), so you always know who owns a port. Ports are **clickable** — click one to open
+  `http://localhost:<port>` in the browser (a menu lets you pick when there are several). **Uptime**
+  shows how long the app has been running.
 - **CPU %** is instantaneous, computed from the CPU-time delta between two consecutive samples —
   the same method docker stats uses (it can exceed 100% on multi-core machines). The first refresh
   shows `n/a` while the baseline is collected.

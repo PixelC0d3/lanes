@@ -41,6 +41,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.31.0</strong>:</p>
+        <ul>
+            <li>Monitor: the Ports column is now clickable - click a port to open
+                <code>http://localhost:&lt;port&gt;</code> in the browser (a menu lets you pick when a
+                process listens on several ports). Ports render as links.</li>
+        </ul>
         <p><strong>1.30.0</strong>:</p>
         <ul>
             <li>New: import from <code>docker-compose.yml</code>. The editor's list toolbar gains an
