@@ -41,6 +41,22 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.34.0</strong>:</p>
+        <ul>
+            <li>New: crash and health alerts with a one-click Restart. When an app crashes and
+                "Restart on crash" is off (or its attempts are used up), a notification now offers a
+                <b>Restart</b> button instead of failing silently. And an app whose <code>port:</code>/
+                <code>http</code> "Ready when" condition stays down for three consecutive background
+                checks is reported unhealthy, also with a Restart button; the alert re-arms when the
+                app recovers.</li>
+        </ul>
+        <p><strong>1.33.0</strong>:</p>
+        <ul>
+            <li>New: status bar widget. A compact indicator shows how many applications Multiple Run
+                is running, their combined memory and how many are unhealthy (a port/http "Ready when"
+                that is currently down). Click it to open the Multiple Run Monitor. Toggle it from the
+                status bar widgets menu.</li>
+        </ul>
         <p><strong>1.32.0</strong>:</p>
         <ul>
             <li>New: per-application environment file. The applications table has an "Env file (app)"
@@ -425,6 +441,10 @@
         <toolWindow id="Multiple Run Monitor" anchor="bottom" canCloseContents="false"
                     icon="AllIcons.Toolwindows.ToolWindowRun"
                     factoryClass="io.github.welingtonmonteiro.multiplerun.ui.MultirunMonitorToolWindowFactory"/>
+        <!-- status bar widget: running apps, total memory and unhealthy count (click opens the monitor) -->
+        <statusBarWidgetFactory id="MultipleRun.Monitor.Widget"
+                                implementation="io.github.welingtonmonteiro.multiplerun.ui.MultirunStatusBarWidgetFactory"
+                                order="last"/>
         <!-- balloon warnings raised by the memory limit watcher -->
         <notificationGroup id="Multiple Run" displayType="BALLOON"/>
     </extensions>
