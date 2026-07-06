@@ -82,14 +82,19 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 
 ### Process monitor (docker-stats style)
 - The **Multiple Run Monitor** tool window (bottom stripe of the IDE, or `Run → Multiple Run
-  Monitor`) shows a live table with every application started by Multiple Run:
+  Monitor`) shows a live table with **every process the IDE is running** — apps started by
+  Multiple Run *and* standalone (singleton) runs:
 
-  | Name | Multiple Run | Env | PID | Ports | Uptime | Status | Mem Usage / Limit | Mem % | CPU % |
-  |------|--------------|-----|-----|-------|--------|--------|-------------------|-------|-------|
+  | Name | Multiple Run | Env | PID | Ports | Uptime | Status | Mem Usage / Limit | Mem % | Mem trend | CPU % |
+  |------|--------------|-----|-----|-------|--------|--------|-------------------|-------|-----------|-------|
 
+- The **Name** column shows the origin of each app: the Multiple Run icon for apps launched by a
+  group, or the run configuration's own icon (node, npm, jest, …) for standalone runs. An app
+  restarted individually from the monitor stays in the list and keeps showing its group, env
+  profile and memory limit.
 - **Env** shows the active environment profile; **Status** shows healthy/down for applications
   with a port/http *Ready when* condition. **Double click** a row to jump to the console tab of
-  that application.
+  that application. **Columns are resizable** — drag the header edges.
 
 - Works like `docker stats`: memory usage is shown against the configured *Memory limit (MB)* of
   the application (or against the total machine memory when no limit is set), so you can check at

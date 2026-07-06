@@ -92,6 +92,17 @@ public final class ProcessStatsSampler {
         return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
     }
 
+    /** OS start time of a process in epoch millis, or -1 when unknown; feeds the Uptime column. */
+    public static long processStartMillis(long pid) {
+        if (pid <= 0) {
+            return -1;
+        }
+        return ProcessHandle.of(pid)
+                            .flatMap(handle -> handle.info().startInstant())
+                            .map(java.time.Instant::toEpochMilli)
+                            .orElse(-1L);
+    }
+
     /** Linux scheduler tick rate, needed to convert /proc cpu ticks into seconds. */
     private static final double CLOCK_TICKS_PER_SECOND = detectClockTicksPerSecond();
 

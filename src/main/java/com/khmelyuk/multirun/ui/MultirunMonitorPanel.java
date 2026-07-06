@@ -16,7 +16,10 @@ import javax.swing.Timer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.runners.ExecutionUtil;
+import com.intellij.execution.ui.RunContentDescriptor;
+import com.intellij.execution.ui.RunContentManager;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.ActionManager;
@@ -41,19 +44,43 @@ import com.khmelyuk.multirun.RunConfigurationHelper;
 import com.khmelyuk.multirun.StopRunningMultirunConfigurationsAction;
 
 /**
- * The "Multiple Run Monitor" tool window content: a docker-stats-like table with the
- * applications started by Multiple Run and their live memory/CPU usage, listening ports
- * and uptime, refreshed automatically every couple of seconds. Rows can be restarted
- * individually, stopped gracefully or force-killed (whole process tree), and any process
- * squatting a TCP port can be killed through the "Kill Process on Port" action.
+ * The "Multiple Run Monitor" tool window content: a docker-stats-like table with EVERY process
+ * the IDE is running - the applications started by Multiple Run and standalone (singleton) runs
+ * alike. The first column shows where the app came from: the Multiple Run icon for grouped apps,
+ * the run configuration's own icon (node, npm, jest, ...) for standalone ones. Live memory/CPU,
+ * listening ports, uptime and health are refreshed every couple of seconds; rows can be
+ * restarted, stopped or force-killed, and any process squatting a TCP port can be killed
+ * through the "Kill Process on Port" action. Columns are resizable by dragging their headers.
  */
 public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Disposable {
 
     private static final int REFRESH_INTERVAL_MS = 2000;
 
+    /** A process the IDE is running, captured on the EDT (descriptor access) for the refresh. */
+    private static final class ProcessSnapshot {
+        final String name;
+        final javax.swing.Icon icon;
+        final ProcessHandler handler;
+        final RunContentDescriptor descriptor;
+
+        ProcessSnapshot(String name, javax.swing.Icon icon, ProcessHandler handler, RunContentDescriptor descriptor) {
+            this.name = name;
+            this.icon = icon;
+            this.handler = handler;
+            this.descriptor = descriptor;
+        }
+    }
+
     /** Immutable display row; built off the EDT with all texts precomputed. */
     static final class Row {
-        final MultirunProcessRegistry.Entry entry;
+        final String name;
+        final javax.swing.Icon icon;
+        final String multirunName;
+        final String envFileName;
+        final ProcessHandler handler;
+        final RunContentDescriptor descriptor;
+        /** Multirun metadata (limit/condition/...) or null for plain standalone runs. */
+        final MultirunProcessRegistry.Entry meta;
         final String pid;
         final String ports;
         final String uptime;
@@ -61,12 +88,19 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         final String memUsage;
         final String memPercent;
         final String cpuPercent;
-        /** Recent memory percentages, oldest first - drawn as a sparkline. */
         final double[] memTrend;
 
-        Row(MultirunProcessRegistry.Entry entry, String pid, String ports, String uptime,
-            String status, String memUsage, String memPercent, String cpuPercent, double[] memTrend) {
-            this.entry = entry;
+        Row(String name, javax.swing.Icon icon, String multirunName, String envFileName,
+            ProcessHandler handler, RunContentDescriptor descriptor, MultirunProcessRegistry.Entry meta,
+            String pid, String ports, String uptime, String status,
+            String memUsage, String memPercent, String cpuPercent, double[] memTrend) {
+            this.name = name;
+            this.icon = icon;
+            this.multirunName = multirunName;
+            this.envFileName = envFileName;
+            this.handler = handler;
+            this.descriptor = descriptor;
+            this.meta = meta;
             this.pid = pid;
             this.ports = ports;
             this.uptime = uptime;
@@ -83,6 +117,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     private final TableView<Row> table;
     private final Timer timer;
     private final AtomicBoolean sampling = new AtomicBoolean();
+    private final javax.swing.Icon multirunIcon;
 
     /** CPU time per pid at the previous sample - the baseline for the docker-style CPU %. */
     private Map<Long, Double> prevCpuSecondsByPid = java.util.Collections.emptyMap();
@@ -90,24 +125,53 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
 
     /** Recent memory-percent samples per process, feeding the "Mem trend" sparkline column. */
     private static final int TREND_SAMPLES = 30;
-    private final Map<com.intellij.execution.process.ProcessHandler, java.util.ArrayDeque<Double>> memHistory =
-            new HashMap<>();
+    private final Map<ProcessHandler, java.util.ArrayDeque<Double>> memHistory = new HashMap<>();
     private final SparklineCellRenderer sparklineRenderer = new SparklineCellRenderer();
 
     public MultirunMonitorPanel(@NotNull Project project) {
         super(false, true);
         this.project = project;
 
+        javax.swing.Icon pluginIcon;
+        try {
+            pluginIcon = com.intellij.execution.configurations.ConfigurationTypeUtil
+                    .findConfigurationType(com.khmelyuk.multirun.MultirunConfigurationType.class).getIcon();
+        } catch (Throwable t) {
+            pluginIcon = AllIcons.RunConfigurations.Compound;
+        }
+        multirunIcon = pluginIcon;
+
         model = new ListTableModel<>(
-                column("Name", 220, row -> row.entry.appName),
-                column("Multiple Run", 140, row -> row.entry.multirunName),
-                column("Env", 100, row -> row.entry.envFileName),
-                column("PID", 70, row -> row.pid),
-                column("Ports", 110, row -> row.ports),
-                column("Uptime", 80, row -> row.uptime),
-                column("Status", 80, row -> row.status),
-                column("Mem Usage / Limit", 160, row -> row.memUsage),
-                column("Mem %", 70, row -> row.memPercent),
+                new ColumnInfo<Row, String>("Name") {
+                    @Nullable
+                    @Override
+                    public String valueOf(Row row) {
+                        return row.name;
+                    }
+
+                    @Override
+                    public javax.swing.table.TableCellRenderer getRenderer(Row row) {
+                        return new javax.swing.table.DefaultTableCellRenderer() {
+                            @Override
+                            public java.awt.Component getTableCellRendererComponent(
+                                    javax.swing.JTable table, Object value, boolean isSelected,
+                                    boolean hasFocus, int rowIndex, int column) {
+                                super.getTableCellRendererComponent(table, value, isSelected, hasFocus, rowIndex, column);
+                                // multirun icon for grouped apps, the app's own icon for standalone runs
+                                setIcon(row.icon);
+                                return this;
+                            }
+                        };
+                    }
+                },
+                column("Multiple Run", row -> row.multirunName),
+                column("Env", row -> row.envFileName),
+                column("PID", row -> row.pid),
+                column("Ports", row -> row.ports),
+                column("Uptime", row -> row.uptime),
+                column("Status", row -> row.status),
+                column("Mem Usage / Limit", row -> row.memUsage),
+                column("Mem %", row -> row.memPercent),
                 new ColumnInfo<Row, double[]>("Mem trend") {
                     @Nullable
                     @Override
@@ -119,15 +183,15 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                     public javax.swing.table.TableCellRenderer getRenderer(Row row) {
                         return sparklineRenderer;
                     }
-
-                    @Override
-                    public int getWidth(javax.swing.JTable table) {
-                        return 120;
-                    }
                 },
-                column("CPU %", 70, row -> row.cpuPercent));
+                column("CPU %", row -> row.cpuPercent));
         table = new TableView<>(model);
-        table.getEmptyText().setText("No applications started by Multiple Run are running");
+        table.getEmptyText().setText("No run configurations are running");
+        // initial widths only - all columns stay resizable by dragging the header edges
+        final int[] preferredWidths = {220, 110, 90, 70, 100, 80, 80, 160, 70, 120, 70};
+        for (int i = 0; i < preferredWidths.length && i < table.getColumnModel().getColumnCount(); i++) {
+            table.getColumnModel().getColumn(i).setPreferredWidth(preferredWidths[i]);
+        }
 
         final DefaultActionGroup rowActions = new DefaultActionGroup();
         rowActions.add(new RestartSelectedAction());
@@ -173,17 +237,12 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         refresh();
     }
 
-    private static ColumnInfo<Row, String> column(String name, int width, java.util.function.Function<Row, String> getter) {
+    private static ColumnInfo<Row, String> column(String name, java.util.function.Function<Row, String> getter) {
         return new ColumnInfo<Row, String>(name) {
             @Nullable
             @Override
             public String valueOf(Row row) {
                 return getter.apply(row);
-            }
-
-            @Override
-            public int getWidth(javax.swing.JTable table) {
-                return "Name".equals(name) ? -1 : width;
             }
         };
     }
@@ -196,31 +255,24 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     /** Brings the console tab of the selected application to front (Run or Debug tool window). */
     private void focusRunTabOfSelectedRow() {
         final Row row = selectedRow();
-        if (row == null) {
+        if (row == null || row.descriptor == null) {
             return;
         }
-        final com.intellij.execution.ui.RunContentManager contentManager =
-                com.intellij.execution.ui.RunContentManager.getInstance(project);
-        for (com.intellij.execution.ui.RunContentDescriptor descriptor : contentManager.getAllDescriptors()) {
-            if (descriptor.getProcessHandler() == row.entry.handler) {
-                final com.intellij.ui.content.Content content = descriptor.getAttachedContent();
-                if (content != null && content.getManager() != null) {
-                    content.getManager().setSelectedContent(content);
-                }
-                final com.intellij.openapi.wm.ToolWindow toolWindow =
-                        contentManager.getToolWindowByDescriptor(descriptor);
-                if (toolWindow != null) {
-                    toolWindow.activate(null);
-                }
-                return;
-            }
+        final com.intellij.ui.content.Content content = row.descriptor.getAttachedContent();
+        if (content != null && content.getManager() != null) {
+            content.getManager().setSelectedContent(content);
+        }
+        final com.intellij.openapi.wm.ToolWindow toolWindow =
+                RunContentManager.getInstance(project).getToolWindowByDescriptor(row.descriptor);
+        if (toolWindow != null) {
+            toolWindow.activate(null);
         }
     }
 
-    /** Restarts only the selected application; the rest of the group keeps running. */
+    /** Restarts only the selected application; everything else keeps running. */
     private final class RestartSelectedAction extends DumbAwareAction {
         RestartSelectedAction() {
-            super("Restart", "Stop the selected application and start it again (the rest of the group keeps running)",
+            super("Restart", "Stop the selected application and start it again (everything else keeps running)",
                   AllIcons.Actions.Restart);
         }
 
@@ -232,16 +284,16 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         @Override
         public void update(@NotNull AnActionEvent e) {
             final Row row = selectedRow();
-            e.getPresentation().setEnabled(row != null && row.entry.environment != null);
+            e.getPresentation().setEnabled(row != null && row.descriptor != null);
         }
 
         @Override
         public void actionPerformed(@NotNull AnActionEvent e) {
             final Row row = selectedRow();
-            if (row != null && row.entry.environment != null) {
-                // the IDE stops the old process and runs the same environment again; the run
-                // callback then re-registers the new process in the monitor automatically
-                ExecutionUtil.restart(row.entry.environment);
+            if (row != null && row.descriptor != null) {
+                // the platform stops the old process and reruns the same environment; the new
+                // process shows up again on the next refresh (all IDE processes are listed)
+                ExecutionUtil.restart(row.descriptor);
             }
         }
     }
@@ -266,7 +318,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         public void actionPerformed(@NotNull AnActionEvent e) {
             final Row row = selectedRow();
             if (row != null) {
-                row.entry.handler.destroyProcess();
+                row.handler.destroyProcess();
             }
         }
     }
@@ -296,7 +348,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             }
             final int answer = Messages.showYesNoDialog(
                     project,
-                    "Forcibly kill '" + row.entry.appName + "' (PID " + row.pid + ") and all its child processes?\n" +
+                    "Forcibly kill '" + row.name + "' (PID " + row.pid + ") and all its child processes?\n" +
                     "The application gets no chance to shut down cleanly.",
                     "Force Kill", "Kill", "Cancel", Messages.getWarningIcon());
             if (answer != Messages.YES) {
@@ -305,18 +357,18 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             ApplicationManager.getApplication().executeOnPooledThread(() -> {
                 // resolve the tree fresh - children may have been spawned after the last refresh
                 final Set<Long> treePids =
-                        ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(row.entry.handler));
+                        ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(row.handler));
                 for (Long pid : treePids) {
                     ProcessHandle.of(pid).ifPresent(ProcessHandle::destroyForcibly);
                 }
                 // tell the IDE the process is gone, so the run tab stops its spinner too
-                row.entry.handler.destroyProcess();
+                row.handler.destroyProcess();
                 ApplicationManager.getApplication().invokeLater(MultirunMonitorPanel.this::refresh);
             });
         }
     }
 
-    /** Kills whatever is listening on a TCP port - Multiple Run's or not (the EADDRINUSE classic). */
+    /** Kills whatever is listening on a TCP port - started by the IDE or not (the EADDRINUSE classic). */
     private final class KillByPortAction extends DumbAwareAction {
         KillByPortAction() {
             super("Kill Process on Port...", "Find the process listening on a TCP port and kill it",
@@ -375,10 +427,19 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         if (!sampling.compareAndSet(false, true)) {
             return;
         }
+        // descriptors must be collected on the EDT; heavy sampling then runs pooled
+        final List<ProcessSnapshot> snapshots = new ArrayList<>();
+        for (RunContentDescriptor descriptor : RunContentManager.getInstance(project).getAllDescriptors()) {
+            final ProcessHandler handler = descriptor.getProcessHandler();
+            if (handler != null && !handler.isProcessTerminated()) {
+                snapshots.add(new ProcessSnapshot(descriptor.getDisplayName(), descriptor.getIcon(),
+                                                  handler, descriptor));
+            }
+        }
         final List<MultirunProcessRegistry.Entry> entries = MultirunProcessRegistry.getEntries(project);
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
-                final List<Row> rows = buildRows(entries);
+                final List<Row> rows = buildRows(snapshots, entries);
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!project.isDisposed()) {
                         setItemsKeepingSelection(rows);
@@ -401,7 +462,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             return;
         }
         for (int i = 0; i < rows.size(); i++) {
-            if (rows.get(i).entry.handler == selected.entry.handler) {
+            if (rows.get(i).handler == selected.handler) {
                 final int viewIndex = table.convertRowIndexToView(i);
                 table.getSelectionModel().setSelectionInterval(viewIndex, viewIndex);
                 return;
@@ -414,15 +475,20 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
      * lsof call). Also keeps the previous CPU-time sample, so CPU % is the instantaneous
      * docker-stats-style delta between two refreshes - not the lifetime average.
      */
-    private List<Row> buildRows(List<MultirunProcessRegistry.Entry> entries) {
+    private List<Row> buildRows(List<ProcessSnapshot> snapshots, List<MultirunProcessRegistry.Entry> entries) {
         final long hostTotalKb = ProcessStatsSampler.hostTotalMemoryKb();
 
-        // resolve the process tree of every entry first, then sample everything in single ps/lsof calls
-        final Map<MultirunProcessRegistry.Entry, Set<Long>> treeByEntry = new LinkedHashMap<>();
-        final Set<Long> allPids = new LinkedHashSet<>();
+        final Map<ProcessHandler, MultirunProcessRegistry.Entry> liveByHandler = new HashMap<>();
         for (MultirunProcessRegistry.Entry entry : entries) {
-            final Set<Long> treePids = ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(entry.handler));
-            treeByEntry.put(entry, treePids);
+            liveByHandler.put(entry.handler, entry);
+        }
+
+        // resolve the process tree of every row first, then sample everything in single ps/lsof calls
+        final Map<ProcessSnapshot, Set<Long>> treeBySnapshot = new LinkedHashMap<>();
+        final Set<Long> allPids = new LinkedHashSet<>();
+        for (ProcessSnapshot snapshot : snapshots) {
+            final Set<Long> treePids = ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(snapshot.handler));
+            treeBySnapshot.put(snapshot, treePids);
             allPids.addAll(treePids);
         }
         final Map<Long, ProcessStatsSampler.Stats> statsByPid = ProcessStatsSampler.samplePids(allPids);
@@ -432,11 +498,24 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         final double elapsedSeconds = prevSampleNanos == 0 ? -1 : (nowNanos - prevSampleNanos) / 1_000_000_000.0;
         final Map<Long, Double> prevCpu = prevCpuSecondsByPid;
 
-        final List<Row> rows = new ArrayList<>(entries.size());
-        for (MultirunProcessRegistry.Entry entry : entries) {
-            final Set<Long> treePids = treeByEntry.get(entry);
+        final List<Row> rows = new ArrayList<>(snapshots.size());
+        for (ProcessSnapshot snapshot : snapshots) {
+            final Set<Long> treePids = treeBySnapshot.get(snapshot);
             final long rootPid = treePids.isEmpty() ? -1 : treePids.iterator().next();
             final ProcessStatsSampler.Stats stats = ProcessStatsSampler.aggregate(statsByPid, treePids);
+
+            // grouped app? live registry entry first; otherwise last-known multirun metadata by name,
+            // so an app restarted individually keeps showing its group, env profile and limit
+            final MultirunProcessRegistry.Entry live = liveByHandler.get(snapshot.handler);
+            final MultirunProcessRegistry.Entry meta = live != null
+                    ? live : MultirunProcessRegistry.findMetadataByName(project, snapshot.name);
+
+            final String name = live != null ? live.appName : snapshot.name;
+            final javax.swing.Icon icon = live != null ? multirunIcon
+                    : snapshot.icon != null ? snapshot.icon : AllIcons.RunConfigurations.Application;
+            final String multirunName = meta != null ? meta.multirunName : "-";
+            final String envFileName = meta != null ? meta.envFileName : "-";
+            final Integer memoryLimitMb = meta != null ? meta.memoryLimitMb : null;
 
             final Set<Integer> treePorts = new java.util.TreeSet<>();
             for (Long pid : treePids) {
@@ -447,11 +526,14 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             }
             final String portsText = treePorts.isEmpty()
                     ? "-" : treePorts.stream().map(String::valueOf).collect(Collectors.joining(", "));
-            final String uptimeText = ProcessStatsSampler.formatUptime(System.currentTimeMillis() - entry.startedAtMs);
-            final String statusText = healthStatus(entry);
 
-            final String limitText = entry.memoryLimitMb != null
-                    ? ProcessStatsSampler.formatMemory(entry.memoryLimitMb * 1024L)
+            final long startedAtMs = live != null ? live.startedAtMs : ProcessStatsSampler.processStartMillis(rootPid);
+            final String uptimeText = startedAtMs > 0
+                    ? ProcessStatsSampler.formatUptime(System.currentTimeMillis() - startedAtMs) : "n/a";
+            final String statusText = healthStatus(meta);
+
+            final String limitText = memoryLimitMb != null
+                    ? ProcessStatsSampler.formatMemory(memoryLimitMb * 1024L)
                     : ProcessStatsSampler.formatMemory(hostTotalKb);
             final String memUsage;
             final String memPercent;
@@ -459,7 +541,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             double percentValue = -1;
             if (stats != null) {
                 memUsage = ProcessStatsSampler.formatMemory(stats.rssKb) + " / " + limitText;
-                percentValue = ProcessStatsSampler.memoryPercent(stats.rssKb, entry.memoryLimitMb, hostTotalKb);
+                percentValue = ProcessStatsSampler.memoryPercent(stats.rssKb, memoryLimitMb, hostTotalKb);
                 memPercent = percentValue < 0 ? "n/a" : String.format(Locale.US, "%.2f%%", percentValue);
                 final double deltaCpuSeconds = ProcessStatsSampler.cpuDeltaSeconds(statsByPid, prevCpu, treePids);
                 cpuPercent = (deltaCpuSeconds >= 0 && elapsedSeconds > 0)
@@ -473,7 +555,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
 
             // sparkline history (memory percent over the last ~minute)
             final java.util.ArrayDeque<Double> history =
-                    memHistory.computeIfAbsent(entry.handler, h -> new java.util.ArrayDeque<>());
+                    memHistory.computeIfAbsent(snapshot.handler, h -> new java.util.ArrayDeque<>());
             if (percentValue >= 0) {
                 history.addLast(percentValue);
                 while (history.size() > TREND_SAMPLES) {
@@ -482,22 +564,23 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             }
             final double[] memTrend = history.stream().mapToDouble(Double::doubleValue).toArray();
 
-            rows.add(new Row(entry, rootPid > 0 ? String.valueOf(rootPid) : "n/a",
+            rows.add(new Row(name, icon, multirunName, envFileName, snapshot.handler, snapshot.descriptor, meta,
+                             rootPid > 0 ? String.valueOf(rootPid) : "n/a",
                              portsText, uptimeText, statusText, memUsage, memPercent, cpuPercent, memTrend));
         }
 
-        // drop the history of processes that are gone
-        final java.util.Set<com.intellij.execution.process.ProcessHandler> liveHandlers = new java.util.HashSet<>();
-        for (MultirunProcessRegistry.Entry entry : entries) {
-            liveHandlers.add(entry.handler);
-        }
-        memHistory.keySet().retainAll(liveHandlers);
-
-        // baseline for the next refresh
+        // baseline for the next CPU delta
         final Map<Long, Double> newPrev = new HashMap<>();
         statsByPid.forEach((pid, stats) -> newPrev.put(pid, stats.cpuTimeSeconds));
         prevCpuSecondsByPid = newPrev;
         prevSampleNanos = nowNanos;
+
+        // drop the history of processes that are gone
+        final Set<ProcessHandler> liveHandlers = new java.util.HashSet<>();
+        for (ProcessSnapshot snapshot : snapshots) {
+            liveHandlers.add(snapshot.handler);
+        }
+        memHistory.keySet().retainAll(liveHandlers);
 
         return rows;
     }
@@ -507,9 +590,12 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
      * port and http conditions are re-checked on every refresh; log conditions cannot be
      * re-evaluated after startup, so they show "-" like apps without a condition.
      */
-    private static String healthStatus(MultirunProcessRegistry.Entry entry) {
+    private static String healthStatus(@Nullable MultirunProcessRegistry.Entry meta) {
+        if (meta == null) {
+            return "-";
+        }
         final RunConfigurationHelper.ReadyCondition condition =
-                RunConfigurationHelper.parseReadyCondition(entry.readyCondition);
+                RunConfigurationHelper.parseReadyCondition(meta.readyCondition);
         switch (condition.type) {
             case PORT:
                 return RunConfigurationHelper.isPortOpen(condition.port) ? "healthy" : "down";
