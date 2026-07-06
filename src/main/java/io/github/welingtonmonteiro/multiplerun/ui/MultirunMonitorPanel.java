@@ -127,6 +127,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     private static final int TREND_SAMPLES = 30;
     private final Map<ProcessHandler, java.util.ArrayDeque<Double>> memHistory = new HashMap<>();
     private final SparklineCellRenderer sparklineRenderer = new SparklineCellRenderer();
+    private final PortsCellRenderer portsRenderer = new PortsCellRenderer();
 
     public MultirunMonitorPanel(@NotNull Project project) {
         super(false, true);
@@ -167,7 +168,18 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 column("Multiple Run", row -> row.multirunName),
                 column("Env", row -> row.envFileName),
                 column("PID", row -> row.pid),
-                column("Ports", row -> row.ports),
+                new ColumnInfo<Row, String>("Ports") {
+                    @Nullable
+                    @Override
+                    public String valueOf(Row row) {
+                        return row.ports;
+                    }
+
+                    @Override
+                    public javax.swing.table.TableCellRenderer getRenderer(Row row) {
+                        return portsRenderer;
+                    }
+                },
                 column("Uptime", row -> row.uptime),
                 column("Status", row -> row.status),
                 column("Mem Usage / Limit", row -> row.memUsage),
@@ -221,7 +233,13 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (e.getClickCount() == 2 && javax.swing.SwingUtilities.isLeftMouseButton(e)) {
+                if (!javax.swing.SwingUtilities.isLeftMouseButton(e)) {
+                    return;
+                }
+                // single click on the Ports column opens the port(s) in the browser
+                if (e.getClickCount() == 1 && isPortsColumn(e.getPoint())) {
+                    openPortsAt(e);
+                } else if (e.getClickCount() == 2) {
                     focusRunTabOfSelectedRow();
                 }
             }
@@ -266,6 +284,92 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 RunContentManager.getInstance(project).getToolWindowByDescriptor(row.descriptor);
         if (toolWindow != null) {
             toolWindow.activate(null);
+        }
+    }
+
+    /** True when the point falls inside the (possibly reordered) "Ports" column. */
+    private boolean isPortsColumn(java.awt.Point point) {
+        final int viewColumn = table.columnAtPoint(point);
+        if (viewColumn < 0) {
+            return false;
+        }
+        return "Ports".equals(model.getColumnName(table.convertColumnIndexToModel(viewColumn)));
+    }
+
+    /** Opens the port(s) of the clicked row in the browser (a menu when there is more than one). */
+    private void openPortsAt(java.awt.event.MouseEvent e) {
+        final int viewRow = table.rowAtPoint(e.getPoint());
+        if (viewRow < 0) {
+            return;
+        }
+        final Row row = model.getItem(table.convertRowIndexToModel(viewRow));
+        if (row == null) {
+            return;
+        }
+        final List<Integer> ports = parsePorts(row.ports);
+        if (ports.isEmpty()) {
+            return;
+        }
+        if (ports.size() == 1) {
+            com.intellij.ide.BrowserUtil.browse(urlForPort(ports.get(0)));
+            return;
+        }
+        final javax.swing.JPopupMenu menu = new javax.swing.JPopupMenu();
+        for (Integer port : ports) {
+            final javax.swing.JMenuItem item = new javax.swing.JMenuItem("Open " + urlForPort(port));
+            item.addActionListener(a -> com.intellij.ide.BrowserUtil.browse(urlForPort(port)));
+            menu.add(item);
+        }
+        menu.show(table, e.getX(), e.getY());
+    }
+
+    /** Parses the comma-separated Ports cell text ("3000, 8080") into a list of port numbers. */
+    static List<Integer> parsePorts(String portsText) {
+        final List<Integer> ports = new ArrayList<>();
+        if (portsText == null) {
+            return ports;
+        }
+        for (String part : portsText.split(",")) {
+            final String trimmed = part.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            try {
+                ports.add(Integer.parseInt(trimmed));
+            } catch (NumberFormatException ignored) {
+                // "-"/"n/a" and any non-numeric token are simply not links
+            }
+        }
+        return ports;
+    }
+
+    /** The URL opened when a port is clicked. */
+    static String urlForPort(int port) {
+        return "http://localhost:" + port;
+    }
+
+    /** Renders the Ports cell as a clickable hyperlink when the row has any listening port. */
+    private static final class PortsCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
+        @Override
+        public java.awt.Component getTableCellRendererComponent(javax.swing.JTable table, Object value,
+                                                                boolean isSelected, boolean hasFocus,
+                                                                int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            final String text = value == null ? "" : value.toString();
+            final boolean hasPorts = !parsePorts(text).isEmpty();
+            if (hasPorts) {
+                if (!isSelected) {
+                    setForeground(com.intellij.ui.JBColor.BLUE);
+                }
+                final java.util.Map<java.awt.font.TextAttribute, Object> attributes =
+                        new java.util.HashMap<>(getFont().getAttributes());
+                attributes.put(java.awt.font.TextAttribute.UNDERLINE, java.awt.font.TextAttribute.UNDERLINE_ON);
+                setFont(getFont().deriveFont(attributes));
+                setToolTipText("Click to open in the browser");
+            } else {
+                setToolTipText(null);
+            }
+            return this;
         }
     }
 
