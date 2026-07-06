@@ -79,6 +79,16 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   picking a preset applies its enabled apps and its profile to the list. Presets are stored in the
   run configuration, so they travel with it.
 
+### Import from docker-compose.yml
+- The list toolbar has an **Import from docker-compose.yml…** button that reads a compose file and
+  applies it to the run configurations **already in the list** whose name matches a service:
+  - `mem_limit` (and the Swarm-style `deploy.resources.limits.memory`) → the **Memory limit** column;
+  - `env_file` → an **environment profile** (added to the dropdown; set as active when unambiguous);
+  - `depends_on` → the list is **reordered** so dependencies start first, and a `port:<published>`
+    **Ready when** gate is added to services that publish a port (one-by-one mode is enabled).
+- It never creates run configurations: services with no matching configuration are listed in a
+  report and skipped. Add configurations with matching names and import again.
+
 ### Per-application memory limit
 - The configurations list is a table with an editable **Memory limit (MB)** column — click the
   cell next to an application and type the cap (empty = no limit). The process-level analog of
