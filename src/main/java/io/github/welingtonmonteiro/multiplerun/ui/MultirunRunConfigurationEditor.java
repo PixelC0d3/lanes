@@ -1,4 +1,4 @@
-package com.khmelyuk.multirun.ui;
+package io.github.welingtonmonteiro.multiplerun.ui;
 
 import com.intellij.execution.RunManager;
 import com.intellij.execution.configuration.EnvironmentVariablesComponent;
@@ -16,8 +16,8 @@ import com.intellij.ui.components.JBList;
 import com.intellij.ui.table.TableView;
 import com.intellij.util.ui.ColumnInfo;
 import com.intellij.util.ui.ListTableModel;
-import com.khmelyuk.multirun.MultirunRunConfiguration;
-import com.khmelyuk.multirun.RunConfigurationHelper;
+import io.github.welingtonmonteiro.multiplerun.MultirunRunConfiguration;
+import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

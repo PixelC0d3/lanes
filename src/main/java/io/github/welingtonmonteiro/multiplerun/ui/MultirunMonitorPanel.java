@@ -1,4 +1,4 @@
-package com.khmelyuk.multirun.ui;
+package io.github.welingtonmonteiro.multiplerun.ui;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,10 +38,10 @@ import com.intellij.ui.ScrollPaneFactory;
 import com.intellij.ui.table.TableView;
 import com.intellij.util.ui.ColumnInfo;
 import com.intellij.util.ui.ListTableModel;
-import com.khmelyuk.multirun.MultirunProcessRegistry;
-import com.khmelyuk.multirun.ProcessStatsSampler;
-import com.khmelyuk.multirun.RunConfigurationHelper;
-import com.khmelyuk.multirun.StopRunningMultirunConfigurationsAction;
+import io.github.welingtonmonteiro.multiplerun.MultirunProcessRegistry;
+import io.github.welingtonmonteiro.multiplerun.ProcessStatsSampler;
+import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper;
+import io.github.welingtonmonteiro.multiplerun.StopRunningMultirunConfigurationsAction;
 
 /**
  * The "Multiple Run Monitor" tool window content: a docker-stats-like table with EVERY process
@@ -135,7 +135,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         javax.swing.Icon pluginIcon;
         try {
             pluginIcon = com.intellij.execution.configurations.ConfigurationTypeUtil
-                    .findConfigurationType(com.khmelyuk.multirun.MultirunConfigurationType.class).getIcon();
+                    .findConfigurationType(io.github.welingtonmonteiro.multiplerun.MultirunConfigurationType.class).getIcon();
         } catch (Throwable t) {
             pluginIcon = AllIcons.RunConfigurations.Compound;
         }

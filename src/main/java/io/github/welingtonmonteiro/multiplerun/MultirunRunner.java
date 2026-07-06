@@ -1,4 +1,4 @@
-package com.khmelyuk.multirun;
+package io.github.welingtonmonteiro.multiplerun;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -18,7 +18,7 @@ import com.intellij.execution.runners.ProgramRunner;
 import com.intellij.openapi.options.SettingsEditor;
 import com.intellij.openapi.project.Project;
 import com.intellij.profiler.DefaultProfilerExecutorGroup;
-import com.khmelyuk.multirun.ui.MultirunRunConfigurationEditor;
+import io.github.welingtonmonteiro.multiplerun.ui.MultirunRunConfigurationEditor;
 
 /**
  * Runner for Multirun configurations.
