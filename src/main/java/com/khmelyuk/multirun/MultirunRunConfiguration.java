@@ -35,6 +35,12 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public static final String ELEMENT_ENV = "env";
     public static final String PROP_PASS_PARENT_ENVS = "passParentEnvs";
     public static final String PROP_MEM_LIMIT_MB = "memLimitMb";
+    public static final String ELEMENT_ENV_PROFILE = "envProfile";
+    public static final String PROP_DISABLED = "disabled";
+    public static final String PROP_READY_WHEN = "readyWhen";
+    public static final String PROP_RESTART_ON_CRASH = "restartOnCrash";
+    public static final String PROP_MEM_ALERT_THRESHOLD = "memAlertThreshold";
+    public static final String PROP_MEM_LIMIT_RESTART = "memLimitRestart";
 
     private double delayTime = 0;
     private boolean reuseTabs = true;
@@ -43,11 +49,23 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     private boolean markFailedProcess = true;
     private boolean hideSuccessProcess = false;
     private boolean restartRunning = true;
+    /** docker "restart: on-failure": relaunch an app that exits with a crash code (max 3 tries). */
+    private boolean restartOnCrash = false;
+    /** Percent of the memory limit that triggers the alert/action (docker-like OOM watermark). */
+    private int memAlertThreshold = 90;
+    /** true = restart the app when it crosses the threshold; false = just notify. */
+    private boolean memLimitRestart = false;
     private String envFilePath = "";
+    /** Known .env files (environment profiles); envFilePath holds the active one. */
+    private List<String> envProfiles = new ArrayList<>();
     private String saveOutputDir = "";
     private EnvironmentVariablesData envData = EnvironmentVariablesData.DEFAULT;
     /** Per-child memory (heap) cap in MB, keyed by configuration name; absent or <=0 means no limit. */
     private Map<String, Integer> memoryLimits = new LinkedHashMap<>();
+    /** Names of applications temporarily excluded from the run (unchecked in the list). */
+    private java.util.Set<String> disabledApps = new java.util.LinkedHashSet<>();
+    /** Per-child readiness condition ("port:3003", "log:started", http url), keyed by name. */
+    private Map<String, String> readyConditions = new LinkedHashMap<>();
     private List<RunConfigurationInternal> runConfigurations = new ArrayList<>();
 
     public MultirunRunConfiguration(Project project, ConfigurationFactory factory, String name) {
@@ -170,12 +188,74 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         this.restartRunning = restartRunning;
     }
 
+    public boolean isRestartOnCrash() {
+        return restartOnCrash;
+    }
+
+    public void setRestartOnCrash(boolean restartOnCrash) {
+        this.restartOnCrash = restartOnCrash;
+    }
+
+    public int getMemAlertThreshold() {
+        return memAlertThreshold;
+    }
+
+    public void setMemAlertThreshold(int memAlertThreshold) {
+        this.memAlertThreshold = Math.max(1, Math.min(100, memAlertThreshold));
+    }
+
+    public boolean isMemLimitRestart() {
+        return memLimitRestart;
+    }
+
+    public void setMemLimitRestart(boolean memLimitRestart) {
+        this.memLimitRestart = memLimitRestart;
+    }
+
     public String getEnvFilePath() {
         return envFilePath;
     }
 
     public void setEnvFilePath(String envFilePath) {
         this.envFilePath = envFilePath == null ? "" : envFilePath.trim();
+    }
+
+    public List<String> getEnvProfiles() {
+        return new ArrayList<>(envProfiles);
+    }
+
+    public void setEnvProfiles(List<String> profiles) {
+        this.envProfiles = new ArrayList<>();
+        if (profiles != null) {
+            for (String profile : profiles) {
+                if (profile != null && !profile.trim().isEmpty() && !this.envProfiles.contains(profile.trim())) {
+                    this.envProfiles.add(profile.trim());
+                }
+            }
+        }
+    }
+
+    /** Reads the environment profile list persisted as {@code <envProfile path="..."/>} children. */
+    public static List<String> readEnvProfiles(Element element) {
+        final List<String> profiles = new ArrayList<>();
+        for (Element child : element.getChildren(ELEMENT_ENV_PROFILE)) {
+            final String path = child.getAttributeValue("path");
+            if (path != null && !path.trim().isEmpty() && !profiles.contains(path.trim())) {
+                profiles.add(path.trim());
+            }
+        }
+        return profiles;
+    }
+
+    /** Persists the environment profile list as {@code <envProfile path="..."/>} children. */
+    public static void writeEnvProfiles(Element element, List<String> profiles) {
+        for (String profile : profiles) {
+            if (profile != null && !profile.trim().isEmpty()) {
+                final Element child = new Element(ELEMENT_ENV_PROFILE);
+                child.setAttribute("path", profile.trim());
+                element.addContent(child);
+            }
+        }
     }
 
     public Map<String, Integer> getMemoryLimits() {
@@ -188,6 +268,30 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
             for (Map.Entry<String, Integer> each : memoryLimits.entrySet()) {
                 if (each.getValue() != null && each.getValue() > 0) {
                     this.memoryLimits.put(each.getKey(), each.getValue());
+                }
+            }
+        }
+    }
+
+    public java.util.Set<String> getDisabledApps() {
+        return new java.util.LinkedHashSet<>(disabledApps);
+    }
+
+    public void setDisabledApps(java.util.Set<String> disabledApps) {
+        this.disabledApps = disabledApps == null
+                ? new java.util.LinkedHashSet<>() : new java.util.LinkedHashSet<>(disabledApps);
+    }
+
+    public Map<String, String> getReadyConditions() {
+        return new LinkedHashMap<>(readyConditions);
+    }
+
+    public void setReadyConditions(Map<String, String> readyConditions) {
+        this.readyConditions = new LinkedHashMap<>();
+        if (readyConditions != null) {
+            for (Map.Entry<String, String> each : readyConditions.entrySet()) {
+                if (each.getValue() != null && !each.getValue().trim().isEmpty()) {
+                    this.readyConditions.put(each.getKey(), each.getValue().trim());
                 }
             }
         }
@@ -236,8 +340,26 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         if (element.getAttributeValue(PROP_RESTART_RUNNING) != null) {
             restartRunning = Boolean.parseBoolean(element.getAttributeValue(PROP_RESTART_RUNNING));
         }
+        if (element.getAttributeValue(PROP_RESTART_ON_CRASH) != null) {
+            restartOnCrash = Boolean.parseBoolean(element.getAttributeValue(PROP_RESTART_ON_CRASH));
+        }
+        if (element.getAttributeValue(PROP_MEM_ALERT_THRESHOLD) != null) {
+            try {
+                setMemAlertThreshold(Integer.parseInt(element.getAttributeValue(PROP_MEM_ALERT_THRESHOLD)));
+            } catch (NumberFormatException ignored) {
+                // keep the default
+            }
+        }
+        if (element.getAttributeValue(PROP_MEM_LIMIT_RESTART) != null) {
+            memLimitRestart = Boolean.parseBoolean(element.getAttributeValue(PROP_MEM_LIMIT_RESTART));
+        }
         if (element.getAttributeValue(PROP_ENV_FILE) != null) {
             setEnvFilePath(element.getAttributeValue(PROP_ENV_FILE));
+        }
+        envProfiles = readEnvProfiles(element);
+        // the active file is always part of the profile list
+        if (!envFilePath.isEmpty() && !envProfiles.contains(envFilePath)) {
+            envProfiles.add(envFilePath);
         }
         if (element.getAttributeValue(PROP_SAVE_OUTPUT_DIR) != null) {
             setSaveOutputDir(element.getAttributeValue(PROP_SAVE_OUTPUT_DIR));
@@ -263,6 +385,13 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
                         // a malformed limit simply means no limit
                     }
                 }
+                if (Boolean.parseBoolean(eachElement.getAttributeValue(PROP_DISABLED))) {
+                    disabledApps.add(eachElement.getAttributeValue("name"));
+                }
+                final String readyWhen = eachElement.getAttributeValue(PROP_READY_WHEN);
+                if (readyWhen != null && !readyWhen.trim().isEmpty()) {
+                    readyConditions.put(eachElement.getAttributeValue("name"), readyWhen.trim());
+                }
             } else if (eachElement.getName().equals(ELEMENT_ENVS)) {
                 final Map<String, String> envs = new LinkedHashMap<>();
                 for (Element env : eachElement.getChildren(ELEMENT_ENV)) {
@@ -287,6 +416,9 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         element.setAttribute(PROP_MARK_FAILED_PROCESS, String.valueOf(markFailedProcess));
         element.setAttribute(PROP_HIDE_SUCCESS_PROCESS, String.valueOf(hideSuccessProcess));
         element.setAttribute(PROP_RESTART_RUNNING, String.valueOf(restartRunning));
+        element.setAttribute(PROP_RESTART_ON_CRASH, String.valueOf(restartOnCrash));
+        element.setAttribute(PROP_MEM_ALERT_THRESHOLD, String.valueOf(memAlertThreshold));
+        element.setAttribute(PROP_MEM_LIMIT_RESTART, String.valueOf(memLimitRestart));
         element.setAttribute(PROP_DELAY_TIME, String.valueOf(delayTime));
         if (!envFilePath.isEmpty()) {
             element.setAttribute(PROP_ENV_FILE, envFilePath);
@@ -309,6 +441,13 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
             if (memLimit != null && memLimit > 0) {
                 runConfiguration.setAttribute(PROP_MEM_LIMIT_MB, String.valueOf(memLimit));
             }
+            if (disabledApps.contains(each.name)) {
+                runConfiguration.setAttribute(PROP_DISABLED, "true");
+            }
+            final String readyWhen = readyConditions.get(each.name);
+            if (readyWhen != null && !readyWhen.isEmpty()) {
+                runConfiguration.setAttribute(PROP_READY_WHEN, readyWhen);
+            }
             configurations.add(runConfiguration);
         }
         element.setContent(configurations);
@@ -324,6 +463,8 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
             }
             element.addContent(envsElement);
         }
+
+        writeEnvProfiles(element, envProfiles);
     }
 
     @Nullable
@@ -341,16 +482,35 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     @Nullable
     @Override
     public RunProfileState getState(@NotNull Executor executor, @NotNull ExecutionEnvironment executionEnvironment) {
-        return new MultirunRunnerState(getRunConfigurations(), startOneByOne, delayTime,
+        // unchecked (disabled) applications stay in the configuration but are not launched
+        final List<RunConfiguration> enabled = new ArrayList<>();
+        for (RunConfiguration each : getRunConfigurations()) {
+            if (!disabledApps.contains(each.getName())) {
+                enabled.add(each);
+            }
+        }
+        return new MultirunRunnerState(enabled, startOneByOne, delayTime,
                                        reuseTabs, reuseTabsWithFailure,
                                        markFailedProcess, hideSuccessProcess, envData, envFilePath,
-                                       saveOutputDir, getMemoryLimits(), restartRunning, getProject(), getName());
+                                       saveOutputDir, getMemoryLimits(), getReadyConditions(),
+                                       restartRunning, restartOnCrash, memAlertThreshold, memLimitRestart,
+                                       getProject(), getName());
     }
 
     @Override
     public void checkConfiguration() throws RuntimeConfigurationException {
         if (runConfigurations.isEmpty()) {
             throw new RuntimeConfigurationError("No run configuration chosen");
+        }
+        boolean anyEnabled = false;
+        for (RunConfigurationInternal each : runConfigurations) {
+            if (!disabledApps.contains(each.name)) {
+                anyEnabled = true;
+                break;
+            }
+        }
+        if (!anyEnabled) {
+            throw new RuntimeConfigurationError("All run configurations are disabled - enable at least one");
         }
         if (!envFilePath.isEmpty()) {
             final java.io.File envFile = RunConfigurationHelper.resolveEnvFile(envFilePath, getProject());

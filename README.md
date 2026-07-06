@@ -25,6 +25,21 @@ few options, and run everything at once — as a group, in parallel or one-by-on
 - **Parallel** — start all configurations at the same time.
 - **One by one** — start the next configuration only after the previous one has started. This is
   useful when "Before launch" tasks would otherwise run in parallel and interfere with each other.
+- **Enable/disable per application** — every row of the configurations list has an *On* checkbox;
+  unchecked applications stay in the list (keeping their memory limit and other settings) but are
+  not launched. Handy to temporarily skip a service.
+- **Ready when (docker-compose style `depends_on`)** — with *one by one*, fill the *Ready when*
+  column of an application and the next one only starts when it is actually ready:
+
+  | Syntax | Meaning |
+  |--------|---------|
+  | `port:3003` | a TCP port on localhost accepts connections |
+  | `http://localhost:3003/health` | an HTTP GET answers 2xx/3xx |
+  | `log:Server started` | the console output contains the text (plain text works too) |
+
+  The wait is capped at 2 minutes — after that the chain continues anyway. Port/http conditions
+  also feed the *Status* column of the Multiple Run Monitor (healthy/down, re-checked every
+  refresh, like `docker ps`).
 
 ### Delay between configurations (one-by-one mode only)
 The delay field accepts fractional seconds (e.g. `0.5`) and behaves as follows:
@@ -44,11 +59,15 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - Uses the standard IDE dialog (add variables one by one, paste, and toggle
   *Include system environment variables*).
 - Overrides propagate through nested Multirun configurations too.
-- **Environment file**: point the *Environment file* field to a `.env` file (browse button or
-  type the path — relative paths are resolved against the project root). The file uses the usual
+- **Environment file with profiles**: the *Environment file* field is an editable dropdown.
+  Point it to a `.env` file (browse button or type the path — relative paths are resolved against
+  the project root) and the file becomes a **profile** that stays in the dropdown; switch between
+  environments (`.com.env` / `.ede.env` / `.def.env`, …) by just picking another profile — no
+  retyping. The ✕ button removes the selected profile from the list. The file uses the usual
   dotenv format: `KEY=VALUE` lines, `#` comments, optional `export` prefix and quoted values.
   It is re-read on every run, so editing the file requires no configuration changes. Variables
-  from the table above win over the file on conflicts.
+  from the table above win over the file on conflicts. The **Multiple Run Monitor** shows the
+  active profile of each running application in its *Env* column.
 - Works with configuration types that expose environment variables (Node.js, npm, Java
   Application, etc.); other types run unchanged.
 
@@ -65,8 +84,12 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - The **Multiple Run Monitor** tool window (bottom stripe of the IDE, or `Run → Multiple Run
   Monitor`) shows a live table with every application started by Multiple Run:
 
-  | Name | Multiple Run | PID | Ports | Uptime | Mem Usage / Limit | Mem % | CPU % |
-  |------|--------------|-----|-------|--------|-------------------|-------|-------|
+  | Name | Multiple Run | Env | PID | Ports | Uptime | Status | Mem Usage / Limit | Mem % | CPU % |
+  |------|--------------|-----|-----|-------|--------|--------|-------------------|-------|-------|
+
+- **Env** shows the active environment profile; **Status** shows healthy/down for applications
+  with a port/http *Ready when* condition. **Double click** a row to jump to the console tab of
+  that application.
 
 - Works like `docker stats`: memory usage is shown against the configured *Memory limit (MB)* of
   the application (or against the total machine memory when no limit is set), so you can check at
@@ -88,9 +111,13 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - **Kill Process on Port…** — type a TCP port and the plugin finds whatever process is listening
   on it (even one not started by Multiple Run), shows PID + command for confirmation and kills it.
   The quickest cure for `EADDRINUSE: address already in use`.
+- **Mem trend** — a sparkline with the memory history of the last minute per application; the
+  shape shows growth/leaks at a glance and the color tracks how close the app is to its limit
+  (green → orange at 70% → red at 90%).
 - The tool window toolbar also has a manual refresh button and the *Stop Multiple Run* action.
-- Sampling uses the OS `ps` and `lsof` commands (Linux/macOS); on systems without them the table
-  shows `n/a`.
+- Sampling uses the OS `ps` and `lsof` commands on Linux/macOS; on **Windows** memory/CPU come
+  from PowerShell `Get-Process` (the Ports column and *Kill Process on Port* need `lsof`, so they
+  stay Linux/macOS-only).
 
 ### Memory limit alert
 - When an application with a configured *Memory limit (MB)* crosses **90%** of it, the IDE raises
@@ -113,6 +140,16 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   `<configuration name>.log`, using the IDE's standard *save console output to file* mechanism
   (the same one behind the Logs tab of individual run configurations). Relative paths are
   resolved against the project root.
+
+### Restart policies (docker style)
+- **Restart application on crash** — like docker's `restart: on-failure`: an application that
+  exits with a crash code is relaunched automatically, at most 3 times per run. Intentional stops
+  (stop button, *Stop Multiple Run*, Force Kill — SIGINT/SIGTERM/SIGKILL) never trigger a restart.
+  A notification tells you when it happens. Off by default.
+- **Memory limit action** — the alert threshold is configurable (default **90%** of the
+  per-application memory limit) and you choose what happens when it is crossed: **Notify** (warning
+  balloon) or **Restart application** (docker-like OOM handling — the app is restarted before it
+  degrades into GC thrashing). One action per process; a restart re-arms it.
 
 ### Restarting and stopping
 - **Restart on rerun** (enabled by default) — running a Multirun that is already running first stops

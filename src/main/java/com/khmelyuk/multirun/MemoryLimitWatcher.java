@@ -48,7 +48,13 @@ public final class MemoryLimitWatcher {
 
     /** true when the measured usage crossed the alert threshold of the configured limit. */
     public static boolean isNearLimit(long rssKb, int limitMb) {
-        return rssKb >= 0 && limitMb > 0 && rssKb * 100.0 / (limitMb * 1024L) >= ALERT_THRESHOLD_PERCENT;
+        return isNearLimit(rssKb, limitMb, ALERT_THRESHOLD_PERCENT);
+    }
+
+    /** Same, with a configurable threshold percent. */
+    public static boolean isNearLimit(long rssKb, int limitMb, int thresholdPercent) {
+        return rssKb >= 0 && limitMb > 0 && thresholdPercent > 0
+                && rssKb * 100.0 / (limitMb * 1024L) >= thresholdPercent;
     }
 
     private static void checkAll() {
@@ -86,21 +92,30 @@ public final class MemoryLimitWatcher {
         for (Map.Entry<MultirunProcessRegistry.Entry, Set<Long>> measured : treeByEntry.entrySet()) {
             final MultirunProcessRegistry.Entry entry = measured.getKey();
             final ProcessStatsSampler.Stats stats = ProcessStatsSampler.aggregate(statsByPid, measured.getValue());
-            if (stats == null || !isNearLimit(stats.rssKb, entry.memoryLimitMb)) {
+            if (stats == null || !isNearLimit(stats.rssKb, entry.memoryLimitMb, entry.memAlertThreshold)) {
                 continue;
             }
             if (!alreadyNotified.add(entry.handler)) {
                 continue; // this process was already warned about
             }
             final double percent = stats.rssKb * 100.0 / (entry.memoryLimitMb * 1024L);
-            NotificationGroupManager.getInstance().getNotificationGroup("Multiple Run")
-                    .createNotification(
-                            "Memory limit almost reached",
-                            String.format(Locale.US, "'%s' is using %s of its %d MB limit (%.0f%%).",
-                                          entry.appName, ProcessStatsSampler.formatMemory(stats.rssKb),
-                                          entry.memoryLimitMb, percent),
-                            NotificationType.WARNING)
-                    .notify(project);
+            final String usage = String.format(Locale.US, "'%s' is using %s of its %d MB limit (%.0f%%).",
+                                               entry.appName, ProcessStatsSampler.formatMemory(stats.rssKb),
+                                               entry.memoryLimitMb, percent);
+            if (entry.memLimitRestart && entry.environment != null) {
+                // docker-like OOM handling: restart the application instead of letting it degrade
+                NotificationGroupManager.getInstance().getNotificationGroup("Multiple Run")
+                        .createNotification("Application restarted (memory limit)",
+                                            usage + " Restarting it as configured.",
+                                            NotificationType.WARNING)
+                        .notify(project);
+                com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(
+                        () -> com.intellij.execution.runners.ExecutionUtil.restart(entry.environment));
+            } else {
+                NotificationGroupManager.getInstance().getNotificationGroup("Multiple Run")
+                        .createNotification("Memory limit almost reached", usage, NotificationType.WARNING)
+                        .notify(project);
+            }
         }
     }
 }

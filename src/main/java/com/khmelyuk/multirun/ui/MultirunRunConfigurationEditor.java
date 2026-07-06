@@ -46,7 +46,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private JPanel collectionsPanel;
     private JPanel envVarsPanel;
     private EnvironmentVariablesComponent environmentVariables;
-    private TextFieldWithBrowseButton envFile;
+    /** Editable combo with the known .env files (profiles); its text is the active profile. */
+    private JComboBox<String> envFileCombo;
     private TextFieldWithBrowseButton saveOutputDir;
     private JCheckBox reuseTabs;
     private JCheckBox reuseTabsWithFailure;
@@ -56,9 +57,16 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private JCheckBox hideSuccessProcess;
     private JCheckBox configurationsListChanged;
     private JTextField delayTime;
+    private JCheckBox restartOnCrashBox;
+    private JSpinner memThresholdSpinner;
+    private JComboBox<String> memLimitActionCombo;
     private MultirunRunConfiguration configuration;
     /** Per-child memory (heap) cap in MB, edited inline in the "Memory limit" table column. */
     private Map<String, Integer> memoryLimits = new LinkedHashMap<>();
+    /** Apps unchecked in the list: kept in the configuration but not launched. */
+    private java.util.Set<String> disabledApps = new java.util.LinkedHashSet<>();
+    /** Per-child readiness condition, edited inline in the "Ready when" column. */
+    private Map<String, String> readyConditions = new LinkedHashMap<>();
 
     public MultirunRunConfigurationEditor(final Project project) {
         this.project = project;
@@ -72,9 +80,16 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
 
         if (this.configuration != null) {
             memoryLimits = this.configuration.getMemoryLimits();
+            disabledApps = this.configuration.getDisabledApps();
+            readyConditions = this.configuration.getReadyConditions();
             configurationsModel.setItems(new ArrayList<>(this.configuration.getRunConfigurations()));
             environmentVariables.setEnvData(this.configuration.getEnvData());
-            envFile.setText(this.configuration.getEnvFilePath());
+            final DefaultComboBoxModel<String> profilesModel = (DefaultComboBoxModel<String>) envFileCombo.getModel();
+            profilesModel.removeAllElements();
+            for (String profile : this.configuration.getEnvProfiles()) {
+                profilesModel.addElement(profile);
+            }
+            envFileCombo.setSelectedItem(this.configuration.getEnvFilePath());
             saveOutputDir.setText(this.configuration.getSaveOutputDir());
             delayTime.setText(String.format("%.1f", this.configuration.getDelayTime()));
             reuseTabs.setSelected(this.configuration.isReuseTabs());
@@ -83,6 +98,9 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
             restartRunning.setSelected(this.configuration.isRestartRunning());
             markFailedProcess.setSelected(this.configuration.isMarkFailedProcess());
             hideSuccessProcess.setSelected(this.configuration.isHideSuccessProcess());
+            restartOnCrashBox.setSelected(this.configuration.isRestartOnCrash());
+            memThresholdSpinner.setValue(this.configuration.getMemAlertThreshold());
+            memLimitActionCombo.setSelectedIndex(this.configuration.isMemLimitRestart() ? 1 : 0);
             delayTime.setEnabled(startOneByOne.isSelected());
         }
     }
@@ -94,15 +112,30 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         }
 
         multirunRunConfiguration.setEnvData(environmentVariables.getEnvData());
-        multirunRunConfiguration.setEnvFilePath(envFile.getText());
+        final String activeEnvFile = envFileComboText();
+        multirunRunConfiguration.setEnvFilePath(activeEnvFile);
+        final java.util.List<String> envProfiles = new ArrayList<>();
+        for (int i = 0; i < envFileCombo.getItemCount(); i++) {
+            envProfiles.add(envFileCombo.getItemAt(i));
+        }
+        if (!activeEnvFile.isEmpty() && !envProfiles.contains(activeEnvFile)) {
+            // a path typed by hand becomes a profile too
+            envProfiles.add(activeEnvFile);
+        }
+        multirunRunConfiguration.setEnvProfiles(envProfiles);
         multirunRunConfiguration.setSaveOutputDir(saveOutputDir.getText());
         multirunRunConfiguration.setMemoryLimits(memoryLimits);
+        multirunRunConfiguration.setDisabledApps(disabledApps);
+        multirunRunConfiguration.setReadyConditions(readyConditions);
         multirunRunConfiguration.setReuseTabs(reuseTabs.isSelected());
         multirunRunConfiguration.setReuseTabsWithFailure(reuseTabsWithFailure.isSelected());
         multirunRunConfiguration.setStartOneByOne(startOneByOne.isSelected());
         multirunRunConfiguration.setRestartRunning(restartRunning.isSelected());
         multirunRunConfiguration.setMarkFailedProcess(markFailedProcess.isSelected());
         multirunRunConfiguration.setHideSuccessProcess(hideSuccessProcess.isSelected());
+        multirunRunConfiguration.setRestartOnCrash(restartOnCrashBox.isSelected());
+        multirunRunConfiguration.setMemAlertThreshold((Integer) memThresholdSpinner.getValue());
+        multirunRunConfiguration.setMemLimitRestart(memLimitActionCombo.getSelectedIndex() == 1);
         double delayTimeSeconds = 0;
         if (delayTime.getText() != null && !delayTime.getText().isEmpty()) {
             try {
@@ -125,7 +158,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     @NotNull
     @Override
     protected JComponent createEditor() {
-        configurationsModel = new ListTableModel<>(new ConfigurationColumn(), new MemoryLimitColumn());
+        configurationsModel = new ListTableModel<>(new EnabledColumn(), new ConfigurationColumn(),
+                                                   new MemoryLimitColumn(), new ReadyWhenColumn());
         configurations = new TableView<>(configurationsModel);
         configurations.setShowGrid(false);
         configurations.getEmptyText().setText("Add run configurations to this list");
@@ -181,12 +215,21 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
 
         // Optional .env file applied under the variables above (the table values win on conflicts).
         // Read again on every run, so file edits are picked up without touching the configuration.
-        envFile = new TextFieldWithBrowseButton();
-        envFile.getTextField().setToolTipText(
-                "Path to a .env file (KEY=VALUE lines, # comments, optional \"export\" prefix). "
+        // The editable combo keeps every file ever used as an "environment profile", so switching
+        // between .env files (-com / -ede / -def, ...) is a two-click dropdown choice.
+        envFileCombo = new com.intellij.openapi.ui.ComboBox<>(new DefaultComboBoxModel<>());
+        envFileCombo.setEditable(true);
+        envFileCombo.setToolTipText(
+                "Active .env file (KEY=VALUE lines, # comments, optional \"export\" prefix). "
                         + "Applied to every configuration in the list; variables configured above win on conflicts. "
-                        + "Relative paths are resolved against the project root");
-        envFile.addActionListener(e -> {
+                        + "Relative paths are resolved against the project root. Every file used once stays "
+                        + "in this dropdown as a profile - switch environments without retyping paths");
+        envFileCombo.addActionListener(e -> fireEditorStateChanged());
+
+        final com.intellij.openapi.ui.FixedSizeButton browseEnvFile =
+                new com.intellij.openapi.ui.FixedSizeButton(envFileCombo);
+        browseEnvFile.setToolTipText("Select a .env file and add it to the profile list");
+        browseEnvFile.addActionListener(e -> {
             final VirtualFile chosen = FileChooser.chooseFile(
                     FileChooserDescriptorFactory.createSingleFileDescriptor()
                                                 .withTitle("Select Environment File")
@@ -194,11 +237,35 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
                                                 .withShowHiddenFiles(true),
                     project, null);
             if (chosen != null) {
-                envFile.setText(chosen.getPresentableUrl());
+                final String path = chosen.getPresentableUrl();
+                final DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) envFileCombo.getModel();
+                if (model.getIndexOf(path) < 0) {
+                    model.addElement(path);
+                }
+                envFileCombo.setSelectedItem(path);
             }
         });
-        final LabeledComponent<TextFieldWithBrowseButton> envFileComponent =
-                LabeledComponent.create(envFile, "Environment file:");
+
+        final com.intellij.openapi.ui.FixedSizeButton removeEnvProfile =
+                new com.intellij.openapi.ui.FixedSizeButton(envFileCombo);
+        removeEnvProfile.setIcon(com.intellij.icons.AllIcons.General.Remove);
+        removeEnvProfile.setToolTipText("Remove the selected profile from the list");
+        removeEnvProfile.addActionListener(e -> {
+            final Object selected = envFileCombo.getSelectedItem();
+            if (selected != null && !selected.toString().isEmpty()) {
+                ((DefaultComboBoxModel<String>) envFileCombo.getModel()).removeElement(selected);
+                envFileCombo.setSelectedItem("");
+            }
+        });
+
+        final JPanel envProfileButtons = new JPanel(new GridLayout(1, 2, 2, 0));
+        envProfileButtons.add(browseEnvFile);
+        envProfileButtons.add(removeEnvProfile);
+        final JPanel envProfilePanel = new JPanel(new BorderLayout(4, 0));
+        envProfilePanel.add(envFileCombo, BorderLayout.CENTER);
+        envProfilePanel.add(envProfileButtons, BorderLayout.EAST);
+        final LabeledComponent<JPanel> envFileComponent =
+                LabeledComponent.create(envProfilePanel, "Environment file (profile):");
         envFileComponent.setLabelLocation(BorderLayout.WEST);
 
         // Optional folder where each configuration's console is also saved as <name>.log,
@@ -222,9 +289,28 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
                 LabeledComponent.create(saveOutputDir, "Save console logs to:");
         saveOutputComponent.setLabelLocation(BorderLayout.WEST);
 
-        final JPanel filesPanel = new JPanel(new GridLayout(2, 1));
+        // Restart policies (docker-like): crash restart + action when the memory limit is reached
+        restartOnCrashBox = new JCheckBox("Restart application on crash (max 3 attempts)");
+        restartOnCrashBox.setToolTipText(
+                "Like docker restart: on-failure - an application that exits with a crash code is "
+                        + "relaunched automatically, at most 3 times per run. Stops via the stop buttons "
+                        + "(SIGTERM/SIGINT/SIGKILL) never trigger a restart");
+        memThresholdSpinner = new JSpinner(new SpinnerNumberModel(90, 10, 100, 5));
+        memLimitActionCombo = new JComboBox<>(new String[]{"Notify", "Restart application"});
+        memLimitActionCombo.setToolTipText(
+                "What to do when an application with a Memory limit crosses the threshold: "
+                        + "show a warning notification or restart it (docker-like OOM handling)");
+        final JPanel policyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        policyPanel.add(restartOnCrashBox);
+        policyPanel.add(new JLabel("   At"));
+        policyPanel.add(memThresholdSpinner);
+        policyPanel.add(new JLabel("% of the memory limit:"));
+        policyPanel.add(memLimitActionCombo);
+
+        final JPanel filesPanel = new JPanel(new GridLayout(3, 1));
         filesPanel.add(envFileComponent);
         filesPanel.add(saveOutputComponent);
+        filesPanel.add(policyPanel);
         envVarsPanel.add(filesPanel, BorderLayout.SOUTH);
 
         JPanel panel = new JPanel();
@@ -238,6 +324,12 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         return myMainPanel;
     }
 
+    /** The text of the (possibly in-edition) env profile combo editor. */
+    private String envFileComboText() {
+        final Object editorItem = envFileCombo.getEditor().getItem();
+        return editorItem == null ? "" : editorItem.toString().trim();
+    }
+
     private void markConfigurationsChanged() {
         // use hidden checkbox to fire the modified event;
         configurationsListChanged.setSelected(!configurationsListChanged.isSelected());
@@ -245,6 +337,48 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
 
     @Override
     protected void disposeEditor() {
+    }
+
+    /** Checkbox column: unchecked applications stay in the list but are not launched. */
+    private class EnabledColumn extends ColumnInfo<RunConfiguration, Boolean> {
+        EnabledColumn() {
+            super("On");
+        }
+
+        @Override
+        public Class<?> getColumnClass() {
+            return Boolean.class;
+        }
+
+        @Override
+        public Boolean valueOf(RunConfiguration configuration) {
+            return !disabledApps.contains(configuration.getName());
+        }
+
+        @Override
+        public boolean isCellEditable(RunConfiguration configuration) {
+            return true;
+        }
+
+        @Override
+        public void setValue(RunConfiguration configuration, Boolean enabled) {
+            if (Boolean.FALSE.equals(enabled)) {
+                disabledApps.add(configuration.getName());
+            } else {
+                disabledApps.remove(configuration.getName());
+            }
+            markConfigurationsChanged();
+        }
+
+        @Override
+        public String getTooltipText() {
+            return "Unchecked applications are kept in the list but not launched";
+        }
+
+        @Override
+        public int getWidth(JTable table) {
+            return 40;
+        }
     }
 
     /** First table column: icon + "Run 'name'", read-only. */
@@ -314,6 +448,47 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         @Override
         public int getWidth(JTable table) {
             return 140;
+        }
+    }
+
+    /** "Ready when" column: docker-compose-like readiness gate used by one-by-one starts. */
+    private class ReadyWhenColumn extends ColumnInfo<RunConfiguration, String> {
+        ReadyWhenColumn() {
+            super("Ready when");
+        }
+
+        @Override
+        public String valueOf(RunConfiguration configuration) {
+            final String condition = readyConditions.get(configuration.getName());
+            return condition == null ? "" : condition;
+        }
+
+        @Override
+        public boolean isCellEditable(RunConfiguration configuration) {
+            return true;
+        }
+
+        @Override
+        public void setValue(RunConfiguration configuration, String value) {
+            if (value == null || value.trim().isEmpty()) {
+                readyConditions.remove(configuration.getName());
+            } else {
+                readyConditions.put(configuration.getName(), value.trim());
+            }
+            markConfigurationsChanged();
+        }
+
+        @Override
+        public String getTooltipText() {
+            return "With 'Start one by one', the next application only starts after this one is ready. "
+                    + "Syntax: port:3003 (TCP port open), http://localhost:3003/health (HTTP 2xx/3xx) "
+                    + "or log:Server started (console output contains the text). Empty = no waiting. "
+                    + "Port/http conditions also feed the Status column of the Multiple Run Monitor";
+        }
+
+        @Override
+        public int getWidth(JTable table) {
+            return 180;
         }
     }
 

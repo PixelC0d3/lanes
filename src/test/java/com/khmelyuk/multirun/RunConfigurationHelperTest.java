@@ -258,4 +258,93 @@ public class RunConfigurationHelperTest {
     public void delayRejectsNonNumericInput() {
         MultirunRunConfiguration.parseDelay("abc");
     }
+
+    // --- environment profiles (env file dropdown) ------------------------------------------
+
+    @Test
+    public void envProfilesRoundTripThroughXml() {
+        final org.jdom.Element element = new org.jdom.Element("configuration");
+        MultirunRunConfiguration.writeEnvProfiles(element,
+                java.util.Arrays.asList("/envs/.local.env", "../eparts-tools/.ede.env", "", null));
+
+        final java.util.List<String> read = MultirunRunConfiguration.readEnvProfiles(element);
+
+        assertEquals("blank entries must be dropped on write",
+                     java.util.Arrays.asList("/envs/.local.env", "../eparts-tools/.ede.env"), read);
+    }
+
+    @Test
+    public void envProfilesReadSkipsDuplicatesAndBlanks() {
+        final org.jdom.Element element = new org.jdom.Element("configuration");
+        MultirunRunConfiguration.writeEnvProfiles(element,
+                java.util.Arrays.asList("/a/.env", "/a/.env", "  "));
+
+        assertEquals(java.util.Collections.singletonList("/a/.env"),
+                     MultirunRunConfiguration.readEnvProfiles(element));
+    }
+
+    // --- parseReadyCondition (docker-compose-like readiness gate) ---------------------------
+
+    @Test
+    public void parsesPortReadyCondition() {
+        final RunConfigurationHelper.ReadyCondition condition = RunConfigurationHelper.parseReadyCondition("port:3003");
+
+        assertEquals(RunConfigurationHelper.ReadyCondition.Type.PORT, condition.type);
+        assertEquals(3003, condition.port);
+    }
+
+    @Test
+    public void parsesHttpAndLogReadyConditions() {
+        assertEquals(RunConfigurationHelper.ReadyCondition.Type.HTTP,
+                     RunConfigurationHelper.parseReadyCondition("http://localhost:3003/health").type);
+        assertEquals(RunConfigurationHelper.ReadyCondition.Type.HTTP,
+                     RunConfigurationHelper.parseReadyCondition("https://localhost/health").type);
+        assertEquals(RunConfigurationHelper.ReadyCondition.Type.LOG,
+                     RunConfigurationHelper.parseReadyCondition("log:Server started").type);
+        assertEquals("Server started", RunConfigurationHelper.parseReadyCondition("log:Server started").value);
+        assertEquals("free text is the friendliest default: treat it as a log substring",
+                     RunConfigurationHelper.ReadyCondition.Type.LOG,
+                     RunConfigurationHelper.parseReadyCondition("Server started").type);
+    }
+
+    @Test
+    public void blankOrInvalidReadyConditionMeansNone() {
+        assertEquals(RunConfigurationHelper.ReadyCondition.Type.NONE,
+                     RunConfigurationHelper.parseReadyCondition(null).type);
+        assertEquals(RunConfigurationHelper.ReadyCondition.Type.NONE,
+                     RunConfigurationHelper.parseReadyCondition("  ").type);
+        assertEquals(RunConfigurationHelper.ReadyCondition.Type.NONE,
+                     RunConfigurationHelper.parseReadyCondition("port:abc").type);
+        assertEquals(RunConfigurationHelper.ReadyCondition.Type.NONE,
+                     RunConfigurationHelper.parseReadyCondition("port:99999").type);
+        assertEquals(RunConfigurationHelper.ReadyCondition.Type.NONE,
+                     RunConfigurationHelper.parseReadyCondition("log:").type);
+    }
+
+    @Test
+    public void portOpenReflectsARealListeningSocket() throws IOException {
+        try (java.net.ServerSocket server = new java.net.ServerSocket(0)) {
+            assertTrue("a bound server socket must be detected as open",
+                       RunConfigurationHelper.isPortOpen(server.getLocalPort()));
+        }
+    }
+
+    @Test
+    public void closedPortIsReportedAsNotOpen() throws IOException {
+        final int freePort;
+        try (java.net.ServerSocket server = new java.net.ServerSocket(0)) {
+            freePort = server.getLocalPort();
+        }
+
+        assertFalse("a released port must be reported closed", RunConfigurationHelper.isPortOpen(freePort));
+    }
+
+    @Test
+    public void envFileDisplayNameShowsTheFileNameOnly() {
+        assertEquals(".local.env", RunConfigurationHelper.envFileDisplayName("/home/user/eparts-tools/.local.env"));
+        assertEquals(".ede.env", RunConfigurationHelper.envFileDisplayName("relative/.ede.env"));
+        assertEquals("-", RunConfigurationHelper.envFileDisplayName(""));
+        assertEquals("-", RunConfigurationHelper.envFileDisplayName("   "));
+        assertEquals("-", RunConfigurationHelper.envFileDisplayName(null));
+    }
 }

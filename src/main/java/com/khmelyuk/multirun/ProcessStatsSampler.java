@@ -62,12 +62,20 @@ public final class ProcessStatsSampler {
         return pids;
     }
 
-    /** One {@code ps} call for all pids; returns per-pid stats (missing pids are simply absent). */
+    /** One {@code ps} (or PowerShell on Windows) call for all pids; missing pids are simply absent. */
     public static Map<Long, Stats> samplePids(Collection<Long> pids) {
         if (pids.isEmpty()) {
             return java.util.Collections.emptyMap();
         }
         final String pidList = pids.stream().map(String::valueOf).collect(Collectors.joining(","));
+        if (isWindows()) {
+            // Get-Process prints "pid rssKb cpuSeconds" lines in the same shape parsePsOutput expects
+            return parsePsOutput(runCommand(
+                    "powershell", "-NoProfile", "-Command",
+                    "Get-Process -Id " + pidList + " -ErrorAction SilentlyContinue | ForEach-Object { "
+                            + "'{0} {1} {2}' -f $_.Id, [math]::Round($_.WorkingSet64/1024), "
+                            + "$_.TotalProcessorTime.TotalSeconds }"));
+        }
         final Map<Long, Stats> stats = parsePsOutput(runCommand("ps", "-o", "pid=,rss=,time=", "-p", pidList));
         // the ps TIME column has 1-second resolution on Linux - useless for a CPU % computed
         // over a 2 s window (the delta is almost always 0). /proc has 10 ms ticks: prefer it.
@@ -78,6 +86,10 @@ public final class ProcessStatsSampler {
             }
         }
         return stats;
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
     }
 
     /** Linux scheduler tick rate, needed to convert /proc cpu ticks into seconds. */

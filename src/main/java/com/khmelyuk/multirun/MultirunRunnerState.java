@@ -46,6 +46,10 @@ public class MultirunRunnerState implements RunProfileState {
 
     /** How long to wait for the previously running processes to die before starting again. */
     private static final long RESTART_TERMINATION_TIMEOUT_MS = 10_000;
+    /** Cap for a "Ready when" wait; when reached the next configuration starts anyway. */
+    private static final long READY_TIMEOUT_MS = 120_000;
+    /** Max automatic relaunches of a crashed app per run session (docker restart: on-failure). */
+    private static final int MAX_CRASH_RESTARTS = 3;
 
     private final double delayTime;
     private final boolean reuseTabs;
@@ -58,6 +62,10 @@ public class MultirunRunnerState implements RunProfileState {
     private final String envFilePath;
     private final String saveOutputDir;
     private final Map<String, Integer> memoryLimits;
+    private final Map<String, String> readyConditions;
+    private final boolean restartOnCrash;
+    private final int memAlertThreshold;
+    private final boolean memLimitRestart;
     private final Project project;
     private final String configurationName;
     private final List<RunConfiguration> runConfigurations;
@@ -72,7 +80,10 @@ public class MultirunRunnerState implements RunProfileState {
                                boolean markFailedProcess, boolean hideSuccessProcess,
                                EnvironmentVariablesData envData, String envFilePath,
                                String saveOutputDir, Map<String, Integer> memoryLimits,
-                               boolean restartRunning, Project project, String configurationName) {
+                               Map<String, String> readyConditions,
+                               boolean restartRunning, boolean restartOnCrash,
+                               int memAlertThreshold, boolean memLimitRestart,
+                               Project project, String configurationName) {
 
         this.delayTime = delayTime;
         this.reuseTabs = reuseTabs;
@@ -88,6 +99,10 @@ public class MultirunRunnerState implements RunProfileState {
         this.saveOutputDir = saveOutputDir == null || saveOutputDir.trim().isEmpty()
                 ? "" : RunConfigurationHelper.resolveEnvFile(saveOutputDir, project).getPath();
         this.memoryLimits = memoryLimits == null ? Collections.emptyMap() : memoryLimits;
+        this.readyConditions = readyConditions == null ? Collections.emptyMap() : readyConditions;
+        this.restartOnCrash = restartOnCrash;
+        this.memAlertThreshold = memAlertThreshold;
+        this.memLimitRestart = memLimitRestart;
         this.restartRunning = restartRunning;
         this.project = project;
         this.configurationName = configurationName;
@@ -140,6 +155,12 @@ public class MultirunRunnerState implements RunProfileState {
         final RunConfiguration runConfiguration = runConfigurations.get(index);
         final Project project = runConfiguration.getProject();
 
+        // docker-compose-like readiness gate: with a condition set, the next configuration
+        // only starts after this one is ready (port open / log text seen / http healthy)
+        final RunConfigurationHelper.ReadyCondition readyCondition =
+                RunConfigurationHelper.parseReadyCondition(readyConditions.get(runConfiguration.getName()));
+        final AtomicBoolean readyLogSeen = new AtomicBoolean(false);
+
         boolean started = false;
         try {
             // apply the Multirun environment variables on top of the child configuration; works on a clone,
@@ -181,6 +202,9 @@ public class MultirunRunnerState implements RunProfileState {
                     new ProgramRunner.Callback() {
                         private final AtomicBoolean processTerminated = new AtomicBoolean(false);
                         private final AtomicBoolean firstStart = new AtomicBoolean(true);
+                        /** crash restarts of this app in this run session (docker restart: on-failure). */
+                        private final java.util.concurrent.atomic.AtomicInteger crashRestarts =
+                                new java.util.concurrent.atomic.AtomicInteger();
 
                         @SuppressWarnings("ConstantConditions")
                         @Override
@@ -239,10 +263,42 @@ public class MultirunRunnerState implements RunProfileState {
                                     }
 
                                     @Override
+                                    public void onTextAvailable(@NotNull final ProcessEvent processEvent,
+                                                                @NotNull final com.intellij.openapi.util.Key outputType) {
+                                        // feeds the "log:" readiness condition
+                                        if (readyCondition.type == RunConfigurationHelper.ReadyCondition.Type.LOG
+                                                && !readyLogSeen.get()
+                                                && processEvent.getText() != null
+                                                && processEvent.getText().contains(readyCondition.value)) {
+                                            readyLogSeen.set(true);
+                                        }
+                                    }
+
+                                    @Override
                                     public void processTerminated(@NotNull final ProcessEvent processEvent) {
                                         onTermination(processEvent);
                                         processTerminated.set(true);
                                         stopRunningMultirunConfiguration.removeProcess(project, processEvent.getProcessHandler());
+
+                                        // docker "restart: on-failure": relaunch crashed apps, at most
+                                        // MAX_CRASH_RESTARTS times; intentional stops (0/130/137/143) never restart
+                                        if (restartOnCrash
+                                                && RunConfigurationHelper.isCrashExit(processEvent.getExitCode())
+                                                && !stopRunningMultirunConfiguration.isStopMultirunTriggered()
+                                                && crashRestarts.incrementAndGet() <= MAX_CRASH_RESTARTS) {
+                                            final int attempt = crashRestarts.get();
+                                            com.intellij.notification.NotificationGroupManager.getInstance()
+                                                    .getNotificationGroup("Multiple Run")
+                                                    .createNotification(
+                                                            "Application restarted after crash",
+                                                            "'" + runConfiguration.getName() + "' exited with code "
+                                                                    + processEvent.getExitCode() + " - restarting (attempt "
+                                                                    + attempt + "/" + MAX_CRASH_RESTARTS + ").",
+                                                            com.intellij.notification.NotificationType.WARNING)
+                                                    .notify(project);
+                                            ApplicationManager.getApplication().invokeLater(
+                                                    () -> ExecutionUtil.restart(executionEnvironment));
+                                        }
                                     }
 
                                     private void onTermination(final ProcessEvent processEvent) {
@@ -291,7 +347,10 @@ public class MultirunRunnerState implements RunProfileState {
                                 // feed the "Multiple Run Monitor" tool window with live processes
                                 MultirunProcessRegistry.register(project, configurationName,
                                                                  runConfiguration.getName(), processHandler,
-                                                                 memoryLimitMb, executionEnvironment);
+                                                                 memoryLimitMb, executionEnvironment,
+                                                                 RunConfigurationHelper.envFileDisplayName(envFilePath),
+                                                                 readyConditions.get(runConfiguration.getName()),
+                                                                 memAlertThreshold, memLimitRestart);
                             }
                             if (!initialStart) {
                                 // individual restart from the monitor: only re-track the new
@@ -303,7 +362,40 @@ public class MultirunRunnerState implements RunProfileState {
                             if (startOneByOne && moreConfigurationsToRun) {
                                 // start next configuration..
 
-                                if (delayTime > 0) {
+                                if (readyCondition.type != RunConfigurationHelper.ReadyCondition.Type.NONE) {
+                                    // wait until this app is ready (or dies / times out), then chain
+                                    ProgressManager.getInstance().run(new Task.Backgroundable(
+                                            project, "Waiting for '" + runConfiguration.getName() + "' to be ready") {
+                                        @Override
+                                        public void run(@NotNull ProgressIndicator progressIndicator) {
+                                            progressIndicator.setIndeterminate(true);
+                                            progressIndicator.setText(
+                                                    "waiting for '" + runConfiguration.getName() + "' (" + readyCondition.value + ")");
+                                            final long deadline = System.currentTimeMillis() + READY_TIMEOUT_MS;
+                                            try {
+                                                while (System.currentTimeMillis() < deadline) {
+                                                    if (progressIndicator.isCanceled() || processTerminated.get() || isReady()) {
+                                                        break;
+                                                    }
+                                                    Thread.sleep(500);
+                                                }
+                                            } catch (InterruptedException ignored) {
+                                                return;
+                                            }
+                                            ApplicationManager.getApplication().executeOnPooledThread(
+                                                    () -> runConfigurations(executor, runConfigurations, index + 1));
+                                        }
+
+                                        private boolean isReady() {
+                                            switch (readyCondition.type) {
+                                                case PORT: return RunConfigurationHelper.isPortOpen(readyCondition.port);
+                                                case HTTP: return RunConfigurationHelper.isHttpHealthy(readyCondition.value);
+                                                case LOG:  return readyLogSeen.get();
+                                                default:   return true;
+                                            }
+                                        }
+                                    });
+                                } else if (delayTime > 0) {
                                     final long start = System.currentTimeMillis();
                                     ProgressManager.getInstance().run(new Task.Backgroundable(project, "Waiting for delay") {
                                         @Override

@@ -37,6 +37,7 @@ import com.intellij.util.ui.ColumnInfo;
 import com.intellij.util.ui.ListTableModel;
 import com.khmelyuk.multirun.MultirunProcessRegistry;
 import com.khmelyuk.multirun.ProcessStatsSampler;
+import com.khmelyuk.multirun.RunConfigurationHelper;
 import com.khmelyuk.multirun.StopRunningMultirunConfigurationsAction;
 
 /**
@@ -56,19 +57,24 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         final String pid;
         final String ports;
         final String uptime;
+        final String status;
         final String memUsage;
         final String memPercent;
         final String cpuPercent;
+        /** Recent memory percentages, oldest first - drawn as a sparkline. */
+        final double[] memTrend;
 
         Row(MultirunProcessRegistry.Entry entry, String pid, String ports, String uptime,
-            String memUsage, String memPercent, String cpuPercent) {
+            String status, String memUsage, String memPercent, String cpuPercent, double[] memTrend) {
             this.entry = entry;
             this.pid = pid;
             this.ports = ports;
             this.uptime = uptime;
+            this.status = status;
             this.memUsage = memUsage;
             this.memPercent = memPercent;
             this.cpuPercent = cpuPercent;
+            this.memTrend = memTrend;
         }
     }
 
@@ -82,6 +88,12 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     private Map<Long, Double> prevCpuSecondsByPid = java.util.Collections.emptyMap();
     private long prevSampleNanos;
 
+    /** Recent memory-percent samples per process, feeding the "Mem trend" sparkline column. */
+    private static final int TREND_SAMPLES = 30;
+    private final Map<com.intellij.execution.process.ProcessHandler, java.util.ArrayDeque<Double>> memHistory =
+            new HashMap<>();
+    private final SparklineCellRenderer sparklineRenderer = new SparklineCellRenderer();
+
     public MultirunMonitorPanel(@NotNull Project project) {
         super(false, true);
         this.project = project;
@@ -89,11 +101,30 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         model = new ListTableModel<>(
                 column("Name", 220, row -> row.entry.appName),
                 column("Multiple Run", 140, row -> row.entry.multirunName),
+                column("Env", 100, row -> row.entry.envFileName),
                 column("PID", 70, row -> row.pid),
                 column("Ports", 110, row -> row.ports),
                 column("Uptime", 80, row -> row.uptime),
+                column("Status", 80, row -> row.status),
                 column("Mem Usage / Limit", 160, row -> row.memUsage),
                 column("Mem %", 70, row -> row.memPercent),
+                new ColumnInfo<Row, double[]>("Mem trend") {
+                    @Nullable
+                    @Override
+                    public double[] valueOf(Row row) {
+                        return row.memTrend;
+                    }
+
+                    @Override
+                    public javax.swing.table.TableCellRenderer getRenderer(Row row) {
+                        return sparklineRenderer;
+                    }
+
+                    @Override
+                    public int getWidth(javax.swing.JTable table) {
+                        return 120;
+                    }
+                },
                 column("CPU %", 70, row -> row.cpuPercent));
         table = new TableView<>(model);
         table.getEmptyText().setText("No applications started by Multiple Run are running");
@@ -122,6 +153,15 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         setToolbar(toolbar.getComponent());
         setContent(ScrollPaneFactory.createScrollPane(table));
         PopupHandler.installPopupMenu(table, rowActions, "MultipleRunMonitorPopup");
+        // double click on a row jumps to the console tab of that application
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2 && javax.swing.SwingUtilities.isLeftMouseButton(e)) {
+                    focusRunTabOfSelectedRow();
+                }
+            }
+        });
 
         timer = new Timer(REFRESH_INTERVAL_MS, e -> {
             // don't burn cycles while the tool window is hidden
@@ -151,6 +191,30 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     @Nullable
     private Row selectedRow() {
         return table.getSelectedObject();
+    }
+
+    /** Brings the console tab of the selected application to front (Run or Debug tool window). */
+    private void focusRunTabOfSelectedRow() {
+        final Row row = selectedRow();
+        if (row == null) {
+            return;
+        }
+        final com.intellij.execution.ui.RunContentManager contentManager =
+                com.intellij.execution.ui.RunContentManager.getInstance(project);
+        for (com.intellij.execution.ui.RunContentDescriptor descriptor : contentManager.getAllDescriptors()) {
+            if (descriptor.getProcessHandler() == row.entry.handler) {
+                final com.intellij.ui.content.Content content = descriptor.getAttachedContent();
+                if (content != null && content.getManager() != null) {
+                    content.getManager().setSelectedContent(content);
+                }
+                final com.intellij.openapi.wm.ToolWindow toolWindow =
+                        contentManager.getToolWindowByDescriptor(descriptor);
+                if (toolWindow != null) {
+                    toolWindow.activate(null);
+                }
+                return;
+            }
+        }
     }
 
     /** Restarts only the selected application; the rest of the group keeps running. */
@@ -384,6 +448,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             final String portsText = treePorts.isEmpty()
                     ? "-" : treePorts.stream().map(String::valueOf).collect(Collectors.joining(", "));
             final String uptimeText = ProcessStatsSampler.formatUptime(System.currentTimeMillis() - entry.startedAtMs);
+            final String statusText = healthStatus(entry);
 
             final String limitText = entry.memoryLimitMb != null
                     ? ProcessStatsSampler.formatMemory(entry.memoryLimitMb * 1024L)
@@ -391,10 +456,11 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             final String memUsage;
             final String memPercent;
             final String cpuPercent;
+            double percentValue = -1;
             if (stats != null) {
                 memUsage = ProcessStatsSampler.formatMemory(stats.rssKb) + " / " + limitText;
-                final double percent = ProcessStatsSampler.memoryPercent(stats.rssKb, entry.memoryLimitMb, hostTotalKb);
-                memPercent = percent < 0 ? "n/a" : String.format(Locale.US, "%.2f%%", percent);
+                percentValue = ProcessStatsSampler.memoryPercent(stats.rssKb, entry.memoryLimitMb, hostTotalKb);
+                memPercent = percentValue < 0 ? "n/a" : String.format(Locale.US, "%.2f%%", percentValue);
                 final double deltaCpuSeconds = ProcessStatsSampler.cpuDeltaSeconds(statsByPid, prevCpu, treePids);
                 cpuPercent = (deltaCpuSeconds >= 0 && elapsedSeconds > 0)
                         ? String.format(Locale.US, "%.2f%%", deltaCpuSeconds / elapsedSeconds * 100)
@@ -404,9 +470,28 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 memPercent = "n/a";
                 cpuPercent = "n/a";
             }
+
+            // sparkline history (memory percent over the last ~minute)
+            final java.util.ArrayDeque<Double> history =
+                    memHistory.computeIfAbsent(entry.handler, h -> new java.util.ArrayDeque<>());
+            if (percentValue >= 0) {
+                history.addLast(percentValue);
+                while (history.size() > TREND_SAMPLES) {
+                    history.removeFirst();
+                }
+            }
+            final double[] memTrend = history.stream().mapToDouble(Double::doubleValue).toArray();
+
             rows.add(new Row(entry, rootPid > 0 ? String.valueOf(rootPid) : "n/a",
-                             portsText, uptimeText, memUsage, memPercent, cpuPercent));
+                             portsText, uptimeText, statusText, memUsage, memPercent, cpuPercent, memTrend));
         }
+
+        // drop the history of processes that are gone
+        final java.util.Set<com.intellij.execution.process.ProcessHandler> liveHandlers = new java.util.HashSet<>();
+        for (MultirunProcessRegistry.Entry entry : entries) {
+            liveHandlers.add(entry.handler);
+        }
+        memHistory.keySet().retainAll(liveHandlers);
 
         // baseline for the next refresh
         final Map<Long, Double> newPrev = new HashMap<>();
@@ -415,6 +500,80 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         prevSampleNanos = nowNanos;
 
         return rows;
+    }
+
+    /**
+     * Health of the app according to its "Ready when" condition (docker-compose style):
+     * port and http conditions are re-checked on every refresh; log conditions cannot be
+     * re-evaluated after startup, so they show "-" like apps without a condition.
+     */
+    private static String healthStatus(MultirunProcessRegistry.Entry entry) {
+        final RunConfigurationHelper.ReadyCondition condition =
+                RunConfigurationHelper.parseReadyCondition(entry.readyCondition);
+        switch (condition.type) {
+            case PORT:
+                return RunConfigurationHelper.isPortOpen(condition.port) ? "healthy" : "down";
+            case HTTP:
+                return RunConfigurationHelper.isHttpHealthy(condition.value) ? "healthy" : "down";
+            default:
+                return "-";
+        }
+    }
+
+    /**
+     * Tiny polyline with the recent memory history of a row, docker-desktop style. The shape is
+     * normalized to the min/max of the series (so trends are visible at any scale); the color
+     * reflects the latest memory percent: green, orange from 70%, red from 90%.
+     */
+    private static final class SparklineCellRenderer extends javax.swing.JComponent
+            implements javax.swing.table.TableCellRenderer {
+        private double[] values = new double[0];
+        private boolean selected;
+        private javax.swing.JTable table;
+
+        @Override
+        public java.awt.Component getTableCellRendererComponent(javax.swing.JTable table, Object value,
+                                                                boolean isSelected, boolean hasFocus,
+                                                                int row, int column) {
+            this.values = value instanceof double[] ? (double[]) value : new double[0];
+            this.selected = isSelected;
+            this.table = table;
+            return this;
+        }
+
+        @Override
+        protected void paintComponent(java.awt.Graphics g) {
+            final java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
+            if (table != null) {
+                g2.setColor(selected ? table.getSelectionBackground() : table.getBackground());
+                g2.fillRect(0, 0, getWidth(), getHeight());
+            }
+            if (values.length < 2) {
+                return;
+            }
+            g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                                java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            double min = Double.MAX_VALUE;
+            double max = -Double.MAX_VALUE;
+            for (double value : values) {
+                min = Math.min(min, value);
+                max = Math.max(max, value);
+            }
+            final double span = Math.max(max - min, 0.0001);
+            final int width = Math.max(getWidth() - 6, 1);
+            final int height = Math.max(getHeight() - 6, 1);
+            final int[] xs = new int[values.length];
+            final int[] ys = new int[values.length];
+            for (int i = 0; i < values.length; i++) {
+                xs[i] = 3 + (int) Math.round((double) i * width / (values.length - 1));
+                ys[i] = 3 + (int) Math.round(height - (values[i] - min) / span * height);
+            }
+            final double last = values[values.length - 1];
+            g2.setColor(last >= 90 ? com.intellij.ui.JBColor.RED
+                                   : last >= 70 ? com.intellij.ui.JBColor.ORANGE
+                                                : com.intellij.ui.JBColor.GREEN);
+            g2.drawPolyline(xs, ys, values.length);
+        }
     }
 
     @Override

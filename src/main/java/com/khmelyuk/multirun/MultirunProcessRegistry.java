@@ -34,15 +34,28 @@ public final class MultirunProcessRegistry {
         public final Integer memoryLimitMb;
         /** The environment the app was launched with; lets the monitor restart just this app. */
         public final ExecutionEnvironment environment;
+        /** File name of the active env profile at launch time, or "-" when none. */
+        public final String envFileName;
+        /** Raw "Ready when" condition of the app (port:/log:/http...), or null when none. */
+        public final String readyCondition;
+        /** Percent of the memory limit that triggers the alert/action. */
+        public final int memAlertThreshold;
+        /** true = restart the app at the threshold; false = just notify. */
+        public final boolean memLimitRestart;
         public final long startedAtMs;
 
         Entry(String multirunName, String appName, ProcessHandler handler,
-              Integer memoryLimitMb, ExecutionEnvironment environment) {
+              Integer memoryLimitMb, ExecutionEnvironment environment, String envFileName,
+              String readyCondition, int memAlertThreshold, boolean memLimitRestart) {
             this.multirunName = multirunName;
             this.appName = appName;
             this.handler = handler;
             this.memoryLimitMb = memoryLimitMb;
             this.environment = environment;
+            this.envFileName = envFileName == null || envFileName.isEmpty() ? "-" : envFileName;
+            this.readyCondition = readyCondition;
+            this.memAlertThreshold = memAlertThreshold <= 0 ? 90 : memAlertThreshold;
+            this.memLimitRestart = memLimitRestart;
             this.startedAtMs = System.currentTimeMillis();
         }
     }
@@ -54,8 +67,10 @@ public final class MultirunProcessRegistry {
 
     public static void register(@NotNull Project project, String multirunName, String appName,
                                 @NotNull ProcessHandler handler, @Nullable Integer memoryLimitMb,
-                                @Nullable ExecutionEnvironment environment) {
-        final Entry entry = new Entry(multirunName, appName, handler, memoryLimitMb, environment);
+                                @Nullable ExecutionEnvironment environment, @Nullable String envFileName,
+                                @Nullable String readyCondition, int memAlertThreshold, boolean memLimitRestart) {
+        final Entry entry = new Entry(multirunName, appName, handler, memoryLimitMb, environment,
+                                      envFileName, readyCondition, memAlertThreshold, memLimitRestart);
         ENTRIES.computeIfAbsent(project, p -> new CopyOnWriteArrayList<>()).add(entry);
         handler.addProcessListener(new ProcessListener() {
             @Override

@@ -41,6 +41,16 @@ public class ProcessStatsSamplerTest {
         assertEquals(1.5, stats.get(1234L).cpuTimeSeconds, 0.0001);
     }
 
+    @Test
+    public void parsesWindowsPowershellLines() {
+        // on Windows the sampler feeds "pid rssKb cpuSeconds" lines from Get-Process
+        final Map<Long, ProcessStatsSampler.Stats> stats =
+                ProcessStatsSampler.parsePsOutput(Arrays.asList("1234 151200 12.34", "5678 2048 3,5"));
+
+        assertEquals(12.34, stats.get(1234L).cpuTimeSeconds, 0.0001);
+        assertEquals("comma decimal (pt-BR locale) must work too", 3.5, stats.get(5678L).cpuTimeSeconds, 0.0001);
+    }
+
     // --- parseCpuTime -----------------------------------------------------------------------
 
     @Test
@@ -161,6 +171,26 @@ public class ProcessStatsSamplerTest {
         assertFalse("below the threshold there must be no alert", MemoryLimitWatcher.isNearLimit(92_159, 100));
         assertFalse("unknown usage must not alert", MemoryLimitWatcher.isNearLimit(-1, 100));
         assertFalse("no limit, no alert", MemoryLimitWatcher.isNearLimit(92_160, 0));
+    }
+
+    @Test
+    public void alertThresholdIsConfigurable() {
+        // 80% of a 100 MB limit = 81920 KB
+        assertTrue(MemoryLimitWatcher.isNearLimit(81_920, 100, 80));
+        assertFalse(MemoryLimitWatcher.isNearLimit(81_920, 100, 90));
+        assertFalse("threshold 0 disables the alert", MemoryLimitWatcher.isNearLimit(81_920, 100, 0));
+    }
+
+    // --- isCrashExit (restart on crash policy) ------------------------------------------------
+
+    @Test
+    public void crashExitCodesTriggerRestartButIntentionalStopsDoNot() {
+        assertTrue(RunConfigurationHelper.isCrashExit(1));
+        assertTrue(RunConfigurationHelper.isCrashExit(134));   // SIGABRT (e.g. node OOM abort)
+        assertFalse("success is not a crash", RunConfigurationHelper.isCrashExit(0));
+        assertFalse("SIGINT (ctrl-c) is intentional", RunConfigurationHelper.isCrashExit(130));
+        assertFalse("SIGKILL (force kill) is intentional", RunConfigurationHelper.isCrashExit(137));
+        assertFalse("SIGTERM (stop button) is intentional", RunConfigurationHelper.isCrashExit(143));
     }
 
     // --- formatMemory (docker stats style) --------------------------------------------------
