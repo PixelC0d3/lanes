@@ -41,6 +41,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.37.0</strong>:</p>
+        <ul>
+            <li>New: sustained CPU alert. Set a "CPU alert %" on the group and an application whose CPU
+                stays at or above it for three consecutive background checks raises a notification
+                (with a Restart button); the alert re-arms when it drops back. 0 disables it; values
+                above 100 make sense on multi-core machines. Cross-platform.</li>
+        </ul>
         <p><strong>1.36.0</strong>:</p>
         <ul>
             <li>Monitor: batch actions. Select several rows (Ctrl/Shift-click) and Restart, Stop or

@@ -60,6 +60,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private JCheckBox restartOnCrashBox;
     private JSpinner memThresholdSpinner;
     private JComboBox<String> memLimitActionCombo;
+    /** Sustained CPU % that triggers an alert (0 = off). */
+    private JSpinner cpuAlertSpinner;
     private MultirunRunConfiguration configuration;
     /** Per-child memory (heap) cap in MB, edited inline in the "Memory limit" table column. */
     private Map<String, Integer> memoryLimits = new LinkedHashMap<>();
@@ -118,6 +120,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
             restartOnCrashBox.setSelected(this.configuration.isRestartOnCrash());
             memThresholdSpinner.setValue(this.configuration.getMemAlertThreshold());
             memLimitActionCombo.setSelectedIndex(this.configuration.isMemLimitRestart() ? 1 : 0);
+            cpuAlertSpinner.setValue(this.configuration.getCpuAlertThreshold());
             delayTime.setEnabled(startOneByOne.isSelected());
         }
     }
@@ -155,6 +158,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         multirunRunConfiguration.setRestartOnCrash(restartOnCrashBox.isSelected());
         multirunRunConfiguration.setMemAlertThreshold((Integer) memThresholdSpinner.getValue());
         multirunRunConfiguration.setMemLimitRestart(memLimitActionCombo.getSelectedIndex() == 1);
+        multirunRunConfiguration.setCpuAlertThreshold((Integer) cpuAlertSpinner.getValue());
         double delayTimeSeconds = 0;
         if (delayTime.getText() != null && !delayTime.getText().isEmpty()) {
             try {
@@ -337,12 +341,20 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         memLimitActionCombo.setToolTipText(
                 "What to do when an application with a Memory limit crosses the threshold: "
                         + "show a warning notification or restart it (docker-like OOM handling)");
+        cpuAlertSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 1000, 10));
+        cpuAlertSpinner.setToolTipText(
+                "Raise a notification when an application's CPU usage stays at or above this percentage "
+                        + "for a few consecutive background checks. 0 disables it. Values above 100 make "
+                        + "sense on multi-core machines (docker stats-style CPU %, summed across cores)");
         final JPanel policyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         policyPanel.add(restartOnCrashBox);
         policyPanel.add(new JLabel("   At"));
         policyPanel.add(memThresholdSpinner);
         policyPanel.add(new JLabel("% of the memory limit:"));
         policyPanel.add(memLimitActionCombo);
+        policyPanel.add(new JLabel("   CPU alert at"));
+        policyPanel.add(cpuAlertSpinner);
+        policyPanel.add(new JLabel("% (0 = off)"));
 
         // Named execution presets: a saved On/Off + env-profile combination, applied from a dropdown.
         presetCombo = new com.intellij.openapi.ui.ComboBox<>(new DefaultComboBoxModel<>());
