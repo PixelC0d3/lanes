@@ -152,6 +152,13 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   the toolbar has *Clear* and a *Scroll to End* toggle. The process table lives in the **Processes**
   tab next to it.
 
+### Status bar widget
+- A compact indicator in the IDE status bar shows how many applications Multiple Run is running,
+  their **combined memory** and how many are **unhealthy** (a `port:`/`http` *Ready when* that is
+  currently down) — e.g. `▶ 3 apps · 1.2 GiB · ⚠ 1`. **Click it** to open the Multiple Run Monitor.
+- It hides itself when nothing this plugin started is running. Toggle it from the status bar
+  widgets menu (right-click the status bar).
+
 ### Memory limit alert
 - When an application with a configured *Memory limit (MB)* crosses **90%** of it, the IDE raises
   a warning notification (balloon + Notifications tool window) — you don't need to keep the
