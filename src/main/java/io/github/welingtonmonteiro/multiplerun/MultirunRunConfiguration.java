@@ -44,6 +44,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public static final String PROP_RESTART_ON_CRASH = "restartOnCrash";
     public static final String PROP_MEM_ALERT_THRESHOLD = "memAlertThreshold";
     public static final String PROP_MEM_LIMIT_RESTART = "memLimitRestart";
+    public static final String PROP_CPU_ALERT_THRESHOLD = "cpuAlertThreshold";
 
     private double delayTime = 0;
     private boolean reuseTabs = true;
@@ -58,6 +59,8 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     private int memAlertThreshold = 90;
     /** true = restart the app when it crosses the threshold; false = just notify. */
     private boolean memLimitRestart = false;
+    /** Sustained CPU % that triggers an alert (0 = disabled); can exceed 100 on multi-core. */
+    private int cpuAlertThreshold = 0;
     private String envFilePath = "";
     /** Known .env files (environment profiles); envFilePath holds the active one. */
     private List<String> envProfiles = new ArrayList<>();
@@ -235,6 +238,15 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
 
     public void setMemLimitRestart(boolean memLimitRestart) {
         this.memLimitRestart = memLimitRestart;
+    }
+
+    public int getCpuAlertThreshold() {
+        return cpuAlertThreshold;
+    }
+
+    public void setCpuAlertThreshold(int cpuAlertThreshold) {
+        // 0 disables the alert; the upper bound is generous because multi-core CPU % can exceed 100
+        this.cpuAlertThreshold = Math.max(0, Math.min(1000, cpuAlertThreshold));
     }
 
     public String getEnvFilePath() {
@@ -449,6 +461,13 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         if (element.getAttributeValue(PROP_MEM_LIMIT_RESTART) != null) {
             memLimitRestart = Boolean.parseBoolean(element.getAttributeValue(PROP_MEM_LIMIT_RESTART));
         }
+        if (element.getAttributeValue(PROP_CPU_ALERT_THRESHOLD) != null) {
+            try {
+                setCpuAlertThreshold(Integer.parseInt(element.getAttributeValue(PROP_CPU_ALERT_THRESHOLD)));
+            } catch (NumberFormatException ignored) {
+                // keep the default (disabled)
+            }
+        }
         if (element.getAttributeValue(PROP_ENV_FILE) != null) {
             setEnvFilePath(element.getAttributeValue(PROP_ENV_FILE));
         }
@@ -520,6 +539,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         element.setAttribute(PROP_RESTART_ON_CRASH, String.valueOf(restartOnCrash));
         element.setAttribute(PROP_MEM_ALERT_THRESHOLD, String.valueOf(memAlertThreshold));
         element.setAttribute(PROP_MEM_LIMIT_RESTART, String.valueOf(memLimitRestart));
+        element.setAttribute(PROP_CPU_ALERT_THRESHOLD, String.valueOf(cpuAlertThreshold));
         element.setAttribute(PROP_DELAY_TIME, String.valueOf(delayTime));
         if (!envFilePath.isEmpty()) {
             element.setAttribute(PROP_ENV_FILE, envFilePath);
@@ -601,6 +621,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
                                        saveOutputDir, getMemoryLimits(), getReadyConditions(),
                                        getAppEnvFiles(),
                                        restartRunning, restartOnCrash, memAlertThreshold, memLimitRestart,
+                                       cpuAlertThreshold,
                                        getProject(), getName());
     }
 

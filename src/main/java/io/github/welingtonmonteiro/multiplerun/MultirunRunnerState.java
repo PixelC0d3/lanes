@@ -68,6 +68,7 @@ public class MultirunRunnerState implements RunProfileState {
     private final boolean restartOnCrash;
     private final int memAlertThreshold;
     private final boolean memLimitRestart;
+    private final int cpuAlertThreshold;
     private final Project project;
     private final String configurationName;
     private final List<RunConfiguration> runConfigurations;
@@ -86,6 +87,7 @@ public class MultirunRunnerState implements RunProfileState {
                                Map<String, String> appEnvFiles,
                                boolean restartRunning, boolean restartOnCrash,
                                int memAlertThreshold, boolean memLimitRestart,
+                               int cpuAlertThreshold,
                                Project project, String configurationName) {
 
         this.delayTime = delayTime;
@@ -107,6 +109,7 @@ public class MultirunRunnerState implements RunProfileState {
         this.restartOnCrash = restartOnCrash;
         this.memAlertThreshold = memAlertThreshold;
         this.memLimitRestart = memLimitRestart;
+        this.cpuAlertThreshold = cpuAlertThreshold;
         this.restartRunning = restartRunning;
         this.project = project;
         this.configurationName = configurationName;
@@ -373,7 +376,7 @@ public class MultirunRunnerState implements RunProfileState {
                                                                  memoryLimitMb, executionEnvironment,
                                                                  RunConfigurationHelper.envFileDisplayName(envFilePath),
                                                                  readyConditions.get(runConfiguration.getName()),
-                                                                 memAlertThreshold, memLimitRestart);
+                                                                 memAlertThreshold, memLimitRestart, cpuAlertThreshold);
                             }
                             if (!initialStart) {
                                 // individual restart from the monitor: only re-track the new

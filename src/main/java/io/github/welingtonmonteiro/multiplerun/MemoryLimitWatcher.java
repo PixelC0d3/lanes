@@ -1,6 +1,7 @@
 package io.github.welingtonmonteiro.multiplerun;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -34,6 +35,8 @@ public final class MemoryLimitWatcher {
     public static final int ALERT_THRESHOLD_PERCENT = 90;
     /** Consecutive failed health checks before an app is reported unhealthy. */
     public static final int UNHEALTHY_STREAK = 3;
+    /** Consecutive over-threshold samples before a high-CPU alert is raised. */
+    public static final int CPU_SUSTAINED_CHECKS = 3;
     private static final int PERIOD_SECONDS = 10;
     private static final Logger LOG = Logger.getInstance(MemoryLimitWatcher.class);
 
@@ -46,6 +49,15 @@ public final class MemoryLimitWatcher {
             Collections.synchronizedMap(new WeakHashMap<>());
     /** Processes already reported unhealthy, cleared when they recover. */
     private static final Set<ProcessHandler> unhealthyNotified =
+            Collections.newSetFromMap(Collections.synchronizedMap(new WeakHashMap<>()));
+    /** Previous CPU-time sample per pid and its timestamp, for the sustained-CPU delta. */
+    private static final Map<Long, Double> prevCpuByPid = Collections.synchronizedMap(new HashMap<>());
+    private static volatile long prevCpuNanos = 0;
+    /** Consecutive over-threshold CPU samples per process. */
+    private static final Map<ProcessHandler, Integer> cpuOverStreaks =
+            Collections.synchronizedMap(new WeakHashMap<>());
+    /** Processes already reported for high CPU, cleared when they drop back under the threshold. */
+    private static final Set<ProcessHandler> cpuNotified =
             Collections.newSetFromMap(Collections.synchronizedMap(new WeakHashMap<>()));
 
     private MemoryLimitWatcher() {
@@ -72,13 +84,15 @@ public final class MemoryLimitWatcher {
 
     private static void checkAll() {
         try {
-            for (Map.Entry<Project, List<MultirunProcessRegistry.Entry>> byProject
-                    : MultirunProcessRegistry.snapshot().entrySet()) {
+            final Map<Project, List<MultirunProcessRegistry.Entry>> snapshot = MultirunProcessRegistry.snapshot();
+            for (Map.Entry<Project, List<MultirunProcessRegistry.Entry>> byProject : snapshot.entrySet()) {
                 if (!byProject.getKey().isDisposed()) {
                     check(byProject.getKey(), byProject.getValue());
                     checkHealth(byProject.getKey(), byProject.getValue());
                 }
             }
+            // CPU needs a delta across the whole tick, so it is sampled once for all projects
+            checkCpu(snapshot);
         } catch (Throwable t) {
             // never let an exception kill the scheduled task
             LOG.warn("Multiple Run watcher failed", t);
@@ -88,6 +102,85 @@ public final class MemoryLimitWatcher {
     /** Next consecutive-down streak given the previous one and whether the app is down right now. */
     public static int nextDownStreak(int previous, boolean down) {
         return down ? previous + 1 : 0;
+    }
+
+    /** Whether a high-CPU alert is due: the app has been over its threshold for enough checks. */
+    public static boolean isCpuSustained(int consecutiveOver, int checks) {
+        return consecutiveOver >= checks;
+    }
+
+    /**
+     * Reports applications whose CPU % (docker-stats style, delta between two ticks) stays at or
+     * above their configured {@code cpuAlertThreshold} for {@link #CPU_SUSTAINED_CHECKS} consecutive
+     * checks. Cross-platform (uses the same sampler as the monitor). The alert re-arms when the app
+     * drops back under the threshold. The first tick only records the baseline.
+     */
+    private static void checkCpu(Map<Project, List<MultirunProcessRegistry.Entry>> snapshot) {
+        final long now = System.nanoTime();
+        final double elapsedSeconds = prevCpuNanos == 0 ? -1 : (now - prevCpuNanos) / 1_000_000_000.0;
+
+        final Map<MultirunProcessRegistry.Entry, Set<Long>> treeByEntry = new LinkedHashMap<>();
+        final Map<MultirunProcessRegistry.Entry, Project> projectByEntry = new HashMap<>();
+        final Set<Long> allPids = new LinkedHashSet<>();
+        for (Map.Entry<Project, List<MultirunProcessRegistry.Entry>> byProject : snapshot.entrySet()) {
+            if (byProject.getKey().isDisposed()) {
+                continue;
+            }
+            for (MultirunProcessRegistry.Entry entry : byProject.getValue()) {
+                if (entry.cpuAlertThreshold <= 0 || entry.handler.isProcessTerminated()) {
+                    continue;
+                }
+                final Set<Long> treePids =
+                        ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(entry.handler));
+                treeByEntry.put(entry, treePids);
+                projectByEntry.put(entry, byProject.getKey());
+                allPids.addAll(treePids);
+            }
+        }
+        if (allPids.isEmpty()) {
+            prevCpuByPid.clear();
+            prevCpuNanos = now;
+            return;
+        }
+
+        final Map<Long, ProcessStatsSampler.Stats> statsByPid = ProcessStatsSampler.samplePids(allPids);
+        final Map<Long, Double> prev = new HashMap<>(prevCpuByPid);
+        if (elapsedSeconds > 0) {
+            for (Map.Entry<MultirunProcessRegistry.Entry, Set<Long>> measured : treeByEntry.entrySet()) {
+                final MultirunProcessRegistry.Entry entry = measured.getKey();
+                final double deltaCpuSeconds =
+                        ProcessStatsSampler.cpuDeltaSeconds(statsByPid, prev, measured.getValue());
+                final double cpuPercent = deltaCpuSeconds >= 0 ? deltaCpuSeconds / elapsedSeconds * 100 : -1;
+                final boolean over = cpuPercent >= 0 && cpuPercent >= entry.cpuAlertThreshold;
+
+                final int streak = nextDownStreak(cpuOverStreaks.getOrDefault(entry.handler, 0), over);
+                cpuOverStreaks.put(entry.handler, streak);
+                if (!over) {
+                    cpuNotified.remove(entry.handler);
+                    continue;
+                }
+                if (isCpuSustained(streak, CPU_SUSTAINED_CHECKS) && cpuNotified.add(entry.handler)) {
+                    final Project project = projectByEntry.get(entry);
+                    final com.intellij.notification.Notification notification =
+                            NotificationGroupManager.getInstance().getNotificationGroup("Multiple Run")
+                                    .createNotification("High CPU usage",
+                                                        String.format(Locale.US,
+                                                                "'%s' has been using %.0f%% CPU (threshold %d%%) for %d checks.",
+                                                                entry.appName, cpuPercent, entry.cpuAlertThreshold,
+                                                                CPU_SUSTAINED_CHECKS),
+                                                        NotificationType.WARNING);
+                    if (entry.environment != null) {
+                        notification.addAction(com.intellij.notification.NotificationAction.createSimpleExpiring(
+                                "Restart", () -> com.intellij.execution.runners.ExecutionUtil.restart(entry.environment)));
+                    }
+                    notification.notify(project);
+                }
+            }
+        }
+
+        prevCpuByPid.clear();
+        statsByPid.forEach((pid, stats) -> prevCpuByPid.put(pid, stats.cpuTimeSeconds));
+        prevCpuNanos = now;
     }
 
     /** Whether to raise the unhealthy alert: the streak reached the limit and we did not alert yet. */

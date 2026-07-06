@@ -24,4 +24,14 @@ public class HealthWatcherTest {
         // beyond the limit but already notified: stay quiet
         assertFalse(MemoryLimitWatcher.shouldAlertUnhealthy(MemoryLimitWatcher.UNHEALTHY_STREAK + 1, true));
     }
+
+    @Test
+    public void cpuIsSustainedOnlyAtOrAboveTheCheckCount() {
+        assertFalse(MemoryLimitWatcher.isCpuSustained(MemoryLimitWatcher.CPU_SUSTAINED_CHECKS - 1,
+                                                      MemoryLimitWatcher.CPU_SUSTAINED_CHECKS));
+        assertTrue(MemoryLimitWatcher.isCpuSustained(MemoryLimitWatcher.CPU_SUSTAINED_CHECKS,
+                                                     MemoryLimitWatcher.CPU_SUSTAINED_CHECKS));
+        assertTrue(MemoryLimitWatcher.isCpuSustained(MemoryLimitWatcher.CPU_SUSTAINED_CHECKS + 5,
+                                                     MemoryLimitWatcher.CPU_SUSTAINED_CHECKS));
+    }
 }

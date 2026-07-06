@@ -42,11 +42,13 @@ public final class MultirunProcessRegistry {
         public final int memAlertThreshold;
         /** true = restart the app at the threshold; false = just notify. */
         public final boolean memLimitRestart;
+        /** Sustained CPU % that triggers an alert for this app, or 0 when disabled. */
+        public final int cpuAlertThreshold;
         public final long startedAtMs;
 
         Entry(String multirunName, String appName, ProcessHandler handler,
               Integer memoryLimitMb, ExecutionEnvironment environment, String envFileName,
-              String readyCondition, int memAlertThreshold, boolean memLimitRestart) {
+              String readyCondition, int memAlertThreshold, boolean memLimitRestart, int cpuAlertThreshold) {
             this.multirunName = multirunName;
             this.appName = appName;
             this.handler = handler;
@@ -56,6 +58,7 @@ public final class MultirunProcessRegistry {
             this.readyCondition = readyCondition;
             this.memAlertThreshold = memAlertThreshold <= 0 ? 90 : memAlertThreshold;
             this.memLimitRestart = memLimitRestart;
+            this.cpuAlertThreshold = Math.max(0, cpuAlertThreshold);
             this.startedAtMs = System.currentTimeMillis();
         }
     }
@@ -74,9 +77,10 @@ public final class MultirunProcessRegistry {
     public static void register(@NotNull Project project, String multirunName, String appName,
                                 @NotNull ProcessHandler handler, @Nullable Integer memoryLimitMb,
                                 @Nullable ExecutionEnvironment environment, @Nullable String envFileName,
-                                @Nullable String readyCondition, int memAlertThreshold, boolean memLimitRestart) {
+                                @Nullable String readyCondition, int memAlertThreshold, boolean memLimitRestart,
+                                int cpuAlertThreshold) {
         final Entry entry = new Entry(multirunName, appName, handler, memoryLimitMb, environment,
-                                      envFileName, readyCondition, memAlertThreshold, memLimitRestart);
+                                      envFileName, readyCondition, memAlertThreshold, memLimitRestart, cpuAlertThreshold);
         ENTRIES.computeIfAbsent(project, p -> new CopyOnWriteArrayList<>()).add(entry);
         LAST_BY_NAME.computeIfAbsent(project, p -> new ConcurrentHashMap<>()).put(appName, entry);
         handler.addProcessListener(new ProcessListener() {
