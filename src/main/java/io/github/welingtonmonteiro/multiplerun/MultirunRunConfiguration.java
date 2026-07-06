@@ -36,6 +36,8 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public static final String PROP_PASS_PARENT_ENVS = "passParentEnvs";
     public static final String PROP_MEM_LIMIT_MB = "memLimitMb";
     public static final String ELEMENT_ENV_PROFILE = "envProfile";
+    public static final String ELEMENT_PRESET = "preset";
+    public static final String ELEMENT_PRESET_DISABLED = "disabled";
     public static final String PROP_DISABLED = "disabled";
     public static final String PROP_READY_WHEN = "readyWhen";
     public static final String PROP_RESTART_ON_CRASH = "restartOnCrash";
@@ -66,7 +68,27 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     private java.util.Set<String> disabledApps = new java.util.LinkedHashSet<>();
     /** Per-child readiness condition ("port:3003", "log:started", http url), keyed by name. */
     private Map<String, String> readyConditions = new LinkedHashMap<>();
+    /** Named execution presets (which apps are On/Off + which env profile), keyed by preset name. */
+    private Map<String, Preset> presets = new LinkedHashMap<>();
     private List<RunConfigurationInternal> runConfigurations = new ArrayList<>();
+
+    /**
+     * A named execution preset: a saved combination of which applications are enabled and which
+     * environment profile is active, so a group can be flipped between scenarios ("backend only",
+     * "full stack", ...) from a dropdown without re-checking boxes.
+     */
+    public static final class Preset {
+        public final String name;
+        public final java.util.Set<String> disabledApps;
+        public final String envFilePath;
+
+        public Preset(String name, java.util.Set<String> disabledApps, String envFilePath) {
+            this.name = name;
+            this.disabledApps = disabledApps == null
+                    ? new java.util.LinkedHashSet<>() : new java.util.LinkedHashSet<>(disabledApps);
+            this.envFilePath = envFilePath == null ? "" : envFilePath.trim();
+        }
+    }
 
     public MultirunRunConfiguration(Project project, ConfigurationFactory factory, String name) {
         super(project, factory, name);
@@ -297,6 +319,62 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         }
     }
 
+    public Map<String, Preset> getPresets() {
+        return new LinkedHashMap<>(presets);
+    }
+
+    public void setPresets(Map<String, Preset> presets) {
+        this.presets = new LinkedHashMap<>();
+        if (presets != null) {
+            for (Map.Entry<String, Preset> each : presets.entrySet()) {
+                if (each.getKey() != null && !each.getKey().trim().isEmpty() && each.getValue() != null) {
+                    this.presets.put(each.getKey(), each.getValue());
+                }
+            }
+        }
+    }
+
+    /** Reads the presets persisted as {@code <preset name=".." envFile=".."><disabled name=".."/></preset>}. */
+    public static Map<String, Preset> readPresets(Element element) {
+        final Map<String, Preset> result = new LinkedHashMap<>();
+        for (Element child : element.getChildren(ELEMENT_PRESET)) {
+            final String name = child.getAttributeValue("name");
+            if (name == null || name.trim().isEmpty()) {
+                continue;
+            }
+            final String envFile = child.getAttributeValue("envFile", "");
+            final java.util.Set<String> disabled = new java.util.LinkedHashSet<>();
+            for (Element disabledChild : child.getChildren(ELEMENT_PRESET_DISABLED)) {
+                final String appName = disabledChild.getAttributeValue("name");
+                if (appName != null && !appName.isEmpty()) {
+                    disabled.add(appName);
+                }
+            }
+            result.put(name, new Preset(name, disabled, envFile));
+        }
+        return result;
+    }
+
+    /** Persists the presets as {@code <preset name=".." envFile=".."><disabled name=".."/></preset>} children. */
+    public static void writePresets(Element element, Map<String, Preset> presets) {
+        for (Preset preset : presets.values()) {
+            if (preset == null || preset.name == null || preset.name.trim().isEmpty()) {
+                continue;
+            }
+            final Element presetElement = new Element(ELEMENT_PRESET);
+            presetElement.setAttribute("name", preset.name);
+            if (preset.envFilePath != null && !preset.envFilePath.isEmpty()) {
+                presetElement.setAttribute("envFile", preset.envFilePath);
+            }
+            for (String appName : preset.disabledApps) {
+                final Element disabledChild = new Element(ELEMENT_PRESET_DISABLED);
+                disabledChild.setAttribute("name", appName);
+                presetElement.addContent(disabledChild);
+            }
+            element.addContent(presetElement);
+        }
+    }
+
     public String getSaveOutputDir() {
         return saveOutputDir;
     }
@@ -361,6 +439,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         if (!envFilePath.isEmpty() && !envProfiles.contains(envFilePath)) {
             envProfiles.add(envFilePath);
         }
+        presets = readPresets(element);
         if (element.getAttributeValue(PROP_SAVE_OUTPUT_DIR) != null) {
             setSaveOutputDir(element.getAttributeValue(PROP_SAVE_OUTPUT_DIR));
         }
@@ -465,6 +544,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         }
 
         writeEnvProfiles(element, envProfiles);
+        writePresets(element, presets);
     }
 
     @Nullable

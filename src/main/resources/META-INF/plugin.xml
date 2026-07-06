@@ -41,6 +41,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.29.0</strong>:</p>
+        <ul>
+            <li>New: execution presets. Save the current On/Off selection of applications plus the
+                active environment profile as a named preset, and switch between scenarios
+                ("backend only", "full stack", ...) from a dropdown in the editor - no more
+                re-checking boxes by hand.</li>
+        </ul>
         <p><strong>1.28.1</strong>:</p>
         <ul>
             <li>Fix: the run configuration editor (Edit Configurations for a Multiple Run entry) could

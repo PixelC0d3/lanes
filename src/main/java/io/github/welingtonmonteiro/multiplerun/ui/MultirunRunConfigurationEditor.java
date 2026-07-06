@@ -67,6 +67,11 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private java.util.Set<String> disabledApps = new java.util.LinkedHashSet<>();
     /** Per-child readiness condition, edited inline in the "Ready when" column. */
     private Map<String, String> readyConditions = new LinkedHashMap<>();
+    /** Named execution presets (On/Off + env profile), chosen from the "Preset" dropdown. */
+    private JComboBox<String> presetCombo;
+    private Map<String, MultirunRunConfiguration.Preset> presets = new LinkedHashMap<>();
+    /** True while a preset is being applied or the combo repopulated, to ignore its own events. */
+    private boolean applyingPreset = false;
 
     public MultirunRunConfigurationEditor(final Project project) {
         this.project = project;
@@ -82,6 +87,15 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
             memoryLimits = this.configuration.getMemoryLimits();
             disabledApps = this.configuration.getDisabledApps();
             readyConditions = this.configuration.getReadyConditions();
+            presets = this.configuration.getPresets();
+            applyingPreset = true;
+            final DefaultComboBoxModel<String> presetsModel = (DefaultComboBoxModel<String>) presetCombo.getModel();
+            presetsModel.removeAllElements();
+            for (String presetName : presets.keySet()) {
+                presetsModel.addElement(presetName);
+            }
+            presetCombo.setSelectedItem(null);
+            applyingPreset = false;
             configurationsModel.setItems(new ArrayList<>(this.configuration.getRunConfigurations()));
             environmentVariables.setEnvData(this.configuration.getEnvData());
             final DefaultComboBoxModel<String> profilesModel = (DefaultComboBoxModel<String>) envFileCombo.getModel();
@@ -127,6 +141,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         multirunRunConfiguration.setMemoryLimits(memoryLimits);
         multirunRunConfiguration.setDisabledApps(disabledApps);
         multirunRunConfiguration.setReadyConditions(readyConditions);
+        multirunRunConfiguration.setPresets(presets);
         multirunRunConfiguration.setReuseTabs(reuseTabs.isSelected());
         multirunRunConfiguration.setReuseTabsWithFailure(reuseTabsWithFailure.isSelected());
         multirunRunConfiguration.setStartOneByOne(startOneByOne.isSelected());
@@ -307,7 +322,80 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         policyPanel.add(new JLabel("% of the memory limit:"));
         policyPanel.add(memLimitActionCombo);
 
-        final JPanel filesPanel = new JPanel(new GridLayout(3, 1));
+        // Named execution presets: a saved On/Off + env-profile combination, applied from a dropdown.
+        presetCombo = new com.intellij.openapi.ui.ComboBox<>(new DefaultComboBoxModel<>());
+        presetCombo.setToolTipText(
+                "Named combinations of enabled applications + environment profile (e.g. 'backend only', "
+                        + "'full stack'). Pick one to apply it to the list above; Save stores the current "
+                        + "On/Off selection and active profile as a preset");
+        presetCombo.addActionListener(e -> {
+            if (applyingPreset) {
+                return;
+            }
+            final Object selected = presetCombo.getSelectedItem();
+            if (selected == null) {
+                return;
+            }
+            final MultirunRunConfiguration.Preset preset = presets.get(selected.toString());
+            if (preset == null) {
+                return;
+            }
+            disabledApps = new java.util.LinkedHashSet<>(preset.disabledApps);
+            envFileCombo.setSelectedItem(preset.envFilePath);
+            ((javax.swing.table.AbstractTableModel) configurationsModel).fireTableDataChanged();
+            markConfigurationsChanged();
+        });
+
+        final com.intellij.openapi.ui.FixedSizeButton savePreset =
+                new com.intellij.openapi.ui.FixedSizeButton(presetCombo);
+        savePreset.setIcon(com.intellij.icons.AllIcons.Actions.MenuSaveall);
+        savePreset.setToolTipText("Save the current On/Off selection and environment profile as a preset");
+        savePreset.addActionListener(e -> {
+            final Object current = presetCombo.getSelectedItem();
+            final String suggested = current == null ? "" : current.toString();
+            final String name = com.intellij.openapi.ui.Messages.showInputDialog(
+                    project, "Preset name:", "Save Execution Preset",
+                    com.intellij.openapi.ui.Messages.getQuestionIcon(), suggested, null);
+            if (name == null || name.trim().isEmpty()) {
+                return;
+            }
+            presets.put(name.trim(), new MultirunRunConfiguration.Preset(
+                    name.trim(), new java.util.LinkedHashSet<>(disabledApps), envFileComboText()));
+            final DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) presetCombo.getModel();
+            if (model.getIndexOf(name.trim()) < 0) {
+                model.addElement(name.trim());
+            }
+            applyingPreset = true;
+            presetCombo.setSelectedItem(name.trim());
+            applyingPreset = false;
+            markConfigurationsChanged();
+        });
+
+        final com.intellij.openapi.ui.FixedSizeButton deletePreset =
+                new com.intellij.openapi.ui.FixedSizeButton(presetCombo);
+        deletePreset.setIcon(com.intellij.icons.AllIcons.General.Remove);
+        deletePreset.setToolTipText("Delete the selected preset");
+        deletePreset.addActionListener(e -> {
+            final Object selected = presetCombo.getSelectedItem();
+            if (selected == null) {
+                return;
+            }
+            presets.remove(selected.toString());
+            ((DefaultComboBoxModel<String>) presetCombo.getModel()).removeElement(selected);
+            markConfigurationsChanged();
+        });
+
+        final JPanel presetButtons = new JPanel(new GridLayout(1, 2, 2, 0));
+        presetButtons.add(savePreset);
+        presetButtons.add(deletePreset);
+        final JPanel presetPanel = new JPanel(new BorderLayout(4, 0));
+        presetPanel.add(presetCombo, BorderLayout.CENTER);
+        presetPanel.add(presetButtons, BorderLayout.EAST);
+        final LabeledComponent<JPanel> presetComponent = LabeledComponent.create(presetPanel, "Preset:");
+        presetComponent.setLabelLocation(BorderLayout.WEST);
+
+        final JPanel filesPanel = new JPanel(new GridLayout(4, 1));
+        filesPanel.add(presetComponent);
         filesPanel.add(envFileComponent);
         filesPanel.add(saveOutputComponent);
         filesPanel.add(policyPanel);
