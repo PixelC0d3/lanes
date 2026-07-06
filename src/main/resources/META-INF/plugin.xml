@@ -41,6 +41,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.28.1</strong>:</p>
+        <ul>
+            <li>Fix: the run configuration editor (Edit Configurations for a Multiple Run entry) could
+                fail to open after the 1.27.2 package rename - the GUI form bound to the editor was
+                accidentally removed. Restored it.</li>
+        </ul>
         <p><strong>1.28.0</strong>:</p>
         <ul>
             <li>New: the Multiple Run Monitor tool window has a second "Logs" tab - an aggregated view
