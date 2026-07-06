@@ -186,6 +186,12 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   exits with a crash code is relaunched automatically, at most 3 times per run. Intentional stops
   (stop button, *Stop Multiple Run*, Force Kill — SIGINT/SIGTERM/SIGKILL) never trigger a restart.
   A notification tells you when it happens. Off by default.
+- **Crash notification with Restart** — when *Restart on crash* is **off** (or its attempts are used
+  up), a crash instead raises a notification with a one-click **Restart** button, so a failure is
+  never silent.
+- **Unhealthy alert** — an application whose `port:`/`http` *Ready when* condition stays down for
+  three consecutive background checks (every 10 s) is reported unhealthy with a **Restart** button;
+  the alert re-arms once the app recovers, so a later outage is reported again.
 - **Memory limit action** — the alert threshold is configurable (default **90%** of the
   per-application memory limit) and you choose what happens when it is crossed: **Notify** (warning
   balloon) or **Restart application** (docker-like OOM handling — the app is restarted before it

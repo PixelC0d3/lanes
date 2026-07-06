@@ -19,20 +19,33 @@ import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.AppExecutorUtil;
 
 /**
- * Background watcher that raises an IDE notification when an application with a configured
- * memory limit crosses {@link #ALERT_THRESHOLD_PERCENT} of it. Runs independently of the
- * Multiple Run Monitor tool window, so you get warned even when the monitor is closed.
- * Each process is notified at most once (until it is restarted).
+ * Background watcher that raises IDE notifications, independently of the Multiple Run Monitor tool
+ * window, so you get warned even when the monitor is closed. It handles two things:
+ * <ul>
+ *   <li>memory: an application with a configured limit crossing {@link #ALERT_THRESHOLD_PERCENT}
+ *       of it (once per process, until it is restarted);</li>
+ *   <li>health: an application whose {@code port:}/{@code http} "Ready when" condition stays down
+ *       for {@link #UNHEALTHY_STREAK} consecutive checks - notified once, with a Restart action,
+ *       until it recovers.</li>
+ * </ul>
  */
 public final class MemoryLimitWatcher {
 
     public static final int ALERT_THRESHOLD_PERCENT = 90;
+    /** Consecutive failed health checks before an app is reported unhealthy. */
+    public static final int UNHEALTHY_STREAK = 3;
     private static final int PERIOD_SECONDS = 10;
     private static final Logger LOG = Logger.getInstance(MemoryLimitWatcher.class);
 
     private static final AtomicBoolean started = new AtomicBoolean();
     /** Weak keys: entries vanish together with their terminated process handlers. */
     private static final Set<ProcessHandler> alreadyNotified =
+            Collections.newSetFromMap(Collections.synchronizedMap(new WeakHashMap<>()));
+    /** Consecutive down-count per process, for the health check. */
+    private static final Map<ProcessHandler, Integer> downStreaks =
+            Collections.synchronizedMap(new WeakHashMap<>());
+    /** Processes already reported unhealthy, cleared when they recover. */
+    private static final Set<ProcessHandler> unhealthyNotified =
             Collections.newSetFromMap(Collections.synchronizedMap(new WeakHashMap<>()));
 
     private MemoryLimitWatcher() {
@@ -63,11 +76,71 @@ public final class MemoryLimitWatcher {
                     : MultirunProcessRegistry.snapshot().entrySet()) {
                 if (!byProject.getKey().isDisposed()) {
                     check(byProject.getKey(), byProject.getValue());
+                    checkHealth(byProject.getKey(), byProject.getValue());
                 }
             }
         } catch (Throwable t) {
             // never let an exception kill the scheduled task
-            LOG.warn("Multiple Run memory limit watcher failed", t);
+            LOG.warn("Multiple Run watcher failed", t);
+        }
+    }
+
+    /** Next consecutive-down streak given the previous one and whether the app is down right now. */
+    public static int nextDownStreak(int previous, boolean down) {
+        return down ? previous + 1 : 0;
+    }
+
+    /** Whether to raise the unhealthy alert: the streak reached the limit and we did not alert yet. */
+    public static boolean shouldAlertUnhealthy(int streak, boolean alreadyNotified) {
+        return streak >= UNHEALTHY_STREAK && !alreadyNotified;
+    }
+
+    /**
+     * Re-checks the port/http readiness of each app and reports the ones that stayed down for
+     * {@link #UNHEALTHY_STREAK} consecutive checks, once, with a Restart action. The alert re-arms
+     * when the app recovers, so a later outage is reported again.
+     */
+    private static void checkHealth(Project project, List<MultirunProcessRegistry.Entry> entries) {
+        for (MultirunProcessRegistry.Entry entry : entries) {
+            if (entry.handler.isProcessTerminated()) {
+                downStreaks.remove(entry.handler);
+                unhealthyNotified.remove(entry.handler);
+                continue;
+            }
+            final RunConfigurationHelper.ReadyCondition condition =
+                    RunConfigurationHelper.parseReadyCondition(entry.readyCondition);
+            final boolean down;
+            switch (condition.type) {
+                case PORT:
+                    down = !RunConfigurationHelper.isPortOpen(condition.port);
+                    break;
+                case HTTP:
+                    down = !RunConfigurationHelper.isHttpHealthy(condition.value);
+                    break;
+                default:
+                    continue; // no monitorable readiness condition
+            }
+
+            final int streak = nextDownStreak(downStreaks.getOrDefault(entry.handler, 0), down);
+            downStreaks.put(entry.handler, streak);
+            if (!down) {
+                unhealthyNotified.remove(entry.handler); // recovered: allow a future alert
+                continue;
+            }
+            if (shouldAlertUnhealthy(streak, unhealthyNotified.contains(entry.handler))) {
+                unhealthyNotified.add(entry.handler);
+                final com.intellij.notification.Notification notification =
+                        NotificationGroupManager.getInstance().getNotificationGroup("Multiple Run")
+                                .createNotification("Application unhealthy",
+                                                    "'" + entry.appName + "' is not answering its readiness check ("
+                                                            + entry.readyCondition + ").",
+                                                    NotificationType.WARNING);
+                if (entry.environment != null) {
+                    notification.addAction(com.intellij.notification.NotificationAction.createSimpleExpiring(
+                            "Restart", () -> com.intellij.execution.runners.ExecutionUtil.restart(entry.environment)));
+                }
+                notification.notify(project);
+            }
         }
     }
 

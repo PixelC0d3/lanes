@@ -287,24 +287,40 @@ public class MultirunRunnerState implements RunProfileState {
                                         processTerminated.set(true);
                                         stopRunningMultirunConfiguration.removeProcess(project, processEvent.getProcessHandler());
 
-                                        // docker "restart: on-failure": relaunch crashed apps, at most
-                                        // MAX_CRASH_RESTARTS times; intentional stops (0/130/137/143) never restart
-                                        if (restartOnCrash
-                                                && RunConfigurationHelper.isCrashExit(processEvent.getExitCode())
-                                                && !stopRunningMultirunConfiguration.isStopMultirunTriggered()
-                                                && crashRestarts.incrementAndGet() <= MAX_CRASH_RESTARTS) {
-                                            final int attempt = crashRestarts.get();
-                                            com.intellij.notification.NotificationGroupManager.getInstance()
-                                                    .getNotificationGroup("Multiple Run")
-                                                    .createNotification(
-                                                            "Application restarted after crash",
-                                                            "'" + runConfiguration.getName() + "' exited with code "
-                                                                    + processEvent.getExitCode() + " - restarting (attempt "
-                                                                    + attempt + "/" + MAX_CRASH_RESTARTS + ").",
-                                                            com.intellij.notification.NotificationType.WARNING)
-                                                    .notify(project);
-                                            ApplicationManager.getApplication().invokeLater(
-                                                    () -> ExecutionUtil.restart(executionEnvironment));
+                                        // docker "restart: on-failure": intentional stops (0/130/137/143) never restart
+                                        if (RunConfigurationHelper.isCrashExit(processEvent.getExitCode())
+                                                && !stopRunningMultirunConfiguration.isStopMultirunTriggered()) {
+                                            if (restartOnCrash && crashRestarts.incrementAndGet() <= MAX_CRASH_RESTARTS) {
+                                                // relaunch automatically, at most MAX_CRASH_RESTARTS times
+                                                final int attempt = crashRestarts.get();
+                                                com.intellij.notification.NotificationGroupManager.getInstance()
+                                                        .getNotificationGroup("Multiple Run")
+                                                        .createNotification(
+                                                                "Application restarted after crash",
+                                                                "'" + runConfiguration.getName() + "' exited with code "
+                                                                        + processEvent.getExitCode() + " - restarting (attempt "
+                                                                        + attempt + "/" + MAX_CRASH_RESTARTS + ").",
+                                                                com.intellij.notification.NotificationType.WARNING)
+                                                        .notify(project);
+                                                ApplicationManager.getApplication().invokeLater(
+                                                        () -> ExecutionUtil.restart(executionEnvironment));
+                                            } else {
+                                                // no auto-restart (disabled, or attempts exhausted): surface the
+                                                // crash with a one-click Restart action
+                                                final com.intellij.notification.Notification notification =
+                                                        com.intellij.notification.NotificationGroupManager.getInstance()
+                                                                .getNotificationGroup("Multiple Run")
+                                                                .createNotification(
+                                                                        "Application crashed",
+                                                                        "'" + runConfiguration.getName() + "' exited with code "
+                                                                                + processEvent.getExitCode() + ".",
+                                                                        com.intellij.notification.NotificationType.WARNING);
+                                                notification.addAction(
+                                                        com.intellij.notification.NotificationAction.createSimpleExpiring(
+                                                                "Restart",
+                                                                () -> ExecutionUtil.restart(executionEnvironment)));
+                                                notification.notify(project);
+                                            }
                                         }
                                     }
 
