@@ -41,6 +41,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.36.0</strong>:</p>
+        <ul>
+            <li>Monitor: batch actions. Select several rows (Ctrl/Shift-click) and Restart, Stop or
+                Force Kill acts on all of them. New "Restart Unhealthy" toolbar action restarts every
+                application whose port/http readiness check is currently down.</li>
+        </ul>
         <p><strong>1.35.0</strong>:</p>
         <ul>
             <li>Monitor: click the "Mem trend" sparkline of a row to open a full-session memory chart

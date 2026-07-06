@@ -209,11 +209,15 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         for (int i = 0; i < preferredWidths.length && i < table.getColumnModel().getColumnCount(); i++) {
             table.getColumnModel().getColumn(i).setPreferredWidth(preferredWidths[i]);
         }
+        // batch actions: the row actions operate on every selected row
+        table.getSelectionModel().setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 
         final DefaultActionGroup rowActions = new DefaultActionGroup();
         rowActions.add(new RestartSelectedAction());
         rowActions.add(new StopSelectedAction());
         rowActions.add(new KillSelectedAction());
+        rowActions.addSeparator();
+        rowActions.add(new RestartUnhealthyAction());
 
         final DefaultActionGroup toolbarGroup = new DefaultActionGroup();
         toolbarGroup.add(new DumbAwareAction("Refresh", "Refresh the process list now", AllIcons.Actions.Refresh) {
@@ -276,6 +280,22 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     @Nullable
     private Row selectedRow() {
         return table.getSelectedObject();
+    }
+
+    /** Every selected row (batch actions operate on all of them). */
+    private List<Row> selectedRows() {
+        return table.getSelectedObjects();
+    }
+
+    /** The rows whose readiness status is currently "down" - used by "Restart Unhealthy". */
+    static List<Row> unhealthyRows(List<Row> rows) {
+        final List<Row> result = new ArrayList<>();
+        for (Row row : rows) {
+            if ("down".equals(row.status)) {
+                result.add(row);
+            }
+        }
+        return result;
     }
 
     /** Brings the console tab of the selected application to front (Run or Debug tool window). */
@@ -408,10 +428,10 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         }
     }
 
-    /** Restarts only the selected application; everything else keeps running. */
+    /** Restarts every selected application; everything else keeps running. */
     private final class RestartSelectedAction extends DumbAwareAction {
         RestartSelectedAction() {
-            super("Restart", "Stop the selected application and start it again (everything else keeps running)",
+            super("Restart", "Stop the selected application(s) and start them again (everything else keeps running)",
                   AllIcons.Actions.Restart);
         }
 
@@ -422,25 +442,32 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
 
         @Override
         public void update(@NotNull AnActionEvent e) {
-            final Row row = selectedRow();
-            e.getPresentation().setEnabled(row != null && row.descriptor != null);
+            boolean anyRestartable = false;
+            for (Row row : selectedRows()) {
+                if (row.descriptor != null) {
+                    anyRestartable = true;
+                    break;
+                }
+            }
+            e.getPresentation().setEnabled(anyRestartable);
         }
 
         @Override
         public void actionPerformed(@NotNull AnActionEvent e) {
-            final Row row = selectedRow();
-            if (row != null && row.descriptor != null) {
-                // the platform stops the old process and reruns the same environment; the new
-                // process shows up again on the next refresh (all IDE processes are listed)
-                ExecutionUtil.restart(row.descriptor);
+            for (Row row : selectedRows()) {
+                if (row.descriptor != null) {
+                    // the platform stops the old process and reruns the same environment; the new
+                    // process shows up again on the next refresh (all IDE processes are listed)
+                    ExecutionUtil.restart(row.descriptor);
+                }
             }
         }
     }
 
-    /** Graceful stop of the selected application - same as the red stop button of its tab. */
+    /** Graceful stop of every selected application - same as the red stop button of its tab. */
     private final class StopSelectedAction extends DumbAwareAction {
         StopSelectedAction() {
-            super("Stop", "Request the selected application to terminate", AllIcons.Actions.Suspend);
+            super("Stop", "Request the selected application(s) to terminate", AllIcons.Actions.Suspend);
         }
 
         @Override
@@ -450,22 +477,21 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
 
         @Override
         public void update(@NotNull AnActionEvent e) {
-            e.getPresentation().setEnabled(selectedRow() != null);
+            e.getPresentation().setEnabled(!selectedRows().isEmpty());
         }
 
         @Override
         public void actionPerformed(@NotNull AnActionEvent e) {
-            final Row row = selectedRow();
-            if (row != null) {
+            for (Row row : selectedRows()) {
                 row.handler.destroyProcess();
             }
         }
     }
 
-    /** SIGKILL of the selected application and every process it spawned. */
+    /** SIGKILL of every selected application and each process it spawned. */
     private final class KillSelectedAction extends DumbAwareAction {
         KillSelectedAction() {
-            super("Force Kill", "Forcibly kill the selected application and its whole process tree (SIGKILL)",
+            super("Force Kill", "Forcibly kill the selected application(s) and their whole process tree (SIGKILL)",
                   AllIcons.Debugger.KillProcess);
         }
 
@@ -476,34 +502,71 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
 
         @Override
         public void update(@NotNull AnActionEvent e) {
-            e.getPresentation().setEnabled(selectedRow() != null);
+            e.getPresentation().setEnabled(!selectedRows().isEmpty());
         }
 
         @Override
         public void actionPerformed(@NotNull AnActionEvent e) {
-            final Row row = selectedRow();
-            if (row == null) {
+            final List<Row> rows = selectedRows();
+            if (rows.isEmpty()) {
                 return;
+            }
+            final StringBuilder list = new StringBuilder();
+            for (Row row : rows) {
+                list.append("\n  - '").append(row.name).append("' (PID ").append(row.pid).append(')');
             }
             final int answer = Messages.showYesNoDialog(
                     project,
-                    "Forcibly kill '" + row.name + "' (PID " + row.pid + ") and all its child processes?\n" +
-                    "The application gets no chance to shut down cleanly.",
+                    "Forcibly kill the following application(s) and all their child processes?" + list + "\n\n" +
+                    "They get no chance to shut down cleanly.",
                     "Force Kill", "Kill", "Cancel", Messages.getWarningIcon());
             if (answer != Messages.YES) {
                 return;
             }
+            final List<ProcessHandler> handlers = new ArrayList<>();
+            for (Row row : rows) {
+                handlers.add(row.handler);
+            }
             ApplicationManager.getApplication().executeOnPooledThread(() -> {
-                // resolve the tree fresh - children may have been spawned after the last refresh
-                final Set<Long> treePids =
-                        ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(row.handler));
-                for (Long pid : treePids) {
-                    ProcessHandle.of(pid).ifPresent(ProcessHandle::destroyForcibly);
+                for (ProcessHandler handler : handlers) {
+                    // resolve the tree fresh - children may have been spawned after the last refresh
+                    final Set<Long> treePids =
+                            ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(handler));
+                    for (Long pid : treePids) {
+                        ProcessHandle.of(pid).ifPresent(ProcessHandle::destroyForcibly);
+                    }
+                    // tell the IDE the process is gone, so the run tab stops its spinner too
+                    handler.destroyProcess();
                 }
-                // tell the IDE the process is gone, so the run tab stops its spinner too
-                row.handler.destroyProcess();
                 ApplicationManager.getApplication().invokeLater(MultirunMonitorPanel.this::refresh);
             });
+        }
+    }
+
+    /** Restarts every application whose readiness status is currently "down". */
+    private final class RestartUnhealthyAction extends DumbAwareAction {
+        RestartUnhealthyAction() {
+            super("Restart Unhealthy", "Restart every application whose port/http readiness check is currently down",
+                  AllIcons.Actions.Restart);
+        }
+
+        @Override
+        public @NotNull ActionUpdateThread getActionUpdateThread() {
+            return ActionUpdateThread.EDT;
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent e) {
+            e.getPresentation().setEnabled(!unhealthyRows(model.getItems()).isEmpty());
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent e) {
+            for (Row row : unhealthyRows(model.getItems())) {
+                if (row.descriptor != null) {
+                    ExecutionUtil.restart(row.descriptor);
+                }
+            }
         }
     }
 

@@ -133,6 +133,9 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   process terminates.
 - **Restart per row** (toolbar or right-click) — stops and starts again *only* the selected
   application; the rest of the group keeps running untouched.
+- **Batch actions** — select several rows (Ctrl/Shift-click) and *Restart*, *Stop* or *Force Kill*
+  act on all of them at once. **Restart Unhealthy** (toolbar) restarts every app whose `port:`/`http`
+  readiness check is currently down.
 - **Stop / Force Kill per row** (toolbar or right-click): *Stop* asks the application to terminate
   (same as the stop button of its run tab); *Force Kill* sends SIGKILL to the whole process tree
   of the selected application, after confirmation — for processes that refuse to die.
