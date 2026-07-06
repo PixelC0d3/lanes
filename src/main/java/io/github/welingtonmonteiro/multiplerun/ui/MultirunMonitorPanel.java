@@ -38,6 +38,7 @@ import com.intellij.ui.ScrollPaneFactory;
 import com.intellij.ui.table.TableView;
 import com.intellij.util.ui.ColumnInfo;
 import com.intellij.util.ui.ListTableModel;
+import io.github.welingtonmonteiro.multiplerun.MemoryHistory;
 import io.github.welingtonmonteiro.multiplerun.MultirunProcessRegistry;
 import io.github.welingtonmonteiro.multiplerun.ProcessStatsSampler;
 import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper;
@@ -126,6 +127,10 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     /** Recent memory-percent samples per process, feeding the "Mem trend" sparkline column. */
     private static final int TREND_SAMPLES = 30;
     private final Map<ProcessHandler, java.util.ArrayDeque<Double>> memHistory = new HashMap<>();
+    /** Full session memory history per process, for the click-to-open chart (bounded). */
+    private static final int MAX_FULL_SAMPLES = 10_000;
+    private final Map<ProcessHandler, List<MemoryHistory.Sample>> fullHistory =
+            new java.util.concurrent.ConcurrentHashMap<>();
     private final SparklineCellRenderer sparklineRenderer = new SparklineCellRenderer();
     private final PortsCellRenderer portsRenderer = new PortsCellRenderer();
 
@@ -236,9 +241,12 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 if (!javax.swing.SwingUtilities.isLeftMouseButton(e)) {
                     return;
                 }
-                // single click on the Ports column opens the port(s) in the browser
+                // single click on the Ports column opens the port(s) in the browser;
+                // single click on the Mem trend column opens the full memory chart
                 if (e.getClickCount() == 1 && isPortsColumn(e.getPoint())) {
                     openPortsAt(e);
+                } else if (e.getClickCount() == 1 && isColumn(e.getPoint(), "Mem trend")) {
+                    openMemChartAt(e);
                 } else if (e.getClickCount() == 2) {
                     focusRunTabOfSelectedRow();
                 }
@@ -289,11 +297,38 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
 
     /** True when the point falls inside the (possibly reordered) "Ports" column. */
     private boolean isPortsColumn(java.awt.Point point) {
+        return isColumn(point, "Ports");
+    }
+
+    /** True when the point falls inside the (possibly reordered) column with the given header name. */
+    private boolean isColumn(java.awt.Point point, String columnName) {
         final int viewColumn = table.columnAtPoint(point);
         if (viewColumn < 0) {
             return false;
         }
-        return "Ports".equals(model.getColumnName(table.convertColumnIndexToModel(viewColumn)));
+        return columnName.equals(model.getColumnName(table.convertColumnIndexToModel(viewColumn)));
+    }
+
+    /** Opens the full-session memory chart for the clicked row. */
+    private void openMemChartAt(java.awt.event.MouseEvent e) {
+        final int viewRow = table.rowAtPoint(e.getPoint());
+        if (viewRow < 0) {
+            return;
+        }
+        final Row row = model.getItem(table.convertRowIndexToModel(viewRow));
+        if (row == null) {
+            return;
+        }
+        final List<MemoryHistory.Sample> stored = fullHistory.get(row.handler);
+        final List<MemoryHistory.Sample> copy;
+        if (stored == null) {
+            copy = java.util.Collections.emptyList();
+        } else {
+            synchronized (stored) {
+                copy = new ArrayList<>(stored);
+            }
+        }
+        new MemoryChartDialog(project, row.name, copy).show();
     }
 
     /** Opens the port(s) of the clicked row in the browser (a menu when there is more than one). */
@@ -668,6 +703,18 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             }
             final double[] memTrend = history.stream().mapToDouble(Double::doubleValue).toArray();
 
+            // full session history (bounded) feeds the click-to-open memory chart
+            if (stats != null) {
+                final List<MemoryHistory.Sample> full =
+                        fullHistory.computeIfAbsent(snapshot.handler, h -> new ArrayList<>());
+                synchronized (full) {
+                    full.add(new MemoryHistory.Sample(System.currentTimeMillis(), stats.rssKb, percentValue));
+                    while (full.size() > MAX_FULL_SAMPLES) {
+                        full.remove(0);
+                    }
+                }
+            }
+
             rows.add(new Row(name, icon, multirunName, envFileName, snapshot.handler, snapshot.descriptor, meta,
                              rootPid > 0 ? String.valueOf(rootPid) : "n/a",
                              portsText, uptimeText, statusText, memUsage, memPercent, cpuPercent, memTrend));
@@ -685,6 +732,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             liveHandlers.add(snapshot.handler);
         }
         memHistory.keySet().retainAll(liveHandlers);
+        fullHistory.keySet().retainAll(liveHandlers);
 
         return rows;
     }
