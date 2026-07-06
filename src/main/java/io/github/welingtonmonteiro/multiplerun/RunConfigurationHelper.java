@@ -223,6 +223,33 @@ public class RunConfigurationHelper {
         }
     }
 
+    /**
+     * Applies a per-application env file ON TOP of the given data: the file values win over the
+     * group environment for that application, because a per-app file is more specific than the
+     * group. Returns {@code envData} unchanged when no file is configured; a missing or unreadable
+     * file is logged and skipped, so the run still starts.
+     */
+    public static EnvironmentVariablesData withAppEnvFile(EnvironmentVariablesData envData, String envFilePath, Project project) {
+        if (envFilePath == null || envFilePath.trim().isEmpty()) {
+            return envData;
+        }
+        final File file = resolveEnvFile(envFilePath, project);
+        try {
+            final Map<String, String> fileVars = parseEnvFile(file);
+            // info level on purpose: key names only (never values), to diagnose injection from idea.log
+            LOG.info("Multirun per-app env file '" + file + "' loaded, keys=" + fileVars.keySet());
+            if (fileVars.isEmpty()) {
+                return envData;
+            }
+            final Map<String, String> merged = new LinkedHashMap<>(envData.getEnvs());
+            merged.putAll(fileVars); // the per-app file wins over the group environment
+            return EnvironmentVariablesData.create(merged, envData.isPassParentEnvs());
+        } catch (IOException e) {
+            LOG.warn("Multirun: cannot read per-app env file '" + file + "', continuing without it", e);
+            return envData;
+        }
+    }
+
     /** File name (without directory) used when saving a child configuration console; safe across OSes. */
     public static String consoleLogFileName(String configurationName) {
         final String sanitized = configurationName == null

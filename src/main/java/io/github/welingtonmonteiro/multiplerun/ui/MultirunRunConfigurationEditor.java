@@ -67,6 +67,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private java.util.Set<String> disabledApps = new java.util.LinkedHashSet<>();
     /** Per-child readiness condition, edited inline in the "Ready when" column. */
     private Map<String, String> readyConditions = new LinkedHashMap<>();
+    /** Per-child env file overriding the group environment, edited inline in the "Env file (app)" column. */
+    private Map<String, String> appEnvFiles = new LinkedHashMap<>();
     /** Named execution presets (On/Off + env profile), chosen from the "Preset" dropdown. */
     private JComboBox<String> presetCombo;
     private Map<String, MultirunRunConfiguration.Preset> presets = new LinkedHashMap<>();
@@ -87,6 +89,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
             memoryLimits = this.configuration.getMemoryLimits();
             disabledApps = this.configuration.getDisabledApps();
             readyConditions = this.configuration.getReadyConditions();
+            appEnvFiles = this.configuration.getAppEnvFiles();
             presets = this.configuration.getPresets();
             applyingPreset = true;
             final DefaultComboBoxModel<String> presetsModel = (DefaultComboBoxModel<String>) presetCombo.getModel();
@@ -141,6 +144,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         multirunRunConfiguration.setMemoryLimits(memoryLimits);
         multirunRunConfiguration.setDisabledApps(disabledApps);
         multirunRunConfiguration.setReadyConditions(readyConditions);
+        multirunRunConfiguration.setAppEnvFiles(appEnvFiles);
         multirunRunConfiguration.setPresets(presets);
         multirunRunConfiguration.setReuseTabs(reuseTabs.isSelected());
         multirunRunConfiguration.setReuseTabsWithFailure(reuseTabsWithFailure.isSelected());
@@ -174,7 +178,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     @Override
     protected JComponent createEditor() {
         configurationsModel = new ListTableModel<>(new EnabledColumn(), new ConfigurationColumn(),
-                                                   new MemoryLimitColumn(), new ReadyWhenColumn());
+                                                   new MemoryLimitColumn(), new ReadyWhenColumn(),
+                                                   new AppEnvFileColumn());
         configurations = new TableView<>(configurationsModel);
         configurations.setShowGrid(false);
         configurations.getEmptyText().setText("Add run configurations to this list");
@@ -720,6 +725,46 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         @Override
         public int getWidth(JTable table) {
             return 180;
+        }
+    }
+
+    /** "Env file (app)" column: a per-application .env file that overrides the group environment. */
+    private class AppEnvFileColumn extends ColumnInfo<RunConfiguration, String> {
+        AppEnvFileColumn() {
+            super("Env file (app)");
+        }
+
+        @Override
+        public String valueOf(RunConfiguration configuration) {
+            final String path = appEnvFiles.get(configuration.getName());
+            return path == null ? "" : path;
+        }
+
+        @Override
+        public boolean isCellEditable(RunConfiguration configuration) {
+            return true;
+        }
+
+        @Override
+        public void setValue(RunConfiguration configuration, String value) {
+            if (value == null || value.trim().isEmpty()) {
+                appEnvFiles.remove(configuration.getName());
+            } else {
+                appEnvFiles.put(configuration.getName(), value.trim());
+            }
+            markConfigurationsChanged();
+        }
+
+        @Override
+        public String getTooltipText() {
+            return "Optional .env file applied only to this application, overriding the group's "
+                    + "environment (variables and env file) on conflicts. Relative paths resolve "
+                    + "against the project root. Re-read on every run. Empty = use the group's environment";
+        }
+
+        @Override
+        public int getWidth(JTable table) {
+            return 160;
         }
     }
 

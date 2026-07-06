@@ -40,6 +40,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public static final String ELEMENT_PRESET_DISABLED = "disabled";
     public static final String PROP_DISABLED = "disabled";
     public static final String PROP_READY_WHEN = "readyWhen";
+    public static final String PROP_APP_ENV_FILE = "appEnvFile";
     public static final String PROP_RESTART_ON_CRASH = "restartOnCrash";
     public static final String PROP_MEM_ALERT_THRESHOLD = "memAlertThreshold";
     public static final String PROP_MEM_LIMIT_RESTART = "memLimitRestart";
@@ -68,6 +69,8 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     private java.util.Set<String> disabledApps = new java.util.LinkedHashSet<>();
     /** Per-child readiness condition ("port:3003", "log:started", http url), keyed by name. */
     private Map<String, String> readyConditions = new LinkedHashMap<>();
+    /** Per-child env file overriding the group environment for that app, keyed by app name. */
+    private Map<String, String> appEnvFiles = new LinkedHashMap<>();
     /** Named execution presets (which apps are On/Off + which env profile), keyed by preset name. */
     private Map<String, Preset> presets = new LinkedHashMap<>();
     private List<RunConfigurationInternal> runConfigurations = new ArrayList<>();
@@ -375,6 +378,21 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         }
     }
 
+    public Map<String, String> getAppEnvFiles() {
+        return new LinkedHashMap<>(appEnvFiles);
+    }
+
+    public void setAppEnvFiles(Map<String, String> appEnvFiles) {
+        this.appEnvFiles = new LinkedHashMap<>();
+        if (appEnvFiles != null) {
+            for (Map.Entry<String, String> each : appEnvFiles.entrySet()) {
+                if (each.getValue() != null && !each.getValue().trim().isEmpty()) {
+                    this.appEnvFiles.put(each.getKey(), each.getValue().trim());
+                }
+            }
+        }
+    }
+
     public String getSaveOutputDir() {
         return saveOutputDir;
     }
@@ -471,6 +489,10 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
                 if (readyWhen != null && !readyWhen.trim().isEmpty()) {
                     readyConditions.put(eachElement.getAttributeValue("name"), readyWhen.trim());
                 }
+                final String appEnvFile = eachElement.getAttributeValue(PROP_APP_ENV_FILE);
+                if (appEnvFile != null && !appEnvFile.trim().isEmpty()) {
+                    appEnvFiles.put(eachElement.getAttributeValue("name"), appEnvFile.trim());
+                }
             } else if (eachElement.getName().equals(ELEMENT_ENVS)) {
                 final Map<String, String> envs = new LinkedHashMap<>();
                 for (Element env : eachElement.getChildren(ELEMENT_ENV)) {
@@ -527,6 +549,10 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
             if (readyWhen != null && !readyWhen.isEmpty()) {
                 runConfiguration.setAttribute(PROP_READY_WHEN, readyWhen);
             }
+            final String appEnvFile = appEnvFiles.get(each.name);
+            if (appEnvFile != null && !appEnvFile.isEmpty()) {
+                runConfiguration.setAttribute(PROP_APP_ENV_FILE, appEnvFile);
+            }
             configurations.add(runConfiguration);
         }
         element.setContent(configurations);
@@ -573,6 +599,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
                                        reuseTabs, reuseTabsWithFailure,
                                        markFailedProcess, hideSuccessProcess, envData, envFilePath,
                                        saveOutputDir, getMemoryLimits(), getReadyConditions(),
+                                       getAppEnvFiles(),
                                        restartRunning, restartOnCrash, memAlertThreshold, memLimitRestart,
                                        getProject(), getName());
     }

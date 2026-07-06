@@ -41,6 +41,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.32.0</strong>:</p>
+        <ul>
+            <li>New: per-application environment file. The applications table has an "Env file (app)"
+                column - point an app at its own <code>.env</code> file and it overrides the group's
+                environment (variables and env file) just for that app. Empty = use the group's
+                environment. Re-read on every run; relative paths resolve against the project root.</li>
+        </ul>
         <p><strong>1.31.0</strong>:</p>
         <ul>
             <li>Monitor: the Ports column is now clickable - click a port to open
