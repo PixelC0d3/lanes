@@ -41,6 +41,15 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.26</strong>:</p>
+        <ul>
+            <li>Monitor: new "Mem trend" sparkline column - a mini chart with the memory history of the
+                last minute per application (green/orange/red by how close to the limit it is), so leaks
+                and growth trends are visible at a glance.</li>
+            <li>Windows support for the monitor: memory and CPU are sampled through PowerShell
+                Get-Process when ps is not available. (Ports and kill-by-port still need lsof,
+                i.e. Linux/macOS.)</li>
+        </ul>
         <p><strong>1.25</strong>:</p>
         <ul>
             <li>New: restart policies, docker style. "Restart application on crash" relaunches an app

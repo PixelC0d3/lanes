@@ -111,9 +111,13 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - **Kill Process on Port…** — type a TCP port and the plugin finds whatever process is listening
   on it (even one not started by Multiple Run), shows PID + command for confirmation and kills it.
   The quickest cure for `EADDRINUSE: address already in use`.
+- **Mem trend** — a sparkline with the memory history of the last minute per application; the
+  shape shows growth/leaks at a glance and the color tracks how close the app is to its limit
+  (green → orange at 70% → red at 90%).
 - The tool window toolbar also has a manual refresh button and the *Stop Multiple Run* action.
-- Sampling uses the OS `ps` and `lsof` commands (Linux/macOS); on systems without them the table
-  shows `n/a`.
+- Sampling uses the OS `ps` and `lsof` commands on Linux/macOS; on **Windows** memory/CPU come
+  from PowerShell `Get-Process` (the Ports column and *Kill Process on Port* need `lsof`, so they
+  stay Linux/macOS-only).
 
 ### Memory limit alert
 - When an application with a configured *Memory limit (MB)* crosses **90%** of it, the IDE raises

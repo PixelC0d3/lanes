@@ -41,6 +41,16 @@ public class ProcessStatsSamplerTest {
         assertEquals(1.5, stats.get(1234L).cpuTimeSeconds, 0.0001);
     }
 
+    @Test
+    public void parsesWindowsPowershellLines() {
+        // on Windows the sampler feeds "pid rssKb cpuSeconds" lines from Get-Process
+        final Map<Long, ProcessStatsSampler.Stats> stats =
+                ProcessStatsSampler.parsePsOutput(Arrays.asList("1234 151200 12.34", "5678 2048 3,5"));
+
+        assertEquals(12.34, stats.get(1234L).cpuTimeSeconds, 0.0001);
+        assertEquals("comma decimal (pt-BR locale) must work too", 3.5, stats.get(5678L).cpuTimeSeconds, 0.0001);
+    }
+
     // --- parseCpuTime -----------------------------------------------------------------------
 
     @Test
