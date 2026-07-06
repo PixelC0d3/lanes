@@ -61,6 +61,12 @@ public final class MultirunProcessRegistry {
     }
 
     private static final Map<Project, List<Entry>> ENTRIES = new ConcurrentHashMap<>();
+    /**
+     * Last multirun launch metadata per app name. Unlike ENTRIES this survives process
+     * termination, so an app restarted individually (outside the multirun umbrella) still
+     * shows its group, env profile and memory limit in the monitor.
+     */
+    private static final Map<Project, Map<String, Entry>> LAST_BY_NAME = new ConcurrentHashMap<>();
 
     private MultirunProcessRegistry() {
     }
@@ -72,6 +78,7 @@ public final class MultirunProcessRegistry {
         final Entry entry = new Entry(multirunName, appName, handler, memoryLimitMb, environment,
                                       envFileName, readyCondition, memAlertThreshold, memLimitRestart);
         ENTRIES.computeIfAbsent(project, p -> new CopyOnWriteArrayList<>()).add(entry);
+        LAST_BY_NAME.computeIfAbsent(project, p -> new ConcurrentHashMap<>()).put(appName, entry);
         handler.addProcessListener(new ProcessListener() {
             @Override
             public void processTerminated(@NotNull ProcessEvent event) {
@@ -108,6 +115,17 @@ public final class MultirunProcessRegistry {
             }
         });
         return copy;
+    }
+
+    /**
+     * Metadata of the last multirun launch of an app with this name, or null when the app was
+     * never started by Multiple Run. The entry's handler/startedAt may belong to a dead process -
+     * callers must only use the descriptive fields (group, limit, env profile, condition).
+     */
+    @Nullable
+    public static Entry findMetadataByName(@NotNull Project project, @Nullable String appName) {
+        final Map<String, Entry> byName = LAST_BY_NAME.get(project);
+        return byName == null || appName == null ? null : byName.get(appName);
     }
 
     /** The OS pid behind the handler, or -1 when it cannot be determined. */

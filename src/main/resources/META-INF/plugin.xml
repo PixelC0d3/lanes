@@ -41,6 +41,16 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.27</strong>:</p>
+        <ul>
+            <li>Monitor: now lists EVERY process the IDE is running - standalone (singleton) runs
+                included, not only the ones started by Multiple Run. The Name column shows the origin:
+                the Multiple Run icon for grouped apps, the run configuration's own icon (node, npm,
+                jest, ...) for standalone ones.</li>
+            <li>Monitor: an application restarted from the monitor no longer disappears from the list,
+                and keeps showing its group, env profile and memory limit.</li>
+            <li>Monitor: columns are resizable - drag the header edges to adjust widths.</li>
+        </ul>
         <p><strong>1.26</strong>:</p>
         <ul>
             <li>Monitor: new "Mem trend" sparkline column - a mini chart with the memory history of the

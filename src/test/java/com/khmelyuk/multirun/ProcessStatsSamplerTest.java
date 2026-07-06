@@ -239,6 +239,24 @@ public class ProcessStatsSamplerTest {
                    ProcessStatsSampler.processTreePids(myPid).contains(myPid));
     }
 
+    // --- processStartMillis (uptime of standalone apps) ---------------------------------------
+
+    @Test
+    public void invalidPidHasNoStartTime() {
+        assertEquals(-1, ProcessStatsSampler.processStartMillis(-1));
+        assertEquals(-1, ProcessStatsSampler.processStartMillis(0));
+    }
+
+    @Test
+    public void ownProcessStartTimeIsInThePast() {
+        final long startMs = ProcessStatsSampler.processStartMillis(ProcessHandle.current().pid());
+
+        // the OS may not expose it (then -1); when it does, it must be a sane past timestamp
+        if (startMs > 0) {
+            assertTrue("a process cannot start in the future", startMs <= System.currentTimeMillis());
+        }
+    }
+
     // --- parseLsofOutput (Ports column / kill-by-port) ---------------------------------------
 
     @Test
