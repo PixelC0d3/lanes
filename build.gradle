@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'io.github.welingtonmonteiro'
-version = '1.37.0'
+version = '1.37.1'
 
 repositories {
     mavenCentral()
@@ -24,6 +24,14 @@ intellij {
     // Bundled plugin that provides com.intellij.profiler.DefaultProfilerExecutorGroup
     plugins = ['com.jetbrains.performancePlugin.async']
     updateSinceUntilBuild = false
+}
+
+// The plugin registers no Settings pages (no applicationConfigurable/projectConfigurable), so
+// buildSearchableOptions has nothing to index. It launches a full headless IDE that intermittently
+// fails with a platform ConcurrentModificationException during shutdown; disabling it removes a
+// useless, flaky build step (buildPlugin no longer depends on a headless IDE run).
+buildSearchableOptions {
+    enabled = false
 }
 
 // Load the plugin repo api key from local.properties file

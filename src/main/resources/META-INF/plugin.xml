@@ -41,6 +41,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.37.1</strong>:</p>
+        <ul>
+            <li>Build: disable buildSearchableOptions - the plugin has no Settings pages to index, and
+                that step launched a headless IDE that intermittently failed with a platform
+                ConcurrentModificationException. No functional change.</li>
+        </ul>
         <p><strong>1.37.0</strong>:</p>
         <ul>
             <li>New: sustained CPU alert. Set a "CPU alert %" on the group and an application whose CPU
