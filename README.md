@@ -25,6 +25,21 @@ few options, and run everything at once — as a group, in parallel or one-by-on
 - **Parallel** — start all configurations at the same time.
 - **One by one** — start the next configuration only after the previous one has started. This is
   useful when "Before launch" tasks would otherwise run in parallel and interfere with each other.
+- **Enable/disable per application** — every row of the configurations list has an *On* checkbox;
+  unchecked applications stay in the list (keeping their memory limit and other settings) but are
+  not launched. Handy to temporarily skip a service.
+- **Ready when (docker-compose style `depends_on`)** — with *one by one*, fill the *Ready when*
+  column of an application and the next one only starts when it is actually ready:
+
+  | Syntax | Meaning |
+  |--------|---------|
+  | `port:3003` | a TCP port on localhost accepts connections |
+  | `http://localhost:3003/health` | an HTTP GET answers 2xx/3xx |
+  | `log:Server started` | the console output contains the text (plain text works too) |
+
+  The wait is capped at 2 minutes — after that the chain continues anyway. Port/http conditions
+  also feed the *Status* column of the Multiple Run Monitor (healthy/down, re-checked every
+  refresh, like `docker ps`).
 
 ### Delay between configurations (one-by-one mode only)
 The delay field accepts fractional seconds (e.g. `0.5`) and behaves as follows:
@@ -69,8 +84,12 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - The **Multiple Run Monitor** tool window (bottom stripe of the IDE, or `Run → Multiple Run
   Monitor`) shows a live table with every application started by Multiple Run:
 
-  | Name | Multiple Run | PID | Ports | Uptime | Mem Usage / Limit | Mem % | CPU % |
-  |------|--------------|-----|-------|--------|-------------------|-------|-------|
+  | Name | Multiple Run | Env | PID | Ports | Uptime | Status | Mem Usage / Limit | Mem % | CPU % |
+  |------|--------------|-----|-----|-------|--------|--------|-------------------|-------|-------|
+
+- **Env** shows the active environment profile; **Status** shows healthy/down for applications
+  with a port/http *Ready when* condition. **Double click** a row to jump to the console tab of
+  that application.
 
 - Works like `docker stats`: memory usage is shown against the configured *Memory limit (MB)* of
   the application (or against the total machine memory when no limit is set), so you can check at

@@ -36,16 +36,20 @@ public final class MultirunProcessRegistry {
         public final ExecutionEnvironment environment;
         /** File name of the active env profile at launch time, or "-" when none. */
         public final String envFileName;
+        /** Raw "Ready when" condition of the app (port:/log:/http...), or null when none. */
+        public final String readyCondition;
         public final long startedAtMs;
 
         Entry(String multirunName, String appName, ProcessHandler handler,
-              Integer memoryLimitMb, ExecutionEnvironment environment, String envFileName) {
+              Integer memoryLimitMb, ExecutionEnvironment environment, String envFileName,
+              String readyCondition) {
             this.multirunName = multirunName;
             this.appName = appName;
             this.handler = handler;
             this.memoryLimitMb = memoryLimitMb;
             this.environment = environment;
             this.envFileName = envFileName == null || envFileName.isEmpty() ? "-" : envFileName;
+            this.readyCondition = readyCondition;
             this.startedAtMs = System.currentTimeMillis();
         }
     }
@@ -57,8 +61,10 @@ public final class MultirunProcessRegistry {
 
     public static void register(@NotNull Project project, String multirunName, String appName,
                                 @NotNull ProcessHandler handler, @Nullable Integer memoryLimitMb,
-                                @Nullable ExecutionEnvironment environment, @Nullable String envFileName) {
-        final Entry entry = new Entry(multirunName, appName, handler, memoryLimitMb, environment, envFileName);
+                                @Nullable ExecutionEnvironment environment, @Nullable String envFileName,
+                                @Nullable String readyCondition) {
+        final Entry entry = new Entry(multirunName, appName, handler, memoryLimitMb, environment,
+                                      envFileName, readyCondition);
         ENTRIES.computeIfAbsent(project, p -> new CopyOnWriteArrayList<>()).add(entry);
         handler.addProcessListener(new ProcessListener() {
             @Override

@@ -60,6 +60,10 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private MultirunRunConfiguration configuration;
     /** Per-child memory (heap) cap in MB, edited inline in the "Memory limit" table column. */
     private Map<String, Integer> memoryLimits = new LinkedHashMap<>();
+    /** Apps unchecked in the list: kept in the configuration but not launched. */
+    private java.util.Set<String> disabledApps = new java.util.LinkedHashSet<>();
+    /** Per-child readiness condition, edited inline in the "Ready when" column. */
+    private Map<String, String> readyConditions = new LinkedHashMap<>();
 
     public MultirunRunConfigurationEditor(final Project project) {
         this.project = project;
@@ -73,6 +77,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
 
         if (this.configuration != null) {
             memoryLimits = this.configuration.getMemoryLimits();
+            disabledApps = this.configuration.getDisabledApps();
+            readyConditions = this.configuration.getReadyConditions();
             configurationsModel.setItems(new ArrayList<>(this.configuration.getRunConfigurations()));
             environmentVariables.setEnvData(this.configuration.getEnvData());
             final DefaultComboBoxModel<String> profilesModel = (DefaultComboBoxModel<String>) envFileCombo.getModel();
@@ -113,6 +119,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         multirunRunConfiguration.setEnvProfiles(envProfiles);
         multirunRunConfiguration.setSaveOutputDir(saveOutputDir.getText());
         multirunRunConfiguration.setMemoryLimits(memoryLimits);
+        multirunRunConfiguration.setDisabledApps(disabledApps);
+        multirunRunConfiguration.setReadyConditions(readyConditions);
         multirunRunConfiguration.setReuseTabs(reuseTabs.isSelected());
         multirunRunConfiguration.setReuseTabsWithFailure(reuseTabsWithFailure.isSelected());
         multirunRunConfiguration.setStartOneByOne(startOneByOne.isSelected());
@@ -141,7 +149,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     @NotNull
     @Override
     protected JComponent createEditor() {
-        configurationsModel = new ListTableModel<>(new ConfigurationColumn(), new MemoryLimitColumn());
+        configurationsModel = new ListTableModel<>(new EnabledColumn(), new ConfigurationColumn(),
+                                                   new MemoryLimitColumn(), new ReadyWhenColumn());
         configurations = new TableView<>(configurationsModel);
         configurations.setShowGrid(false);
         configurations.getEmptyText().setText("Add run configurations to this list");
@@ -302,6 +311,48 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     protected void disposeEditor() {
     }
 
+    /** Checkbox column: unchecked applications stay in the list but are not launched. */
+    private class EnabledColumn extends ColumnInfo<RunConfiguration, Boolean> {
+        EnabledColumn() {
+            super("On");
+        }
+
+        @Override
+        public Class<?> getColumnClass() {
+            return Boolean.class;
+        }
+
+        @Override
+        public Boolean valueOf(RunConfiguration configuration) {
+            return !disabledApps.contains(configuration.getName());
+        }
+
+        @Override
+        public boolean isCellEditable(RunConfiguration configuration) {
+            return true;
+        }
+
+        @Override
+        public void setValue(RunConfiguration configuration, Boolean enabled) {
+            if (Boolean.FALSE.equals(enabled)) {
+                disabledApps.add(configuration.getName());
+            } else {
+                disabledApps.remove(configuration.getName());
+            }
+            markConfigurationsChanged();
+        }
+
+        @Override
+        public String getTooltipText() {
+            return "Unchecked applications are kept in the list but not launched";
+        }
+
+        @Override
+        public int getWidth(JTable table) {
+            return 40;
+        }
+    }
+
     /** First table column: icon + "Run 'name'", read-only. */
     private static class ConfigurationColumn extends ColumnInfo<RunConfiguration, String> {
         ConfigurationColumn() {
@@ -369,6 +420,47 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         @Override
         public int getWidth(JTable table) {
             return 140;
+        }
+    }
+
+    /** "Ready when" column: docker-compose-like readiness gate used by one-by-one starts. */
+    private class ReadyWhenColumn extends ColumnInfo<RunConfiguration, String> {
+        ReadyWhenColumn() {
+            super("Ready when");
+        }
+
+        @Override
+        public String valueOf(RunConfiguration configuration) {
+            final String condition = readyConditions.get(configuration.getName());
+            return condition == null ? "" : condition;
+        }
+
+        @Override
+        public boolean isCellEditable(RunConfiguration configuration) {
+            return true;
+        }
+
+        @Override
+        public void setValue(RunConfiguration configuration, String value) {
+            if (value == null || value.trim().isEmpty()) {
+                readyConditions.remove(configuration.getName());
+            } else {
+                readyConditions.put(configuration.getName(), value.trim());
+            }
+            markConfigurationsChanged();
+        }
+
+        @Override
+        public String getTooltipText() {
+            return "With 'Start one by one', the next application only starts after this one is ready. "
+                    + "Syntax: port:3003 (TCP port open), http://localhost:3003/health (HTTP 2xx/3xx) "
+                    + "or log:Server started (console output contains the text). Empty = no waiting. "
+                    + "Port/http conditions also feed the Status column of the Multiple Run Monitor";
+        }
+
+        @Override
+        public int getWidth(JTable table) {
+            return 180;
         }
     }
 

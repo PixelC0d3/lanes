@@ -89,6 +89,88 @@ public class RunConfigurationHelper {
         return result;
     }
 
+    /**
+     * A per-application readiness condition, docker-compose depends_on style. Syntax typed by
+     * the user in the "Ready when" column:
+     * <ul>
+     *   <li>{@code port:3003} - a TCP port on localhost accepts connections</li>
+     *   <li>{@code http://localhost:3003/health} - an HTTP GET answers with a 2xx/3xx status</li>
+     *   <li>{@code log:Server started} - the console output contains the text (also the
+     *       fallback for any other input)</li>
+     * </ul>
+     */
+    public static final class ReadyCondition {
+        public enum Type { NONE, PORT, LOG, HTTP }
+
+        public static final ReadyCondition NONE = new ReadyCondition(Type.NONE, "", 0);
+
+        public final Type type;
+        public final String value;
+        public final int port;
+
+        private ReadyCondition(Type type, String value, int port) {
+            this.type = type;
+            this.value = value;
+            this.port = port;
+        }
+    }
+
+    /** Parses the "Ready when" text; blank or invalid input degrades gracefully (NONE / LOG). */
+    public static ReadyCondition parseReadyCondition(String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return ReadyCondition.NONE;
+        }
+        final String text = raw.trim();
+        final String lower = text.toLowerCase(java.util.Locale.ROOT);
+        if (lower.startsWith("port:")) {
+            try {
+                final int port = Integer.parseInt(text.substring("port:".length()).trim());
+                if (port > 0 && port <= 65535) {
+                    return new ReadyCondition(ReadyCondition.Type.PORT, text, port);
+                }
+            } catch (NumberFormatException ignored) {
+                // fall through: not a valid port
+            }
+            return ReadyCondition.NONE;
+        }
+        if (lower.startsWith("http://") || lower.startsWith("https://")) {
+            return new ReadyCondition(ReadyCondition.Type.HTTP, text, 0);
+        }
+        if (lower.startsWith("log:")) {
+            final String needle = text.substring("log:".length());
+            return needle.isEmpty() ? ReadyCondition.NONE
+                                    : new ReadyCondition(ReadyCondition.Type.LOG, needle, 0);
+        }
+        // any other text is treated as a log substring - the friendliest default
+        return new ReadyCondition(ReadyCondition.Type.LOG, text, 0);
+    }
+
+    /** true when a TCP port on localhost accepts connections. */
+    public static boolean isPortOpen(int port) {
+        try (java.net.Socket socket = new java.net.Socket()) {
+            socket.connect(new java.net.InetSocketAddress("127.0.0.1", port), 500);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /** true when an HTTP GET on the url answers with a 2xx/3xx status within a short timeout. */
+    public static boolean isHttpHealthy(String url) {
+        try {
+            final java.net.HttpURLConnection connection =
+                    (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+            connection.setConnectTimeout(750);
+            connection.setReadTimeout(750);
+            connection.setRequestMethod("GET");
+            final int code = connection.getResponseCode();
+            connection.disconnect();
+            return code >= 200 && code < 400;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /** Short display name of the active env profile (its file name), or "-" when none is set. */
     public static String envFileDisplayName(String envFilePath) {
         if (envFilePath == null || envFilePath.trim().isEmpty()) {

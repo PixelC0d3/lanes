@@ -41,6 +41,18 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.24</strong>:</p>
+        <ul>
+            <li>New: enable/disable checkbox per application - unchecked apps stay in the list but are
+                not launched. Great for temporarily skipping a service without losing its settings.</li>
+            <li>New: "Ready when" column, a docker-compose-like readiness gate for one-by-one starts.
+                The next application only starts when the previous one is ready: port:3003 (TCP port
+                open), an http(s) health URL (2xx/3xx) or log:some text (console output contains it).
+                Capped at 2 minutes, then the chain continues anyway.</li>
+            <li>Monitor: new "Status" column - apps with a port/http readiness condition are re-checked
+                on every refresh and show healthy/down, like docker ps.</li>
+            <li>Monitor: double click on a row jumps to the console tab of that application.</li>
+        </ul>
         <p><strong>1.23</strong>:</p>
         <ul>
             <li>New: environment profiles. The Environment file field is now an editable dropdown that

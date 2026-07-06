@@ -37,6 +37,7 @@ import com.intellij.util.ui.ColumnInfo;
 import com.intellij.util.ui.ListTableModel;
 import com.khmelyuk.multirun.MultirunProcessRegistry;
 import com.khmelyuk.multirun.ProcessStatsSampler;
+import com.khmelyuk.multirun.RunConfigurationHelper;
 import com.khmelyuk.multirun.StopRunningMultirunConfigurationsAction;
 
 /**
@@ -56,16 +57,18 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         final String pid;
         final String ports;
         final String uptime;
+        final String status;
         final String memUsage;
         final String memPercent;
         final String cpuPercent;
 
         Row(MultirunProcessRegistry.Entry entry, String pid, String ports, String uptime,
-            String memUsage, String memPercent, String cpuPercent) {
+            String status, String memUsage, String memPercent, String cpuPercent) {
             this.entry = entry;
             this.pid = pid;
             this.ports = ports;
             this.uptime = uptime;
+            this.status = status;
             this.memUsage = memUsage;
             this.memPercent = memPercent;
             this.cpuPercent = cpuPercent;
@@ -93,6 +96,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 column("PID", 70, row -> row.pid),
                 column("Ports", 110, row -> row.ports),
                 column("Uptime", 80, row -> row.uptime),
+                column("Status", 80, row -> row.status),
                 column("Mem Usage / Limit", 160, row -> row.memUsage),
                 column("Mem %", 70, row -> row.memPercent),
                 column("CPU %", 70, row -> row.cpuPercent));
@@ -123,6 +127,15 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         setToolbar(toolbar.getComponent());
         setContent(ScrollPaneFactory.createScrollPane(table));
         PopupHandler.installPopupMenu(table, rowActions, "MultipleRunMonitorPopup");
+        // double click on a row jumps to the console tab of that application
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2 && javax.swing.SwingUtilities.isLeftMouseButton(e)) {
+                    focusRunTabOfSelectedRow();
+                }
+            }
+        });
 
         timer = new Timer(REFRESH_INTERVAL_MS, e -> {
             // don't burn cycles while the tool window is hidden
@@ -152,6 +165,30 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     @Nullable
     private Row selectedRow() {
         return table.getSelectedObject();
+    }
+
+    /** Brings the console tab of the selected application to front (Run or Debug tool window). */
+    private void focusRunTabOfSelectedRow() {
+        final Row row = selectedRow();
+        if (row == null) {
+            return;
+        }
+        final com.intellij.execution.ui.RunContentManager contentManager =
+                com.intellij.execution.ui.RunContentManager.getInstance(project);
+        for (com.intellij.execution.ui.RunContentDescriptor descriptor : contentManager.getAllDescriptors()) {
+            if (descriptor.getProcessHandler() == row.entry.handler) {
+                final com.intellij.ui.content.Content content = descriptor.getAttachedContent();
+                if (content != null && content.getManager() != null) {
+                    content.getManager().setSelectedContent(content);
+                }
+                final com.intellij.openapi.wm.ToolWindow toolWindow =
+                        contentManager.getToolWindowByDescriptor(descriptor);
+                if (toolWindow != null) {
+                    toolWindow.activate(null);
+                }
+                return;
+            }
+        }
     }
 
     /** Restarts only the selected application; the rest of the group keeps running. */
@@ -385,6 +422,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             final String portsText = treePorts.isEmpty()
                     ? "-" : treePorts.stream().map(String::valueOf).collect(Collectors.joining(", "));
             final String uptimeText = ProcessStatsSampler.formatUptime(System.currentTimeMillis() - entry.startedAtMs);
+            final String statusText = healthStatus(entry);
 
             final String limitText = entry.memoryLimitMb != null
                     ? ProcessStatsSampler.formatMemory(entry.memoryLimitMb * 1024L)
@@ -406,7 +444,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 cpuPercent = "n/a";
             }
             rows.add(new Row(entry, rootPid > 0 ? String.valueOf(rootPid) : "n/a",
-                             portsText, uptimeText, memUsage, memPercent, cpuPercent));
+                             portsText, uptimeText, statusText, memUsage, memPercent, cpuPercent));
         }
 
         // baseline for the next refresh
@@ -416,6 +454,24 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         prevSampleNanos = nowNanos;
 
         return rows;
+    }
+
+    /**
+     * Health of the app according to its "Ready when" condition (docker-compose style):
+     * port and http conditions are re-checked on every refresh; log conditions cannot be
+     * re-evaluated after startup, so they show "-" like apps without a condition.
+     */
+    private static String healthStatus(MultirunProcessRegistry.Entry entry) {
+        final RunConfigurationHelper.ReadyCondition condition =
+                RunConfigurationHelper.parseReadyCondition(entry.readyCondition);
+        switch (condition.type) {
+            case PORT:
+                return RunConfigurationHelper.isPortOpen(condition.port) ? "healthy" : "down";
+            case HTTP:
+                return RunConfigurationHelper.isHttpHealthy(condition.value) ? "healthy" : "down";
+            default:
+                return "-";
+        }
     }
 
     @Override
