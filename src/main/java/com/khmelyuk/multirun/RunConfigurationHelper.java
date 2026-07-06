@@ -89,6 +89,14 @@ public class RunConfigurationHelper {
         return result;
     }
 
+    /** Short display name of the active env profile (its file name), or "-" when none is set. */
+    public static String envFileDisplayName(String envFilePath) {
+        if (envFilePath == null || envFilePath.trim().isEmpty()) {
+            return "-";
+        }
+        return new File(envFilePath.trim()).getName();
+    }
+
     /** Resolves the configured env file path; relative paths are resolved against the project base directory. */
     public static File resolveEnvFile(String envFilePath, Project project) {
         final File file = new File(envFilePath.trim());

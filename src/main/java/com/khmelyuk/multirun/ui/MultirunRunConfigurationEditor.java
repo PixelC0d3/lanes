@@ -46,7 +46,8 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
     private JPanel collectionsPanel;
     private JPanel envVarsPanel;
     private EnvironmentVariablesComponent environmentVariables;
-    private TextFieldWithBrowseButton envFile;
+    /** Editable combo with the known .env files (profiles); its text is the active profile. */
+    private JComboBox<String> envFileCombo;
     private TextFieldWithBrowseButton saveOutputDir;
     private JCheckBox reuseTabs;
     private JCheckBox reuseTabsWithFailure;
@@ -74,7 +75,12 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
             memoryLimits = this.configuration.getMemoryLimits();
             configurationsModel.setItems(new ArrayList<>(this.configuration.getRunConfigurations()));
             environmentVariables.setEnvData(this.configuration.getEnvData());
-            envFile.setText(this.configuration.getEnvFilePath());
+            final DefaultComboBoxModel<String> profilesModel = (DefaultComboBoxModel<String>) envFileCombo.getModel();
+            profilesModel.removeAllElements();
+            for (String profile : this.configuration.getEnvProfiles()) {
+                profilesModel.addElement(profile);
+            }
+            envFileCombo.setSelectedItem(this.configuration.getEnvFilePath());
             saveOutputDir.setText(this.configuration.getSaveOutputDir());
             delayTime.setText(String.format("%.1f", this.configuration.getDelayTime()));
             reuseTabs.setSelected(this.configuration.isReuseTabs());
@@ -94,7 +100,17 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         }
 
         multirunRunConfiguration.setEnvData(environmentVariables.getEnvData());
-        multirunRunConfiguration.setEnvFilePath(envFile.getText());
+        final String activeEnvFile = envFileComboText();
+        multirunRunConfiguration.setEnvFilePath(activeEnvFile);
+        final java.util.List<String> envProfiles = new ArrayList<>();
+        for (int i = 0; i < envFileCombo.getItemCount(); i++) {
+            envProfiles.add(envFileCombo.getItemAt(i));
+        }
+        if (!activeEnvFile.isEmpty() && !envProfiles.contains(activeEnvFile)) {
+            // a path typed by hand becomes a profile too
+            envProfiles.add(activeEnvFile);
+        }
+        multirunRunConfiguration.setEnvProfiles(envProfiles);
         multirunRunConfiguration.setSaveOutputDir(saveOutputDir.getText());
         multirunRunConfiguration.setMemoryLimits(memoryLimits);
         multirunRunConfiguration.setReuseTabs(reuseTabs.isSelected());
@@ -181,12 +197,21 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
 
         // Optional .env file applied under the variables above (the table values win on conflicts).
         // Read again on every run, so file edits are picked up without touching the configuration.
-        envFile = new TextFieldWithBrowseButton();
-        envFile.getTextField().setToolTipText(
-                "Path to a .env file (KEY=VALUE lines, # comments, optional \"export\" prefix). "
+        // The editable combo keeps every file ever used as an "environment profile", so switching
+        // between .env files (-com / -ede / -def, ...) is a two-click dropdown choice.
+        envFileCombo = new com.intellij.openapi.ui.ComboBox<>(new DefaultComboBoxModel<>());
+        envFileCombo.setEditable(true);
+        envFileCombo.setToolTipText(
+                "Active .env file (KEY=VALUE lines, # comments, optional \"export\" prefix). "
                         + "Applied to every configuration in the list; variables configured above win on conflicts. "
-                        + "Relative paths are resolved against the project root");
-        envFile.addActionListener(e -> {
+                        + "Relative paths are resolved against the project root. Every file used once stays "
+                        + "in this dropdown as a profile - switch environments without retyping paths");
+        envFileCombo.addActionListener(e -> fireEditorStateChanged());
+
+        final com.intellij.openapi.ui.FixedSizeButton browseEnvFile =
+                new com.intellij.openapi.ui.FixedSizeButton(envFileCombo);
+        browseEnvFile.setToolTipText("Select a .env file and add it to the profile list");
+        browseEnvFile.addActionListener(e -> {
             final VirtualFile chosen = FileChooser.chooseFile(
                     FileChooserDescriptorFactory.createSingleFileDescriptor()
                                                 .withTitle("Select Environment File")
@@ -194,11 +219,35 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
                                                 .withShowHiddenFiles(true),
                     project, null);
             if (chosen != null) {
-                envFile.setText(chosen.getPresentableUrl());
+                final String path = chosen.getPresentableUrl();
+                final DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) envFileCombo.getModel();
+                if (model.getIndexOf(path) < 0) {
+                    model.addElement(path);
+                }
+                envFileCombo.setSelectedItem(path);
             }
         });
-        final LabeledComponent<TextFieldWithBrowseButton> envFileComponent =
-                LabeledComponent.create(envFile, "Environment file:");
+
+        final com.intellij.openapi.ui.FixedSizeButton removeEnvProfile =
+                new com.intellij.openapi.ui.FixedSizeButton(envFileCombo);
+        removeEnvProfile.setIcon(com.intellij.icons.AllIcons.General.Remove);
+        removeEnvProfile.setToolTipText("Remove the selected profile from the list");
+        removeEnvProfile.addActionListener(e -> {
+            final Object selected = envFileCombo.getSelectedItem();
+            if (selected != null && !selected.toString().isEmpty()) {
+                ((DefaultComboBoxModel<String>) envFileCombo.getModel()).removeElement(selected);
+                envFileCombo.setSelectedItem("");
+            }
+        });
+
+        final JPanel envProfileButtons = new JPanel(new GridLayout(1, 2, 2, 0));
+        envProfileButtons.add(browseEnvFile);
+        envProfileButtons.add(removeEnvProfile);
+        final JPanel envProfilePanel = new JPanel(new BorderLayout(4, 0));
+        envProfilePanel.add(envFileCombo, BorderLayout.CENTER);
+        envProfilePanel.add(envProfileButtons, BorderLayout.EAST);
+        final LabeledComponent<JPanel> envFileComponent =
+                LabeledComponent.create(envProfilePanel, "Environment file (profile):");
         envFileComponent.setLabelLocation(BorderLayout.WEST);
 
         // Optional folder where each configuration's console is also saved as <name>.log,
@@ -236,6 +285,12 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         configurationsListChanged.setVisible(false);
 
         return myMainPanel;
+    }
+
+    /** The text of the (possibly in-edition) env profile combo editor. */
+    private String envFileComboText() {
+        final Object editorItem = envFileCombo.getEditor().getItem();
+        return editorItem == null ? "" : editorItem.toString().trim();
     }
 
     private void markConfigurationsChanged() {

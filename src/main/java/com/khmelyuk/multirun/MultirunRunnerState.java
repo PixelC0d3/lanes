@@ -291,7 +291,8 @@ public class MultirunRunnerState implements RunProfileState {
                                 // feed the "Multiple Run Monitor" tool window with live processes
                                 MultirunProcessRegistry.register(project, configurationName,
                                                                  runConfiguration.getName(), processHandler,
-                                                                 memoryLimitMb, executionEnvironment);
+                                                                 memoryLimitMb, executionEnvironment,
+                                                                 RunConfigurationHelper.envFileDisplayName(envFilePath));
                             }
                             if (!initialStart) {
                                 // individual restart from the monitor: only re-track the new

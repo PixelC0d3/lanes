@@ -44,11 +44,15 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - Uses the standard IDE dialog (add variables one by one, paste, and toggle
   *Include system environment variables*).
 - Overrides propagate through nested Multirun configurations too.
-- **Environment file**: point the *Environment file* field to a `.env` file (browse button or
-  type the path — relative paths are resolved against the project root). The file uses the usual
+- **Environment file with profiles**: the *Environment file* field is an editable dropdown.
+  Point it to a `.env` file (browse button or type the path — relative paths are resolved against
+  the project root) and the file becomes a **profile** that stays in the dropdown; switch between
+  environments (`.com.env` / `.ede.env` / `.def.env`, …) by just picking another profile — no
+  retyping. The ✕ button removes the selected profile from the list. The file uses the usual
   dotenv format: `KEY=VALUE` lines, `#` comments, optional `export` prefix and quoted values.
   It is re-read on every run, so editing the file requires no configuration changes. Variables
-  from the table above win over the file on conflicts.
+  from the table above win over the file on conflicts. The **Multiple Run Monitor** shows the
+  active profile of each running application in its *Env* column.
 - Works with configuration types that expose environment variables (Node.js, npm, Java
   Application, etc.); other types run unchanged.
 

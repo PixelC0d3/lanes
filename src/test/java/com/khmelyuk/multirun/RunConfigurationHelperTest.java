@@ -258,4 +258,37 @@ public class RunConfigurationHelperTest {
     public void delayRejectsNonNumericInput() {
         MultirunRunConfiguration.parseDelay("abc");
     }
+
+    // --- environment profiles (env file dropdown) ------------------------------------------
+
+    @Test
+    public void envProfilesRoundTripThroughXml() {
+        final org.jdom.Element element = new org.jdom.Element("configuration");
+        MultirunRunConfiguration.writeEnvProfiles(element,
+                java.util.Arrays.asList("/envs/.local.env", "../eparts-tools/.ede.env", "", null));
+
+        final java.util.List<String> read = MultirunRunConfiguration.readEnvProfiles(element);
+
+        assertEquals("blank entries must be dropped on write",
+                     java.util.Arrays.asList("/envs/.local.env", "../eparts-tools/.ede.env"), read);
+    }
+
+    @Test
+    public void envProfilesReadSkipsDuplicatesAndBlanks() {
+        final org.jdom.Element element = new org.jdom.Element("configuration");
+        MultirunRunConfiguration.writeEnvProfiles(element,
+                java.util.Arrays.asList("/a/.env", "/a/.env", "  "));
+
+        assertEquals(java.util.Collections.singletonList("/a/.env"),
+                     MultirunRunConfiguration.readEnvProfiles(element));
+    }
+
+    @Test
+    public void envFileDisplayNameShowsTheFileNameOnly() {
+        assertEquals(".local.env", RunConfigurationHelper.envFileDisplayName("/home/user/eparts-tools/.local.env"));
+        assertEquals(".ede.env", RunConfigurationHelper.envFileDisplayName("relative/.ede.env"));
+        assertEquals("-", RunConfigurationHelper.envFileDisplayName(""));
+        assertEquals("-", RunConfigurationHelper.envFileDisplayName("   "));
+        assertEquals("-", RunConfigurationHelper.envFileDisplayName(null));
+    }
 }

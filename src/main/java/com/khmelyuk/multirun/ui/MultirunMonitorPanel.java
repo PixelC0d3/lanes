@@ -89,6 +89,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         model = new ListTableModel<>(
                 column("Name", 220, row -> row.entry.appName),
                 column("Multiple Run", 140, row -> row.entry.multirunName),
+                column("Env", 100, row -> row.entry.envFileName),
                 column("PID", 70, row -> row.pid),
                 column("Ports", 110, row -> row.ports),
                 column("Uptime", 80, row -> row.uptime),

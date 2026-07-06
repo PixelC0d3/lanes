@@ -34,15 +34,18 @@ public final class MultirunProcessRegistry {
         public final Integer memoryLimitMb;
         /** The environment the app was launched with; lets the monitor restart just this app. */
         public final ExecutionEnvironment environment;
+        /** File name of the active env profile at launch time, or "-" when none. */
+        public final String envFileName;
         public final long startedAtMs;
 
         Entry(String multirunName, String appName, ProcessHandler handler,
-              Integer memoryLimitMb, ExecutionEnvironment environment) {
+              Integer memoryLimitMb, ExecutionEnvironment environment, String envFileName) {
             this.multirunName = multirunName;
             this.appName = appName;
             this.handler = handler;
             this.memoryLimitMb = memoryLimitMb;
             this.environment = environment;
+            this.envFileName = envFileName == null || envFileName.isEmpty() ? "-" : envFileName;
             this.startedAtMs = System.currentTimeMillis();
         }
     }
@@ -54,8 +57,8 @@ public final class MultirunProcessRegistry {
 
     public static void register(@NotNull Project project, String multirunName, String appName,
                                 @NotNull ProcessHandler handler, @Nullable Integer memoryLimitMb,
-                                @Nullable ExecutionEnvironment environment) {
-        final Entry entry = new Entry(multirunName, appName, handler, memoryLimitMb, environment);
+                                @Nullable ExecutionEnvironment environment, @Nullable String envFileName) {
+        final Entry entry = new Entry(multirunName, appName, handler, memoryLimitMb, environment, envFileName);
         ENTRIES.computeIfAbsent(project, p -> new CopyOnWriteArrayList<>()).add(entry);
         handler.addProcessListener(new ProcessListener() {
             @Override

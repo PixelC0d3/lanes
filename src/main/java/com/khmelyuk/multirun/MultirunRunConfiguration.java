@@ -35,6 +35,7 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     public static final String ELEMENT_ENV = "env";
     public static final String PROP_PASS_PARENT_ENVS = "passParentEnvs";
     public static final String PROP_MEM_LIMIT_MB = "memLimitMb";
+    public static final String ELEMENT_ENV_PROFILE = "envProfile";
 
     private double delayTime = 0;
     private boolean reuseTabs = true;
@@ -44,6 +45,8 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     private boolean hideSuccessProcess = false;
     private boolean restartRunning = true;
     private String envFilePath = "";
+    /** Known .env files (environment profiles); envFilePath holds the active one. */
+    private List<String> envProfiles = new ArrayList<>();
     private String saveOutputDir = "";
     private EnvironmentVariablesData envData = EnvironmentVariablesData.DEFAULT;
     /** Per-child memory (heap) cap in MB, keyed by configuration name; absent or <=0 means no limit. */
@@ -178,6 +181,44 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         this.envFilePath = envFilePath == null ? "" : envFilePath.trim();
     }
 
+    public List<String> getEnvProfiles() {
+        return new ArrayList<>(envProfiles);
+    }
+
+    public void setEnvProfiles(List<String> profiles) {
+        this.envProfiles = new ArrayList<>();
+        if (profiles != null) {
+            for (String profile : profiles) {
+                if (profile != null && !profile.trim().isEmpty() && !this.envProfiles.contains(profile.trim())) {
+                    this.envProfiles.add(profile.trim());
+                }
+            }
+        }
+    }
+
+    /** Reads the environment profile list persisted as {@code <envProfile path="..."/>} children. */
+    public static List<String> readEnvProfiles(Element element) {
+        final List<String> profiles = new ArrayList<>();
+        for (Element child : element.getChildren(ELEMENT_ENV_PROFILE)) {
+            final String path = child.getAttributeValue("path");
+            if (path != null && !path.trim().isEmpty() && !profiles.contains(path.trim())) {
+                profiles.add(path.trim());
+            }
+        }
+        return profiles;
+    }
+
+    /** Persists the environment profile list as {@code <envProfile path="..."/>} children. */
+    public static void writeEnvProfiles(Element element, List<String> profiles) {
+        for (String profile : profiles) {
+            if (profile != null && !profile.trim().isEmpty()) {
+                final Element child = new Element(ELEMENT_ENV_PROFILE);
+                child.setAttribute("path", profile.trim());
+                element.addContent(child);
+            }
+        }
+    }
+
     public Map<String, Integer> getMemoryLimits() {
         return new LinkedHashMap<>(memoryLimits);
     }
@@ -238,6 +279,11 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
         }
         if (element.getAttributeValue(PROP_ENV_FILE) != null) {
             setEnvFilePath(element.getAttributeValue(PROP_ENV_FILE));
+        }
+        envProfiles = readEnvProfiles(element);
+        // the active file is always part of the profile list
+        if (!envFilePath.isEmpty() && !envProfiles.contains(envFilePath)) {
+            envProfiles.add(envFilePath);
         }
         if (element.getAttributeValue(PROP_SAVE_OUTPUT_DIR) != null) {
             setSaveOutputDir(element.getAttributeValue(PROP_SAVE_OUTPUT_DIR));
@@ -324,6 +370,8 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
             }
             element.addContent(envsElement);
         }
+
+        writeEnvProfiles(element, envProfiles);
     }
 
     @Nullable
