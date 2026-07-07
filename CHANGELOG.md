@@ -5,6 +5,11 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.42.1]
+- Fix: **Logs tab layout** — the filter controls now sit as a full-width strip on **top** and the
+  log fills the whole width **below** them (they were being laid out as a left-hand column, which
+  pushed the log to the right and left a large empty area).
+
 ## [1.42.0] — Clean/colored ANSI logs + rolling zip archive
 - Logs tab: console output is readable when apps emit **ANSI color codes** (webpack, nest, etc.).
   By default the escape codes are **stripped** for a clean log; tick **ANSI** in the header to

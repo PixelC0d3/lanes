@@ -41,6 +41,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.42.1</strong>:</p>
+        <ul>
+            <li>Fix: Logs tab layout - the filter controls now sit as a full-width strip on
+                <b>top</b> and the log fills the whole width <b>below</b> them (they were laid out as
+                a left-hand column, pushing the log to the right).</li>
+        </ul>
         <p><strong>1.42.0</strong>:</p>
         <ul>
             <li>Logs tab: console output is now readable when apps emit <b>ANSI color codes</b>. By
