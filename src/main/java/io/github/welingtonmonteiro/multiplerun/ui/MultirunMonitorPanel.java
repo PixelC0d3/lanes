@@ -133,6 +133,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             new java.util.concurrent.ConcurrentHashMap<>();
     private final SparklineCellRenderer sparklineRenderer = new SparklineCellRenderer();
     private final PortsCellRenderer portsRenderer = new PortsCellRenderer();
+    private final StatusCellRenderer statusRenderer = new StatusCellRenderer();
 
     public MultirunMonitorPanel(@NotNull Project project) {
         super(false, true);
@@ -171,7 +172,18 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                     }
                 },
                 column("Multiple Run", row -> row.multirunName),
-                column("Env", row -> row.envFileName),
+                new ColumnInfo<Row, String>("Env") {
+                    @Nullable
+                    @Override
+                    public String valueOf(Row row) {
+                        return row.envFileName;
+                    }
+
+                    @Override
+                    public javax.swing.table.TableCellRenderer getRenderer(Row row) {
+                        return new EnvCellRenderer(hasLoadedEnv(row));
+                    }
+                },
                 column("PID", row -> row.pid),
                 new ColumnInfo<Row, String>("Ports") {
                     @Nullable
@@ -186,7 +198,18 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                     }
                 },
                 column("Uptime", row -> row.uptime),
-                column("Status", row -> row.status),
+                new ColumnInfo<Row, String>("Status") {
+                    @Nullable
+                    @Override
+                    public String valueOf(Row row) {
+                        return row.status;
+                    }
+
+                    @Override
+                    public javax.swing.table.TableCellRenderer getRenderer(Row row) {
+                        return statusRenderer;
+                    }
+                },
                 column("Mem Usage / Limit", row -> row.memUsage),
                 column("Mem %", row -> row.memPercent),
                 new ColumnInfo<Row, double[]>("Mem trend") {
@@ -249,6 +272,8 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 // single click on the Mem trend column opens the full memory chart
                 if (e.getClickCount() == 1 && isPortsColumn(e.getPoint())) {
                     openPortsAt(e);
+                } else if (e.getClickCount() == 1 && isColumn(e.getPoint(), "Env")) {
+                    openEnvAt(e);
                 } else if (e.getClickCount() == 1 && isColumn(e.getPoint(), "Mem trend")) {
                     openMemChartAt(e);
                 } else if (e.getClickCount() == 2) {
@@ -351,6 +376,24 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         new MemoryChartDialog(project, row.name, copy).show();
     }
 
+    /** True when the row carries a Multiple Run environment that can be shown in the Env viewer. */
+    private static boolean hasLoadedEnv(Row row) {
+        return row.meta != null && !row.meta.loadedEnv.isEmpty();
+    }
+
+    /** Opens a read-only viewer with the environment variables loaded for the clicked application. */
+    private void openEnvAt(java.awt.event.MouseEvent e) {
+        final int viewRow = table.rowAtPoint(e.getPoint());
+        if (viewRow < 0) {
+            return;
+        }
+        final Row row = model.getItem(table.convertRowIndexToModel(viewRow));
+        if (row == null || !hasLoadedEnv(row)) {
+            return;
+        }
+        new EnvVarsDialog(project, row.name, row.envFileName, row.meta.includeSystemEnv, row.meta.loadedEnv).show();
+    }
+
     /** Opens the port(s) of the clicked row in the browser (a menu when there is more than one). */
     private void openPortsAt(java.awt.event.MouseEvent e) {
         final int viewRow = table.rowAtPoint(e.getPoint());
@@ -423,6 +466,54 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 setToolTipText("Click to open in the browser");
             } else {
                 setToolTipText(null);
+            }
+            return this;
+        }
+    }
+
+    /** Renders the Env cell as a clickable hyperlink when the row has a loaded environment to show. */
+    private static final class EnvCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
+        private final boolean clickable;
+
+        EnvCellRenderer(boolean clickable) {
+            this.clickable = clickable;
+        }
+
+        @Override
+        public java.awt.Component getTableCellRendererComponent(javax.swing.JTable table, Object value,
+                                                                boolean isSelected, boolean hasFocus,
+                                                                int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if (clickable) {
+                if (!isSelected) {
+                    setForeground(com.intellij.ui.JBColor.BLUE);
+                }
+                final java.util.Map<java.awt.font.TextAttribute, Object> attributes =
+                        new java.util.HashMap<>(getFont().getAttributes());
+                attributes.put(java.awt.font.TextAttribute.UNDERLINE, java.awt.font.TextAttribute.UNDERLINE_ON);
+                setFont(getFont().deriveFont(attributes));
+                setToolTipText("Click to view the loaded environment variables");
+            } else {
+                setToolTipText(null);
+            }
+            return this;
+        }
+    }
+
+    /** Colors the Status cell: green for healthy/running, red for a failing readiness check. */
+    private static final class StatusCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
+        @Override
+        public java.awt.Component getTableCellRendererComponent(javax.swing.JTable table, Object value,
+                                                                boolean isSelected, boolean hasFocus,
+                                                                int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if (!isSelected) {
+                final String text = value == null ? "" : value.toString();
+                if ("down".equals(text)) {
+                    setForeground(com.intellij.ui.JBColor.RED);
+                } else if ("healthy".equals(text) || "running".equals(text)) {
+                    setForeground(com.intellij.ui.JBColor.GREEN);
+                }
             }
             return this;
         }
@@ -801,23 +892,39 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     }
 
     /**
-     * Health of the app according to its "Ready when" condition (docker-compose style):
-     * port and http conditions are re-checked on every refresh; log conditions cannot be
-     * re-evaluated after startup, so they show "-" like apps without a condition.
+     * Health of the app according to its "Ready when" condition (docker-compose style): every row
+     * in the monitor is a live process, so the baseline is "running"; a port/http condition that is
+     * re-checked on every refresh refines that into "healthy" or "down". Log conditions cannot be
+     * re-evaluated after startup, so those apps simply stay "running".
      */
     private static String healthStatus(@Nullable MultirunProcessRegistry.Entry meta) {
         if (meta == null) {
-            return "-";
+            return statusLabel(RunConfigurationHelper.ReadyCondition.Type.NONE, false);
         }
         final RunConfigurationHelper.ReadyCondition condition =
                 RunConfigurationHelper.parseReadyCondition(meta.readyCondition);
         switch (condition.type) {
             case PORT:
-                return RunConfigurationHelper.isPortOpen(condition.port) ? "healthy" : "down";
+                return statusLabel(condition.type, RunConfigurationHelper.isPortOpen(condition.port));
             case HTTP:
-                return RunConfigurationHelper.isHttpHealthy(condition.value) ? "healthy" : "down";
+                return statusLabel(condition.type, RunConfigurationHelper.isHttpHealthy(condition.value));
             default:
-                return "-";
+                return statusLabel(condition.type, false);
+        }
+    }
+
+    /**
+     * The Status label for a live process: a PORT/HTTP readiness check maps to "healthy"/"down"
+     * depending on {@code checkPassed}; every other case (no condition, or a log condition) is a
+     * plain "running", since the row only exists while the process is alive.
+     */
+    static String statusLabel(RunConfigurationHelper.ReadyCondition.Type type, boolean checkPassed) {
+        switch (type) {
+            case PORT:
+            case HTTP:
+                return checkPassed ? "healthy" : "down";
+            default:
+                return "running";
         }
     }
 

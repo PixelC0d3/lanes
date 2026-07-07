@@ -41,6 +41,16 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.38.0</strong>:</p>
+        <ul>
+            <li>Monitor: click the <b>Env</b> cell of a running application to open a viewer with the
+                environment variables Multiple Run loaded for it at launch (group variables, group
+                env file, memory-limit options and per-app env file, merged). A filter at the top
+                narrows by variable name, and values can be masked for screen sharing.</li>
+            <li>Monitor: the <b>Status</b> column now shows <b>running</b> for every live application
+                (green), refining to <b>healthy</b>/<b>down</b> when a port/http "Ready when"
+                condition is set - it no longer stays blank.</li>
+        </ul>
         <p><strong>1.37.1</strong>:</p>
         <ul>
             <li>Build: disable buildSearchableOptions - the plugin has no Settings pages to index, and
