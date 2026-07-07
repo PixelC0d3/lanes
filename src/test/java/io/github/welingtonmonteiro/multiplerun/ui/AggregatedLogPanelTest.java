@@ -73,4 +73,56 @@ public class AggregatedLogPanelTest {
         assertEquals("win", lines.get(0));
         assertEquals("line", lines.get(1));
     }
+
+    private static final String ESC = "\u001B";
+
+    @Test
+    public void stripAnsiRemovesColorCodesButKeepsPlainBrackets() {
+        assertEquals("HELLO world", AggregatedLogPanel.stripAnsi(ESC + "[32mHELLO" + ESC + "[0m world"));
+        // brackets that are not part of an escape sequence must survive untouched
+        assertEquals("[INFO] started", AggregatedLogPanel.stripAnsi("[INFO] started"));
+        assertEquals("", AggregatedLogPanel.stripAnsi(null));
+    }
+
+    @Test
+    public void stripAnsiAlsoRemovesCursorAndEraseSequences() {
+        assertEquals("done", AggregatedLogPanel.stripAnsi(ESC + "[2K" + ESC + "[1Gdone"));
+    }
+
+    @Test
+    public void parseAnsiConcatenationEqualsStrippedText() {
+        final String raw = ESC + "[1m" + ESC + "[31mERR" + ESC + "[0m ok";
+        final StringBuilder sb = new StringBuilder();
+        for (AggregatedLogPanel.AnsiSpan span : AggregatedLogPanel.parseAnsi(raw)) {
+            sb.append(span.text);
+        }
+        assertEquals(AggregatedLogPanel.stripAnsi(raw), sb.toString());
+    }
+
+    @Test
+    public void parseAnsiAppliesForegroundAndBoldThenResets() {
+        final List<AggregatedLogPanel.AnsiSpan> spans =
+                AggregatedLogPanel.parseAnsi(ESC + "[1;32mgo" + ESC + "[0mstop");
+        assertEquals("go", spans.get(0).text);
+        assertEquals(2, spans.get(0).fgIndex); // green
+        assertTrue(spans.get(0).bold);
+        assertEquals("stop", spans.get(1).text);
+        assertEquals(-1, spans.get(1).fgIndex); // reset to default
+        assertFalse(spans.get(1).bold);
+    }
+
+    @Test
+    public void parseAnsiMapsBrightColors() {
+        final List<AggregatedLogPanel.AnsiSpan> spans = AggregatedLogPanel.parseAnsi(ESC + "[92mx");
+        assertEquals(10, spans.get(0).fgIndex); // bright green = 2 + 8
+    }
+
+    @Test
+    public void applySgrHandlesResetColorAndBold() {
+        assertEquals(-1, AggregatedLogPanel.applySgr("0", 5, true)[0]);
+        assertEquals(0, AggregatedLogPanel.applySgr("0", 5, true)[1]);
+        assertEquals(1, AggregatedLogPanel.applySgr("31", -1, false)[0]); // red
+        assertEquals(1, AggregatedLogPanel.applySgr("1", 3, false)[1]);   // bold on, fg kept
+        assertEquals(3, AggregatedLogPanel.applySgr("1", 3, false)[0]);
+    }
 }

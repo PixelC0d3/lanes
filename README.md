@@ -176,6 +176,8 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   - **advanced, composable filters** — several **comma-separated terms** combined with *any*/*all*,
     matched as **substring or regex**, **case-sensitive** or not, to **show** or **hide** matches;
   - a minimum **log level** (Info+ / Warn+ / Errors), detected from the line text;
+  - an **ANSI** toggle — apps that emit ANSI color codes (webpack, nest, …) render as a clean log
+    with the codes **stripped** by default, or tick **ANSI** to **render the real colors**;
   - *Clear* and a *Scroll to End* toggle.
 
   The process table lives in the **Processes** tab next to it.
