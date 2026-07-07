@@ -193,8 +193,13 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
                 ActionManager.getInstance().createActionToolbar("MultipleRunAggregatedLogs", group, true);
         toolbar.setTargetComponent(textPane);
 
-        setToolbar(buildHeader(toolbar));
-        setContent(ScrollPaneFactory.createScrollPane(textPane));
+        // header (filters) on top, the log below filling the whole width. Building the layout
+        // explicitly (instead of setToolbar) keeps the header a full-width top strip rather than a
+        // left-hand column - the wide filter row does not belong on the side.
+        final javax.swing.JPanel main = new javax.swing.JPanel(new java.awt.BorderLayout());
+        main.add(buildHeader(toolbar), java.awt.BorderLayout.NORTH);
+        main.add(ScrollPaneFactory.createScrollPane(textPane), java.awt.BorderLayout.CENTER);
+        setContent(main);
 
         timer = new Timer(FLUSH_INTERVAL_MS, e -> {
             syncListeners();
