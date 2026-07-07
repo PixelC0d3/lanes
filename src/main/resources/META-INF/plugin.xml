@@ -41,6 +41,21 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.40.0</strong>:</p>
+        <ul>
+            <li>Monitor: the memory <b>Analysis</b> tab now loads its per-process breakdown correctly
+                (it was stuck on "Sampling…" inside the modal), and got <b>richer leak analysis</b> -
+                a steady-leak verdict backed by the growth rate, projected growth per hour, R² of the
+                trend and how often memory was never freed.</li>
+            <li>Monitor: the Analysis tab gained a <b>process filter</b> (by PID or command) and an
+                <b>Export analysis…</b> button that saves the verdict plus the per-process breakdown
+                as a text report.</li>
+            <li>Monitor: a new toolbar button opens the memory chart <b>straight on the Analysis
+                tab</b> for the selected application - no need to click the Mem trend sparkline.</li>
+            <li>Monitor: the <b>Stop Multiple Run</b> toolbar button now shows the <b>number of running
+                processes</b> next to a stop icon (like WebStorm), instead of a bare icon that was
+                easy to confuse with the per-row Stop.</li>
+        </ul>
         <p><strong>1.39.0</strong>:</p>
         <ul>
             <li>Monitor: the memory chart (click a "Mem trend" sparkline) now has <b>labeled X and Y

@@ -69,11 +69,16 @@ public class StopRunningMultirunConfigurationsAction extends AnAction {
     }
 
     public void actionPerformed(AnActionEvent e) {
-        if (e.getProject() == null) return;
+        stopAll(e.getProject());
+    }
+
+    /** Stops every process this plugin started for the project; safe to call from the monitor toolbar. */
+    public void stopAll(Project project) {
+        if (project == null) return;
 
         stopStartingConfigurations.set(true);
         LOG.debug("Asked to stop running multirun configurations.");
-        final Map<String, List<ProcessHandler>> byConfiguration = processes.get(e.getProject());
+        final Map<String, List<ProcessHandler>> byConfiguration = processes.get(project);
         if (byConfiguration == null || byConfiguration.isEmpty()) {
             LOG.debug("Nothing to stop");
             return;
@@ -90,6 +95,21 @@ public class StopRunningMultirunConfigurationsAction extends AnAction {
         }
 
         LOG.debug("Stopped " + stoppedCount + " processes");
+    }
+
+    /** Number of still-running processes this plugin started for the project (for the toolbar badge). */
+    public int runningProcessCount(Project project) {
+        final Map<String, List<ProcessHandler>> byConfiguration = processes.get(project);
+        if (byConfiguration == null) return 0;
+        int count = 0;
+        for (List<ProcessHandler> list : byConfiguration.values()) {
+            for (ProcessHandler each : list) {
+                if (!each.isProcessTerminated()) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     /**

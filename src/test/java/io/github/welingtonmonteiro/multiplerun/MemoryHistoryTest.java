@@ -66,6 +66,42 @@ public class MemoryHistoryTest {
     }
 
     @Test
+    public void steadyLinearGrowthIsHighConfidenceLeak() {
+        final MemoryHistory.Analysis a =
+                MemoryHistory.analyze(series(100 * 1024, 20 * 1024, 20, 2000));
+        assertTrue("perfectly linear -> R2 near 1", a.rSquared > 0.99);
+        assertEquals("monotonic growth -> memory never freed", 1.0, a.monotonicFraction, 0.0001);
+        assertTrue(a.isSteadyLeak());
+        assertTrue(a.projectedPerHourKb > 0);
+        assertEquals("Growing - likely memory leak (steady)", MemoryHistory.verdictText(a));
+    }
+
+    @Test
+    public void summaryTextCarriesAppNameAndVerdict() {
+        final MemoryHistory.Analysis a =
+                MemoryHistory.analyze(series(100 * 1024, 20 * 1024, 20, 2000));
+        final String text = MemoryHistory.summaryText("eparts-api", a);
+        assertTrue(text.startsWith("Memory analysis - eparts-api"));
+        assertTrue(text.contains("Verdict: Growing"));
+        assertTrue(text.contains("R2="));
+    }
+
+    @Test
+    public void summaryTextForInsufficientDataStaysShort() {
+        final String text = MemoryHistory.summaryText("app", MemoryHistory.analyze(Collections.emptyList()));
+        assertTrue(text.contains("Insufficient data"));
+        assertTrue(text.contains("Not enough samples"));
+    }
+
+    @Test
+    public void memAndDurationFormattersAreLocaleStable() {
+        assertEquals("512.0MiB", MemoryHistory.mem(512 * 1024));
+        assertEquals("1.50GiB", MemoryHistory.mem((long) (1.5 * 1024 * 1024)));
+        assertEquals("42s", MemoryHistory.durationText(42_000));
+        assertEquals("5m 12s", MemoryHistory.durationText((5 * 60 + 12) * 1000));
+    }
+
+    @Test
     public void csvHasHeaderAndOneRowPerSample() {
         final String csv = MemoryHistory.toCsv(Arrays.asList(
                 new MemoryHistory.Sample(1000L, 2048L, 12.5),

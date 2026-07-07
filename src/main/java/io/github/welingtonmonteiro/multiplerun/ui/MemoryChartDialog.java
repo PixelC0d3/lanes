@@ -53,16 +53,23 @@ public class MemoryChartDialog extends DialogWrapper {
     private final String appName;
     private final List<Sample> samples;
     private final long rootPid;
+    private final boolean analysisFirst;
+    private final Analysis analysis;
 
     private final BreakdownTableModel breakdownModel = new BreakdownTableModel();
+    /** Every process sampled in the last breakdown, kept so the filter can narrow the view. */
+    private List<BreakdownRow> allBreakdownRows = new ArrayList<>();
+    private com.intellij.ui.components.fields.ExtendableTextField breakdownFilter;
 
     public MemoryChartDialog(@Nullable Project project, @NotNull String appName,
-                             @NotNull List<Sample> samples, long rootPid) {
+                             @NotNull List<Sample> samples, long rootPid, boolean analysisFirst) {
         super(project);
         this.project = project;
         this.appName = appName;
         this.samples = samples;
         this.rootPid = rootPid;
+        this.analysisFirst = analysisFirst;
+        this.analysis = MemoryHistory.analyze(samples);
         setTitle("Memory history - " + appName);
         init();
     }
@@ -73,7 +80,10 @@ public class MemoryChartDialog extends DialogWrapper {
         final JBTabbedPane tabs = new JBTabbedPane();
         tabs.addTab("Chart", createChartTab());
         tabs.addTab("Analysis", createAnalysisTab());
-        tabs.setPreferredSize(new Dimension(JBUI.scale(680), JBUI.scale(380)));
+        tabs.setPreferredSize(new Dimension(JBUI.scale(700), JBUI.scale(440)));
+        if (analysisFirst) {
+            tabs.setSelectedIndex(1); // open straight on Analysis when requested
+        }
         return tabs;
     }
 
@@ -97,9 +107,21 @@ public class MemoryChartDialog extends DialogWrapper {
         final JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(6)));
         panel.setBorder(JBUI.Borders.empty(8));
 
-        final JBLabel summary = new JBLabel(leakSummaryHtml(MemoryHistory.analyze(samples)));
+        final JBLabel summary = new JBLabel(leakSummaryHtml(analysis));
         summary.setVerticalAlignment(JLabel.TOP);
         panel.add(summary, BorderLayout.NORTH);
+
+        // center: a filter over the per-process breakdown table
+        final JPanel center = new JPanel(new BorderLayout(0, JBUI.scale(4)));
+        breakdownFilter = new com.intellij.ui.components.fields.ExtendableTextField();
+        breakdownFilter.getEmptyText().setText("Filter processes by PID or command");
+        breakdownFilter.getDocument().addDocumentListener(new com.intellij.ui.DocumentAdapter() {
+            @Override
+            protected void textChanged(@NotNull javax.swing.event.DocumentEvent e) {
+                applyBreakdownFilter();
+            }
+        });
+        center.add(breakdownFilter, BorderLayout.NORTH);
 
         final JBTable table = new JBTable(breakdownModel);
         table.getEmptyText().setText("Sampling process tree…");
@@ -107,13 +129,16 @@ public class MemoryChartDialog extends DialogWrapper {
         table.getColumnModel().getColumn(1).setPreferredWidth(JBUI.scale(360));
         table.getColumnModel().getColumn(2).setPreferredWidth(JBUI.scale(90));
         table.getColumnModel().getColumn(3).setPreferredWidth(JBUI.scale(70));
-        panel.add(new JBScrollPane(table), BorderLayout.CENTER);
+        center.add(new JBScrollPane(table), BorderLayout.CENTER);
+        panel.add(center, BorderLayout.CENTER);
 
         final JButton refresh = new JButton("Refresh");
         refresh.addActionListener(e -> sampleBreakdown());
+        final JButton export = new JButton("Export analysis…");
+        export.addActionListener(e -> exportAnalysis());
         final JPanel south = new JPanel(new FlowLayout(FlowLayout.LEFT));
         south.add(refresh);
-        south.add(new JBLabel("Memory per process in this application's process tree (sampled now)."));
+        south.add(export);
         panel.add(south, BorderLayout.SOUTH);
 
         sampleBreakdown();
@@ -126,26 +151,17 @@ public class MemoryChartDialog extends DialogWrapper {
             return "<html><b>Leak analysis</b><br>Not enough samples yet - keep the application "
                     + "running to collect a trend.</html>";
         }
-        final String verdict;
-        final String color;
-        switch (a.trend) {
-            case GROWING:
-                verdict = "Growing - possible memory leak";
-                color = "#D9534F";
-                break;
-            case SHRINKING:
-                verdict = "Shrinking";
-                color = "#5CB85C";
-                break;
-            default:
-                verdict = "Stable";
-                color = "#5CB85C";
-        }
+        final String color = a.trend == MemoryHistory.Trend.GROWING ? "#D9534F" : "#5CB85C";
         final String sign = a.netChangeKb >= 0 ? "+" : "-";
-        final String rate = String.format(Locale.US, "%+.1f MiB/min", a.slopeKbPerMin / 1024.0);
+        final String hourSign = a.projectedPerHourKb >= 0 ? "+" : "-";
         return "<html><b>Leak analysis</b><br>"
-                + "Verdict: <b><font color='" + color + "'>" + verdict + "</font></b><br>"
-                + "Trend: " + rate + " over " + ProcessStatsSampler.formatUptime(a.durationMs)
+                + "Verdict: <b><font color='" + color + "'>" + MemoryHistory.verdictText(a) + "</font></b><br>"
+                + "Trend: " + String.format(Locale.US, "%+.1f MiB/min", a.slopeKbPerMin / 1024.0)
+                + " (~ " + hourSign + ProcessStatsSampler.formatMemory(Math.abs(a.projectedPerHourKb)) + "/h)"
+                + ", R²=" + String.format(Locale.US, "%.2f", a.rSquared)
+                + ", memory not freed " + String.format(Locale.US, "%.0f%%", a.monotonicFraction * 100)
+                + " of the time<br>"
+                + "Duration: " + ProcessStatsSampler.formatUptime(a.durationMs)
                 + " (" + a.samples + " samples)<br>"
                 + "First → last: " + ProcessStatsSampler.formatMemory(a.firstRssKb) + " → "
                 + ProcessStatsSampler.formatMemory(a.lastRssKb)
@@ -156,6 +172,7 @@ public class MemoryChartDialog extends DialogWrapper {
 
     /** Samples the current RSS of every process in the tree, off the EDT, and fills the table. */
     private void sampleBreakdown() {
+        breakdownModel.setRows(new ArrayList<>()); // clear while re-sampling
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             final Set<Long> tree = ProcessStatsSampler.processTreePids(rootPid);
             final Map<Long, ProcessStatsSampler.Stats> stats = ProcessStatsSampler.samplePids(tree);
@@ -172,8 +189,60 @@ public class MemoryChartDialog extends DialogWrapper {
                                           totalKb > 0 ? rssKb * 100.0 / totalKb : 0));
             }
             rows.sort((x, y) -> Long.compare(y.rssKb, x.rssKb)); // heaviest first
-            ApplicationManager.getApplication().invokeLater(() -> breakdownModel.setRows(rows));
+            // ModalityState.any(): this dialog is modal, so a default-modality invokeLater would
+            // never run until it closes - which is why the table used to stay on "Sampling…".
+            ApplicationManager.getApplication().invokeLater(() -> {
+                allBreakdownRows = rows;
+                applyBreakdownFilter();
+            }, com.intellij.openapi.application.ModalityState.any());
         });
+    }
+
+    /** Narrows the breakdown table to processes whose PID or command matches the filter text. */
+    private void applyBreakdownFilter() {
+        final String filter = breakdownFilter == null ? "" : breakdownFilter.getText();
+        if (filter == null || filter.trim().isEmpty()) {
+            breakdownModel.setRows(new ArrayList<>(allBreakdownRows));
+            return;
+        }
+        final String needle = filter.trim().toLowerCase(Locale.ROOT);
+        final List<BreakdownRow> filtered = new ArrayList<>();
+        for (BreakdownRow row : allBreakdownRows) {
+            if (String.valueOf(row.pid).contains(needle)
+                    || row.command.toLowerCase(Locale.ROOT).contains(needle)) {
+                filtered.add(row);
+            }
+        }
+        breakdownModel.setRows(filtered);
+    }
+
+    /** Writes the leak analysis plus the current per-process breakdown to a text report. */
+    private void exportAnalysis() {
+        final FileSaverDescriptor descriptor =
+                new FileSaverDescriptor("Export Memory Analysis", "Save the memory analysis as a text report", "txt");
+        final VirtualFileWrapper wrapper = FileChooserFactory.getInstance()
+                .createSaveFileDialog(descriptor, project)
+                .save((com.intellij.openapi.vfs.VirtualFile) null, sanitize(appName) + "-memory-analysis.txt");
+        if (wrapper == null) {
+            return;
+        }
+        final StringBuilder sb = new StringBuilder(MemoryHistory.summaryText(appName, analysis));
+        sb.append('\n').append("Per-process breakdown (sampled):\n");
+        if (allBreakdownRows.isEmpty()) {
+            sb.append("  (not sampled yet)\n");
+        } else {
+            for (BreakdownRow row : allBreakdownRows) {
+                sb.append(String.format(Locale.US, "  PID %-8d %6s (%.1f%%)  %s%n",
+                                        row.pid, ProcessStatsSampler.formatMemory(row.rssKb),
+                                        row.percentOfTree, row.command));
+            }
+        }
+        try {
+            java.nio.file.Files.write(wrapper.getFile().toPath(),
+                                      sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (java.io.IOException ex) {
+            Messages.showErrorDialog(project, "Could not write the file: " + ex.getMessage(), "Export Analysis");
+        }
     }
 
     /** Best-effort readable command for a pid: command line, else executable, else the pid. */
