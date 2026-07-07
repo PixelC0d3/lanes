@@ -5,6 +5,15 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.42.0] — Clean/colored ANSI logs + rolling zip archive
+- Logs tab: console output is readable when apps emit **ANSI color codes** (webpack, nest, etc.).
+  By default the escape codes are **stripped** for a clean log; tick **ANSI** in the header to
+  **render the real terminal colors** instead. Filtering and level detection always run on the
+  clean text, so results are the same either way.
+- **Build:** `buildPlugin` keeps a rolling archive of the **last 5 built plugin zips** in `dist/`
+  (which lives outside `build/` and so survives `gradlew clean`), so recent artifacts are never
+  lost. No functional change to the plugin.
+
 ## [1.41.0] — Log filters per app + accurate Stop count
 - Logs tab: an **App** selector narrows the aggregated stream to a single application (or all of
   them), and **advanced, composable filters** arrive: several **comma-separated terms** combined

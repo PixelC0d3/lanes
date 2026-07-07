@@ -41,6 +41,16 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.42.0</strong>:</p>
+        <ul>
+            <li>Logs tab: console output is now readable when apps emit <b>ANSI color codes</b>. By
+                default the escape codes are <b>stripped</b> (clean text); tick <b>ANSI</b> in the
+                header to <b>render the real colors</b> instead. Filtering always works on the clean
+                text.</li>
+            <li>Build: keep a rolling archive of the last 5 built plugin zips in <code>dist/</code>
+                (which survives <code>gradlew clean</code>), so recent artifacts are never lost. No
+                functional change to the plugin.</li>
+        </ul>
         <p><strong>1.41.0</strong>:</p>
         <ul>
             <li>Logs tab: an <b>App</b> selector shows the logs of a single application (or all), and

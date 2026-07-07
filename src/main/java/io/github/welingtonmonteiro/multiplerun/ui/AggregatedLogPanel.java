@@ -66,16 +66,57 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
             new JBColor(0xBF3989, 0xDB61A2), // magenta
     };
 
+    /** ANSI 16-color palette (standard 0-7 then bright 8-15), theme-aware for light/dark. */
+    private static final JBColor[] ANSI_PALETTE = {
+            new JBColor(0x000000, 0xBBBBBB), // black (light gray on dark, so it stays visible)
+            new JBColor(0xCC0000, 0xFF5555), // red
+            new JBColor(0x00A000, 0x50FA7B), // green
+            new JBColor(0x998A00, 0xF1FA8C), // yellow
+            new JBColor(0x0000CC, 0x6699FF), // blue
+            new JBColor(0xA000A0, 0xFF79C6), // magenta
+            new JBColor(0x008B8B, 0x8BE9FD), // cyan
+            new JBColor(0x808080, 0xBFBFBF), // white / light gray
+            new JBColor(0x555555, 0x888888), // bright black
+            new JBColor(0xE00000, 0xFF6E6E), // bright red
+            new JBColor(0x00A800, 0x69FF94), // bright green
+            new JBColor(0xB0A000, 0xFFFFA5), // bright yellow
+            new JBColor(0x3333FF, 0x8AB4FF), // bright blue
+            new JBColor(0xD000D0, 0xFF92DF), // bright magenta
+            new JBColor(0x00A8A8, 0xA4FFFF), // bright cyan
+            new JBColor(0x606060, 0xFFFFFF), // bright white
+    };
+
+    /** A CSI escape sequence (colors, cursor moves, line erases): ESC [ params interm final. */
+    private static final java.util.regex.Pattern ANSI_CSI =
+            java.util.regex.Pattern.compile("\u001B\\[[0-?]*[ -/]*[@-~]");
+
     /** One captured console line together with the application it came from. */
     static final class LogLine {
         final String app;
         final int colorIndex;
-        final String text;
+        /** Original text, may contain ANSI escape codes (used when ANSI rendering is on). */
+        final String raw;
+        /** ANSI stripped, for filtering and the default (clean) rendering. */
+        final String visible;
 
-        LogLine(String app, int colorIndex, String text) {
+        LogLine(String app, int colorIndex, String raw) {
             this.app = app;
             this.colorIndex = colorIndex;
+            this.raw = raw;
+            this.visible = stripAnsi(raw);
+        }
+    }
+
+    /** One run of text with a resolved ANSI style (foreground index, bold). */
+    static final class AnsiSpan {
+        final String text;
+        final int fgIndex; // -1 = default foreground
+        final boolean bold;
+
+        AnsiSpan(String text, int fgIndex, boolean bold) {
             this.text = text;
+            this.fgIndex = fgIndex;
+            this.bold = bold;
         }
     }
 
@@ -94,6 +135,7 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
             new javax.swing.JComboBox<>(new String[]{"All levels", "Info+", "Warn+", "Errors"});
     private final JBCheckBox caseBox = new JBCheckBox("Aa");
     private final JBCheckBox regexBox = new JBCheckBox(".*");
+    private final JBCheckBox ansiBox = new JBCheckBox("ANSI");
     private final Timer timer;
 
     /** All captured lines (bounded by {@link #MAX_LINES}); the source of truth for re-rendering. */
@@ -110,6 +152,8 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
 
     private volatile LogFilter logFilter = LogFilter.all();
     private boolean scrollToEnd = true;
+    /** When true the log renders real ANSI colors; when false the escape codes are stripped. */
+    private boolean ansiColors = false;
     /** Guards combo repopulation so programmatic changes don't trigger a filter rebuild. */
     private boolean updatingCombo = false;
 
@@ -166,6 +210,7 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
         appCombo.setToolTipText("Show logs of a single application");
         caseBox.setToolTipText("Case sensitive");
         regexBox.setToolTipText("Interpret terms as regular expressions");
+        ansiBox.setToolTipText("Render ANSI colors (off = strip the color/escape codes for a clean log)");
         modeCombo.setToolTipText("Combine several comma-separated terms with AND (all) or OR (any)");
         actionCombo.setToolTipText("Show only matching lines, or hide matching lines");
         levelCombo.setToolTipText("Only show lines at or above a log level (detected from the text)");
@@ -183,6 +228,11 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
         levelCombo.addActionListener(rebuild);
         caseBox.addActionListener(rebuild);
         regexBox.addActionListener(rebuild);
+        // ANSI toggle is display-only (does not affect the filter), so re-render directly
+        ansiBox.addActionListener(e -> {
+            ansiColors = ansiBox.isSelected();
+            rebuild();
+        });
 
         final javax.swing.JPanel controls =
                 new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 2));
@@ -196,6 +246,7 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
         controls.add(regexBox);
         controls.add(new JBLabel("Level:"));
         controls.add(levelCombo);
+        controls.add(ansiBox);
 
         final javax.swing.JPanel header = new javax.swing.JPanel(new java.awt.BorderLayout());
         header.add(toolbar.getComponent(), java.awt.BorderLayout.WEST);
@@ -287,7 +338,7 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
             for (String line : splitKeepingLines(chunk[1])) {
                 final LogLine logLine = new LogLine(app, colorIndex, line);
                 allLines.add(logLine);
-                if (logFilter.accepts(app, line)) {
+                if (logFilter.accepts(app, logLine.visible)) {
                     appendToPane(logLine);
                     added = true;
                 }
@@ -306,7 +357,7 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
     private void rebuild() {
         textPane.setText("");
         for (LogLine line : allLines) {
-            if (logFilter.accepts(line.app, line.text)) {
+            if (logFilter.accepts(line.app, line.visible)) {
                 appendToPane(line);
             }
         }
@@ -317,10 +368,28 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
 
     private void appendToPane(LogLine line) {
         final javax.swing.text.StyledDocument doc = textPane.getStyledDocument();
-        final javax.swing.text.SimpleAttributeSet attrs = new javax.swing.text.SimpleAttributeSet();
-        javax.swing.text.StyleConstants.setForeground(attrs, PALETTE[line.colorIndex]);
+        final javax.swing.text.SimpleAttributeSet appAttrs = new javax.swing.text.SimpleAttributeSet();
+        javax.swing.text.StyleConstants.setForeground(appAttrs, PALETTE[line.colorIndex]);
         try {
-            doc.insertString(doc.getLength(), formatLine(line.app, line.text) + "\n", attrs);
+            if (ansiColors) {
+                // render real ANSI colors: keep the [app] prefix in the per-app color, then color
+                // the body from its escape codes (default foreground where no color is set)
+                doc.insertString(doc.getLength(), "[" + line.app + "] ", appAttrs);
+                for (AnsiSpan span : parseAnsi(line.raw)) {
+                    final javax.swing.text.SimpleAttributeSet a = new javax.swing.text.SimpleAttributeSet();
+                    if (span.fgIndex >= 0 && span.fgIndex < ANSI_PALETTE.length) {
+                        javax.swing.text.StyleConstants.setForeground(a, ANSI_PALETTE[span.fgIndex]);
+                    }
+                    if (span.bold) {
+                        javax.swing.text.StyleConstants.setBold(a, true);
+                    }
+                    doc.insertString(doc.getLength(), span.text, a);
+                }
+                doc.insertString(doc.getLength(), "\n", appAttrs);
+            } else {
+                // clean rendering: strip the escape codes, whole line in the per-app color
+                doc.insertString(doc.getLength(), formatLine(line.app, line.visible) + "\n", appAttrs);
+            }
         } catch (javax.swing.text.BadLocationException ignored) {
             // the document length is always valid here; nothing to recover
         }
@@ -343,6 +412,94 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
             return true;
         }
         return line.toLowerCase(Locale.ROOT).contains(filter.trim().toLowerCase(Locale.ROOT));
+    }
+
+    /** Removes every ANSI/CSI escape sequence (colors, cursor moves, line erases) from a line. */
+    static String stripAnsi(String text) {
+        if (text == null) {
+            return "";
+        }
+        if (text.indexOf('\u001B') < 0) {
+            return text; // fast path: no escape char at all
+        }
+        return ANSI_CSI.matcher(text).replaceAll("");
+    }
+
+    /**
+     * Splits a line into styled runs by interpreting its ANSI SGR (color/bold) escape codes. Only
+     * SGR sequences (ending in {@code m}) change the style; other CSI sequences (cursor moves, line
+     * erases) are dropped. The result concatenated back equals {@link #stripAnsi(String)}.
+     */
+    static List<AnsiSpan> parseAnsi(String text) {
+        final List<AnsiSpan> spans = new ArrayList<>();
+        if (text == null) {
+            return spans;
+        }
+        final StringBuilder current = new StringBuilder();
+        int fg = -1;
+        boolean bold = false;
+        int i = 0;
+        final int n = text.length();
+        while (i < n) {
+            final char c = text.charAt(i);
+            if (c == '\u001B' && i + 1 < n && text.charAt(i + 1) == '[') {
+                int j = i + 2;
+                while (j < n && (text.charAt(j) < '@' || text.charAt(j) > '~')) {
+                    j++;
+                }
+                if (j < n) {
+                    if (text.charAt(j) == 'm') { // SGR: flush the current run, then update the style
+                        if (current.length() > 0) {
+                            spans.add(new AnsiSpan(current.toString(), fg, bold));
+                            current.setLength(0);
+                        }
+                        final int[] applied = applySgr(text.substring(i + 2, j), fg, bold);
+                        fg = applied[0];
+                        bold = applied[1] == 1;
+                    }
+                    i = j + 1; // skip the whole sequence (SGR applied, others ignored)
+                    continue;
+                }
+                i++; // malformed trailing escape: drop the ESC and continue
+                continue;
+            }
+            current.append(c);
+            i++;
+        }
+        if (current.length() > 0) {
+            spans.add(new AnsiSpan(current.toString(), fg, bold));
+        }
+        return spans;
+    }
+
+    /** Applies an SGR parameter string ({@code "1;32"}) to the current (fg, bold); returns {fg, bold}. */
+    static int[] applySgr(String params, int fg, boolean bold) {
+        if (params.isEmpty()) {
+            return new int[]{-1, 0}; // ESC[m is a full reset
+        }
+        for (String part : params.split(";")) {
+            final int code;
+            try {
+                code = part.isEmpty() ? 0 : Integer.parseInt(part);
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            if (code == 0) {
+                fg = -1;
+                bold = false;
+            } else if (code == 1) {
+                bold = true;
+            } else if (code == 22) {
+                bold = false;
+            } else if (code == 39) {
+                fg = -1;
+            } else if (code >= 30 && code <= 37) {
+                fg = code - 30;
+            } else if (code >= 90 && code <= 97) {
+                fg = code - 90 + 8;
+            }
+        }
+        return new int[]{fg, bold ? 1 : 0};
     }
 
     /**

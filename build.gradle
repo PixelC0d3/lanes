@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'io.github.welingtonmonteiro'
-version = '1.41.0'
+version = '1.42.0'
 
 repositories {
     mavenCentral()
@@ -32,6 +32,36 @@ intellij {
 // useless, flaky build step (buildPlugin no longer depends on a headless IDE run).
 buildSearchableOptions {
     enabled = false
+}
+
+// Keep a rolling archive of the last built plugin zips in dist/, which lives outside build/ and so
+// survives `gradlew clean`. buildPlugin copies its zip here and the oldest are pruned, keeping at
+// least the KEEP_LAST_ZIPS most recently built ones.
+def pluginArchiveDir = file("$rootDir/dist")
+def KEEP_LAST_ZIPS = 5
+
+tasks.register('archivePluginZip') {
+    description = "Copy the built plugin zip into dist/ and keep only the last ${KEEP_LAST_ZIPS}."
+    doLast {
+        pluginArchiveDir.mkdirs()
+        // copy every freshly built zip into the archive (overwriting a same-named one)
+        fileTree(dir: "$buildDir/distributions", include: '*.zip').files.each { zip ->
+            java.nio.file.Files.copy(zip.toPath(),
+                    new File(pluginArchiveDir, zip.name).toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
+        // prune: keep the KEEP_LAST_ZIPS most recently modified zips, delete the rest.
+        // NB: sort the List explicitly (Array.sort in place is unreliable here) - newest first.
+        def zips = pluginArchiveDir.listFiles({ dir, name -> name.endsWith('.zip') } as FilenameFilter)
+        if (zips != null && zips.length > KEEP_LAST_ZIPS) {
+            def newestFirst = zips.toList().sort(false) { -it.lastModified() }
+            newestFirst.drop(KEEP_LAST_ZIPS).each { it.delete() }
+        }
+    }
+}
+
+tasks.named('buildPlugin').configure {
+    finalizedBy('archivePluginZip')
 }
 
 // Load the plugin repo api key from local.properties file
