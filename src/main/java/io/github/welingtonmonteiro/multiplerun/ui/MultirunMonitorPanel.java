@@ -57,6 +57,13 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
 
     private static final int REFRESH_INTERVAL_MS = 2000;
 
+    /** Initial column widths, by model index; also reapplied when columns are shown/hidden. */
+    private static final int[] PREFERRED_WIDTHS = {220, 110, 90, 70, 100, 80, 80, 160, 70, 120, 70};
+    /** The one column that can never be hidden (it identifies the row). */
+    private static final String MANDATORY_COLUMN = "Name";
+    /** Column header names the user chose to hide (empty = everything visible). */
+    private final Set<String> hiddenColumns = new LinkedHashSet<>();
+
     /** A process the IDE is running, captured on the EDT (descriptor access) for the refresh. */
     private static final class ProcessSnapshot {
         final String name;
@@ -227,11 +234,8 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 column("CPU %", row -> row.cpuPercent));
         table = new TableView<>(model);
         table.getEmptyText().setText("No run configurations are running");
-        // initial widths only - all columns stay resizable by dragging the header edges
-        final int[] preferredWidths = {220, 110, 90, 70, 100, 80, 80, 160, 70, 120, 70};
-        for (int i = 0; i < preferredWidths.length && i < table.getColumnModel().getColumnCount(); i++) {
-            table.getColumnModel().getColumn(i).setPreferredWidth(preferredWidths[i]);
-        }
+        // apply initial widths (and honor any hidden columns); all columns stay resizable
+        applyColumnVisibility();
         // batch actions: the row actions operate on every selected row
         table.getSelectionModel().setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 
@@ -251,6 +255,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         });
         toolbarGroup.addAll(rowActions);
         toolbarGroup.add(new KillByPortAction());
+        toolbarGroup.add(new ShowColumnsAction());
         toolbarGroup.addSeparator();
         final AnAction stopAllAction = ActionManager.getInstance().getAction(StopRunningMultirunConfigurationsAction.ACTION_ID);
         if (stopAllAction != null) {
@@ -300,6 +305,50 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 return getter.apply(row);
             }
         };
+    }
+
+    /** All column header names, in model order. */
+    private List<String> allColumnNames() {
+        final List<String> names = new ArrayList<>();
+        for (int i = 0; i < model.getColumnCount(); i++) {
+            names.add(model.getColumnName(i));
+        }
+        return names;
+    }
+
+    /** The names that stay visible: every column in {@code all} not present in {@code hidden}. */
+    static List<String> visibleColumns(List<String> all, Set<String> hidden) {
+        final List<String> result = new ArrayList<>();
+        for (String name : all) {
+            if (!hidden.contains(name)) {
+                result.add(name);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Rebuilds the table's column model from {@link #hiddenColumns}: visible columns are re-added in
+     * model order with their preferred width. TableView resolves renderers/values through the model
+     * index, so hiding a column never disturbs the others.
+     */
+    private void applyColumnVisibility() {
+        final javax.swing.table.TableColumnModel cm = table.getColumnModel();
+        while (cm.getColumnCount() > 0) {
+            cm.removeColumn(cm.getColumn(0));
+        }
+        for (int modelIdx = 0; modelIdx < model.getColumnCount(); modelIdx++) {
+            final String name = model.getColumnName(modelIdx);
+            if (hiddenColumns.contains(name)) {
+                continue;
+            }
+            final javax.swing.table.TableColumn col = new javax.swing.table.TableColumn(modelIdx);
+            col.setHeaderValue(name);
+            if (modelIdx < PREFERRED_WIDTHS.length) {
+                col.setPreferredWidth(PREFERRED_WIDTHS[modelIdx]);
+            }
+            cm.addColumn(col);
+        }
     }
 
     @Nullable
@@ -373,7 +422,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 copy = new ArrayList<>(stored);
             }
         }
-        new MemoryChartDialog(project, row.name, copy).show();
+        new MemoryChartDialog(project, row.name, copy, MultirunProcessRegistry.pidOf(row.handler)).show();
     }
 
     /** True when the row carries a Multiple Run environment that can be shown in the Env viewer. */
@@ -658,6 +707,46 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                     ExecutionUtil.restart(row.descriptor);
                 }
             }
+        }
+    }
+
+    /** Lets the user choose which columns are visible through a checkbox popup. */
+    private final class ShowColumnsAction extends DumbAwareAction {
+        ShowColumnsAction() {
+            super("Show Columns", "Choose which columns are visible", AllIcons.Actions.Show);
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent e) {
+            final com.intellij.ui.CheckBoxList<String> list = new com.intellij.ui.CheckBoxList<>();
+            for (String name : allColumnNames()) {
+                if (MANDATORY_COLUMN.equals(name)) {
+                    continue; // the Name column is always shown
+                }
+                list.addItem(name, name, !hiddenColumns.contains(name));
+            }
+            list.setCheckBoxListListener((index, value) -> {
+                final String name = list.getItemAt(index);
+                if (name == null) {
+                    return;
+                }
+                if (value) {
+                    hiddenColumns.remove(name);
+                } else {
+                    hiddenColumns.add(name);
+                }
+                applyColumnVisibility();
+            });
+            final com.intellij.openapi.ui.popup.JBPopup popup =
+                    com.intellij.openapi.ui.popup.JBPopupFactory.getInstance()
+                            .createComponentPopupBuilder(ScrollPaneFactory.createScrollPane(list), list)
+                            .setTitle("Show Columns")
+                            .setResizable(true)
+                            .setMovable(true)
+                            .setRequestFocus(true)
+                            .createPopup();
+            final java.awt.Component source = e.getInputEvent() != null ? e.getInputEvent().getComponent() : table;
+            popup.showUnderneathOf(source);
         }
     }
 

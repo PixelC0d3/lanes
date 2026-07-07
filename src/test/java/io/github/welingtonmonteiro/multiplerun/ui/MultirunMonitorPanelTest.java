@@ -74,4 +74,18 @@ public class MultirunMonitorPanelTest {
         assertEquals("healthy", MultirunMonitorPanel.statusLabel(ReadyCondition.Type.HTTP, true));
         assertEquals("down", MultirunMonitorPanel.statusLabel(ReadyCondition.Type.HTTP, false));
     }
+
+    @Test
+    public void visibleColumnsDropsHiddenAndKeepsOrder() {
+        final List<String> all = Arrays.asList("Name", "Env", "PID", "Ports", "CPU %");
+        final List<String> visible = MultirunMonitorPanel.visibleColumns(
+                all, new java.util.HashSet<>(Arrays.asList("PID", "CPU %")));
+        assertEquals(Arrays.asList("Name", "Env", "Ports"), visible);
+    }
+
+    @Test
+    public void visibleColumnsWithNothingHiddenReturnsEverything() {
+        final List<String> all = Arrays.asList("Name", "Env", "PID");
+        assertEquals(all, MultirunMonitorPanel.visibleColumns(all, java.util.Collections.emptySet()));
+    }
 }
