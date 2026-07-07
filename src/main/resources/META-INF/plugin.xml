@@ -41,6 +41,19 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.39.0</strong>:</p>
+        <ul>
+            <li>Monitor: the memory chart (click a "Mem trend" sparkline) now has <b>labeled X and Y
+                axes</b> - X is elapsed time, Y is memory (RSS) - with grid lines and tick labels.</li>
+            <li>Monitor: the memory chart gained an <b>Analysis</b> tab with a memory-trend / possible
+                <b>leak verdict</b> (growing/stable/shrinking, with the growth rate) and a
+                <b>per-process breakdown</b> of the application's process tree, so a runaway child
+                process is easy to spot.</li>
+            <li>Monitor: <b>show/hide columns</b> - a toolbar button opens a checkbox list to choose
+                which columns are visible.</li>
+            <li>Monitor: the <b>Stop Multiple Run</b> toolbar button now has a visible icon (it was
+                blank because of a stale icon path).</li>
+        </ul>
         <p><strong>1.38.0</strong>:</p>
         <ul>
             <li>Monitor: click the <b>Env</b> cell of a running application to open a viewer with the
@@ -458,7 +471,7 @@
         <!-- id must stay in sync with StopRunningMultirunConfigurationsAction.ACTION_ID;
              namespaced to avoid colliding with the original Multirun plugin's action id -->
         <action id="MultipleRun.StopRunning" class="io.github.welingtonmonteiro.multiplerun.StopRunningMultirunConfigurationsAction"
-                text="Stop Multiple Run" description="Stop running Multiple Run configurations" icon="/actions/suspend.png">
+                text="Stop Multiple Run" description="Stop running Multiple Run configurations" icon="AllIcons.Actions.Suspend">
             <add-to-group group-id="RunMenu" relative-to-action="Stop" anchor="after"/>
             <keyboard-shortcut keymap="$default" first-keystroke="shift alt K"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="control alt K"/>

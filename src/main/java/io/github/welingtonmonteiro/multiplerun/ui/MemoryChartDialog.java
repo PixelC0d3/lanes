@@ -1,39 +1,68 @@
 package io.github.welingtonmonteiro.multiplerun.ui;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
+import javax.swing.JButton;
 import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.table.AbstractTableModel;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileChooser.FileChooserFactory;
 import com.intellij.openapi.fileChooser.FileSaverDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFileWrapper;
+import com.intellij.ui.JBColor;
+import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBScrollPane;
+import com.intellij.ui.components.JBTabbedPane;
+import com.intellij.ui.table.JBTable;
+import com.intellij.util.ui.JBUI;
 
 import io.github.welingtonmonteiro.multiplerun.MemoryHistory;
+import io.github.welingtonmonteiro.multiplerun.MemoryHistory.Analysis;
 import io.github.welingtonmonteiro.multiplerun.MemoryHistory.Sample;
 import io.github.welingtonmonteiro.multiplerun.ProcessStatsSampler;
 
 /**
  * A pop-up with the full memory history of one application over the current session (the monitor's
- * "Mem trend" sparkline only shows the last minute). Shows a larger line chart of RSS over time and
- * can export the series to CSV.
+ * "Mem trend" sparkline only shows the last minute). The <b>Chart</b> tab draws RSS over time with
+ * labeled X (elapsed time) and Y (memory) axes and can export the series to CSV; the <b>Analysis</b>
+ * tab summarizes the memory trend (a possible-leak verdict) and breaks the memory down by process
+ * of the application's tree, so a runaway child process is easy to spot.
  */
 public class MemoryChartDialog extends DialogWrapper {
 
     private final Project project;
     private final String appName;
     private final List<Sample> samples;
+    private final long rootPid;
 
-    public MemoryChartDialog(@Nullable Project project, @NotNull String appName, @NotNull List<Sample> samples) {
+    private final BreakdownTableModel breakdownModel = new BreakdownTableModel();
+
+    public MemoryChartDialog(@Nullable Project project, @NotNull String appName,
+                             @NotNull List<Sample> samples, long rootPid) {
         super(project);
         this.project = project;
         this.appName = appName;
         this.samples = samples;
+        this.rootPid = rootPid;
         setTitle("Memory history - " + appName);
         init();
     }
@@ -41,19 +70,118 @@ public class MemoryChartDialog extends DialogWrapper {
     @Nullable
     @Override
     protected JComponent createCenterPanel() {
-        final javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout(0, 6));
-        final ChartComponent chart = new ChartComponent();
-        chart.setPreferredSize(new java.awt.Dimension(640, 300));
-        panel.add(chart, java.awt.BorderLayout.CENTER);
+        final JBTabbedPane tabs = new JBTabbedPane();
+        tabs.addTab("Chart", createChartTab());
+        tabs.addTab("Analysis", createAnalysisTab());
+        tabs.setPreferredSize(new Dimension(JBUI.scale(680), JBUI.scale(380)));
+        return tabs;
+    }
 
-        final javax.swing.JButton exportButton = new javax.swing.JButton("Export CSV…");
+    private JComponent createChartTab() {
+        final JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(6)));
+        final ChartComponent chart = new ChartComponent();
+        chart.setPreferredSize(new Dimension(JBUI.scale(660), JBUI.scale(300)));
+        panel.add(chart, BorderLayout.CENTER);
+
+        final JButton exportButton = new JButton("Export CSV…");
         exportButton.setEnabled(!samples.isEmpty());
         exportButton.addActionListener(e -> exportCsv());
-        final javax.swing.JPanel south = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+        final JPanel south = new JPanel(new FlowLayout(FlowLayout.LEFT));
         south.add(exportButton);
-        south.add(new javax.swing.JLabel(samples.size() + " samples"));
-        panel.add(south, java.awt.BorderLayout.SOUTH);
+        south.add(new JLabel(samples.size() + " samples"));
+        panel.add(south, BorderLayout.SOUTH);
         return panel;
+    }
+
+    private JComponent createAnalysisTab() {
+        final JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(6)));
+        panel.setBorder(JBUI.Borders.empty(8));
+
+        final JBLabel summary = new JBLabel(leakSummaryHtml(MemoryHistory.analyze(samples)));
+        summary.setVerticalAlignment(JLabel.TOP);
+        panel.add(summary, BorderLayout.NORTH);
+
+        final JBTable table = new JBTable(breakdownModel);
+        table.getEmptyText().setText("Sampling process tree…");
+        table.getColumnModel().getColumn(0).setPreferredWidth(JBUI.scale(70));
+        table.getColumnModel().getColumn(1).setPreferredWidth(JBUI.scale(360));
+        table.getColumnModel().getColumn(2).setPreferredWidth(JBUI.scale(90));
+        table.getColumnModel().getColumn(3).setPreferredWidth(JBUI.scale(70));
+        panel.add(new JBScrollPane(table), BorderLayout.CENTER);
+
+        final JButton refresh = new JButton("Refresh");
+        refresh.addActionListener(e -> sampleBreakdown());
+        final JPanel south = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        south.add(refresh);
+        south.add(new JBLabel("Memory per process in this application's process tree (sampled now)."));
+        panel.add(south, BorderLayout.SOUTH);
+
+        sampleBreakdown();
+        return panel;
+    }
+
+    /** Builds an HTML summary of the memory trend, coloring the verdict. */
+    private static String leakSummaryHtml(Analysis a) {
+        if (a.trend == MemoryHistory.Trend.INSUFFICIENT_DATA) {
+            return "<html><b>Leak analysis</b><br>Not enough samples yet - keep the application "
+                    + "running to collect a trend.</html>";
+        }
+        final String verdict;
+        final String color;
+        switch (a.trend) {
+            case GROWING:
+                verdict = "Growing - possible memory leak";
+                color = "#D9534F";
+                break;
+            case SHRINKING:
+                verdict = "Shrinking";
+                color = "#5CB85C";
+                break;
+            default:
+                verdict = "Stable";
+                color = "#5CB85C";
+        }
+        final String sign = a.netChangeKb >= 0 ? "+" : "-";
+        final String rate = String.format(Locale.US, "%+.1f MiB/min", a.slopeKbPerMin / 1024.0);
+        return "<html><b>Leak analysis</b><br>"
+                + "Verdict: <b><font color='" + color + "'>" + verdict + "</font></b><br>"
+                + "Trend: " + rate + " over " + ProcessStatsSampler.formatUptime(a.durationMs)
+                + " (" + a.samples + " samples)<br>"
+                + "First → last: " + ProcessStatsSampler.formatMemory(a.firstRssKb) + " → "
+                + ProcessStatsSampler.formatMemory(a.lastRssKb)
+                + " (" + sign + ProcessStatsSampler.formatMemory(Math.abs(a.netChangeKb)) + ")<br>"
+                + "Min / peak: " + ProcessStatsSampler.formatMemory(a.minRssKb) + " / "
+                + ProcessStatsSampler.formatMemory(a.maxRssKb) + "</html>";
+    }
+
+    /** Samples the current RSS of every process in the tree, off the EDT, and fills the table. */
+    private void sampleBreakdown() {
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            final Set<Long> tree = ProcessStatsSampler.processTreePids(rootPid);
+            final Map<Long, ProcessStatsSampler.Stats> stats = ProcessStatsSampler.samplePids(tree);
+            long total = 0;
+            for (ProcessStatsSampler.Stats s : stats.values()) {
+                total += s.rssKb;
+            }
+            final long totalKb = total;
+            final List<BreakdownRow> rows = new ArrayList<>();
+            for (Long pid : tree) {
+                final ProcessStatsSampler.Stats s = stats.get(pid);
+                final long rssKb = s == null ? 0 : s.rssKb;
+                rows.add(new BreakdownRow(pid, commandOf(pid), rssKb,
+                                          totalKb > 0 ? rssKb * 100.0 / totalKb : 0));
+            }
+            rows.sort((x, y) -> Long.compare(y.rssKb, x.rssKb)); // heaviest first
+            ApplicationManager.getApplication().invokeLater(() -> breakdownModel.setRows(rows));
+        });
+    }
+
+    /** Best-effort readable command for a pid: command line, else executable, else the pid. */
+    private static String commandOf(long pid) {
+        return ProcessHandle.of(pid)
+                .map(ProcessHandle::info)
+                .map(info -> info.commandLine().orElse(info.command().orElse("PID " + pid)))
+                .orElse("PID " + pid + " (ended)");
     }
 
     @NotNull
@@ -83,49 +211,152 @@ public class MemoryChartDialog extends DialogWrapper {
         return name == null ? "app" : name.trim().replaceAll("[^a-zA-Z0-9-_.]", "_");
     }
 
-    /** Simple line chart of RSS over the session, with the peak value labeled. */
-    private final class ChartComponent extends JComponent {
+    /** One process of the application's tree in the breakdown table. */
+    private static final class BreakdownRow {
+        final long pid;
+        final String command;
+        final long rssKb;
+        final double percentOfTree;
+
+        BreakdownRow(long pid, String command, long rssKb, double percentOfTree) {
+            this.pid = pid;
+            this.command = command;
+            this.rssKb = rssKb;
+            this.percentOfTree = percentOfTree;
+        }
+    }
+
+    /** Table model for the per-process memory breakdown (PID, Command, Memory, % of tree). */
+    private static final class BreakdownTableModel extends AbstractTableModel {
+        private List<BreakdownRow> rows = new ArrayList<>();
+
+        void setRows(List<BreakdownRow> rows) {
+            this.rows = rows;
+            fireTableDataChanged();
+        }
+
+        @Override public int getRowCount() { return rows.size(); }
+
+        @Override public int getColumnCount() { return 4; }
+
         @Override
-        protected void paintComponent(java.awt.Graphics g) {
-            final java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
+        public String getColumnName(int column) {
+            switch (column) {
+                case 0: return "PID";
+                case 1: return "Command";
+                case 2: return "Memory";
+                default: return "% of tree";
+            }
+        }
+
+        @Override public boolean isCellEditable(int row, int col) { return false; }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            final BreakdownRow r = rows.get(rowIndex);
+            switch (columnIndex) {
+                case 0: return r.pid;
+                case 1: return r.command;
+                case 2: return ProcessStatsSampler.formatMemory(r.rssKb);
+                default: return String.format(Locale.US, "%.1f%%", r.percentOfTree);
+            }
+        }
+    }
+
+    /**
+     * Line chart of RSS over the session with labeled axes: X is elapsed time (from the first
+     * sample), Y is memory (RSS). Grid lines and tick labels make the scale readable; the peak is
+     * annotated and the line color reflects the latest memory percentage.
+     */
+    private final class ChartComponent extends JComponent {
+        private static final int LEFT = 66;
+        private static final int RIGHT = 16;
+        private static final int TOP = 18;
+        private static final int BOTTOM = 42;
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            final Graphics2D g2 = (Graphics2D) g;
             g2.setColor(getBackground());
             g2.fillRect(0, 0, getWidth(), getHeight());
             if (samples.size() < 2) {
-                g2.setColor(com.intellij.ui.JBColor.GRAY);
-                g2.drawString("Not enough samples yet", 12, 24);
+                g2.setColor(JBColor.GRAY);
+                g2.drawString("Not enough samples yet", LEFT, TOP + 12);
                 return;
             }
-            g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
-                                java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             long maxRss = 0;
             for (Sample sample : samples) {
                 maxRss = Math.max(maxRss, sample.rssKb);
             }
-            final long scaleMax = Math.max(maxRss, 1);
-            final int left = 8;
-            final int right = 8;
-            final int top = 8;
-            final int bottom = 20;
-            final int width = Math.max(getWidth() - left - right, 1);
-            final int height = Math.max(getHeight() - top - bottom, 1);
+            final double scaleMax = Math.max(maxRss * 1.05, 1); // 5% headroom above the peak
+            final long durationMs = Math.max(samples.get(samples.size() - 1).timeMs - samples.get(0).timeMs, 1);
 
-            // baseline and peak label
-            g2.setColor(com.intellij.ui.JBColor.GRAY);
-            g2.drawLine(left, top + height, left + width, top + height);
-            g2.drawString("peak " + ProcessStatsSampler.formatMemory(maxRss), left + 4, top + 14);
+            final int plotW = Math.max(getWidth() - LEFT - RIGHT, 1);
+            final int plotH = Math.max(getHeight() - TOP - BOTTOM, 1);
+            final int axisX = LEFT;
+            final int axisYBottom = TOP + plotH;
 
+            final java.awt.Font baseFont = g2.getFont();
+            final java.awt.Font small = baseFont.deriveFont(baseFont.getSize2D() - 1f);
+            g2.setFont(small);
+            final java.awt.FontMetrics fm = g2.getFontMetrics();
+
+            // Y grid + tick labels (memory)
+            for (int i = 0; i <= 4; i++) {
+                final double f = i / 4.0;
+                final int y = axisYBottom - (int) Math.round(f * plotH);
+                g2.setColor(JBColor.border());
+                g2.drawLine(axisX, y, axisX + plotW, y);
+                final String label = ProcessStatsSampler.formatMemory((long) (scaleMax * f));
+                g2.setColor(JBColor.GRAY);
+                g2.drawString(label, axisX - 6 - fm.stringWidth(label), y + fm.getAscent() / 2 - 1);
+            }
+            // X tick labels (elapsed time)
+            for (int i = 0; i <= 4; i++) {
+                final double f = i / 4.0;
+                final int x = axisX + (int) Math.round(f * plotW);
+                g2.setColor(JBColor.GRAY);
+                g2.drawLine(x, axisYBottom, x, axisYBottom + 3);
+                final String label = ProcessStatsSampler.formatUptime((long) (durationMs * f));
+                int lx = x - fm.stringWidth(label) / 2;
+                lx = Math.max(axisX, Math.min(lx, axisX + plotW - fm.stringWidth(label)));
+                g2.drawString(label, lx, axisYBottom + 3 + fm.getAscent() + 1);
+            }
+
+            // axes
+            g2.setColor(JBColor.foreground());
+            g2.drawLine(axisX, TOP, axisX, axisYBottom);
+            g2.drawLine(axisX, axisYBottom, axisX + plotW, axisYBottom);
+
+            // axis titles
+            g2.setColor(JBColor.GRAY);
+            final String xTitle = "Elapsed time";
+            g2.drawString(xTitle, axisX + (plotW - fm.stringWidth(xTitle)) / 2, getHeight() - 4);
+            final String yTitle = "Memory (RSS)";
+            final java.awt.geom.AffineTransform saved = g2.getTransform();
+            g2.rotate(-Math.PI / 2, 12, TOP + plotH / 2.0);
+            g2.drawString(yTitle, 12 - fm.stringWidth(yTitle) / 2, TOP + plotH / 2 + fm.getAscent());
+            g2.setTransform(saved);
+
+            // peak annotation
+            g2.setColor(JBColor.GRAY);
+            g2.drawString("peak " + ProcessStatsSampler.formatMemory(maxRss), axisX + 6, TOP + fm.getAscent());
+
+            // the series
             final int[] xs = new int[samples.size()];
             final int[] ys = new int[samples.size()];
             for (int i = 0; i < samples.size(); i++) {
-                xs[i] = left + (int) Math.round((double) i * width / (samples.size() - 1));
-                ys[i] = top + (int) Math.round(height - (double) samples.get(i).rssKb / scaleMax * height);
+                xs[i] = axisX + (int) Math.round((double) i * plotW / (samples.size() - 1));
+                ys[i] = axisYBottom - (int) Math.round(samples.get(i).rssKb / scaleMax * plotH);
             }
             final double lastPercent = samples.get(samples.size() - 1).percent;
-            g2.setColor(lastPercent >= 90 ? com.intellij.ui.JBColor.RED
-                                          : lastPercent >= 70 ? com.intellij.ui.JBColor.ORANGE
-                                                              : com.intellij.ui.JBColor.GREEN);
+            g2.setColor(lastPercent >= 90 ? JBColor.RED
+                                          : lastPercent >= 70 ? JBColor.ORANGE
+                                                              : JBColor.GREEN);
             g2.drawPolyline(xs, ys, samples.size());
+            g2.setFont(baseFont);
         }
     }
 }

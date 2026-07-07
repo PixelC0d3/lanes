@@ -149,7 +149,15 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - **Mem trend** — a sparkline with the memory history of the last minute per application; the
   shape shows growth/leaks at a glance and the color tracks how close the app is to its limit
   (green → orange at 70% → red at 90%). **Click it** to open a full-session memory chart for that
-  app, with an **Export CSV** button (timestamp, RSS, percent).
+  app:
+  - **Chart** tab — RSS over time with **labeled axes** (X = elapsed time, Y = memory), grid lines
+    and tick labels, plus an **Export CSV** button (timestamp, RSS, percent).
+  - **Analysis** tab — a memory-trend / possible **leak verdict** (growing / stable / shrinking,
+    with the growth rate in MiB/min and the first→last and min→peak figures) and a **per-process
+    breakdown** of the application's process tree (PID, command, memory, % of tree), so a runaway
+    child process is easy to spot.
+- **Show/Hide columns** — a toolbar button opens a checkbox list to choose which columns are
+  visible (the *Name* column is always shown).
 - The tool window toolbar also has a manual refresh button and the *Stop Multiple Run* action.
 - Sampling uses the OS `ps` and `lsof` commands on Linux/macOS; on **Windows** memory/CPU come
   from PowerShell `Get-Process` (the Ports column and *Kill Process on Port* need `lsof`, so they

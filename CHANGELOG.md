@@ -5,6 +5,18 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.39.0] — Memory chart axes, leak analysis, column chooser
+- The memory chart (click a **Mem trend** sparkline) now has **labeled axes** — X is elapsed time,
+  Y is memory (RSS) — with grid lines and tick labels, plus the peak annotation.
+- The chart pop-up gained an **Analysis** tab: a memory-trend / possible **leak verdict**
+  (growing / stable / shrinking, with the growth rate in MiB/min and first→last / min→peak figures),
+  and a **per-process breakdown** of the application's process tree (PID, command, memory, % of
+  tree) so a runaway child process is easy to spot.
+- Monitor: **show/hide columns** — a toolbar button opens a checkbox list to pick which columns are
+  visible (the Name column is always shown).
+- Monitor: the **Stop Multiple Run** toolbar button now has a visible icon (it was blank because of
+  a stale icon path).
+
 ## [1.38.0] — Environment viewer + Running status
 - Click a running application's **Env** cell in the monitor to open a viewer with the environment
   variables Multiple Run loaded for it at launch (group variables + group env file + memory-limit
