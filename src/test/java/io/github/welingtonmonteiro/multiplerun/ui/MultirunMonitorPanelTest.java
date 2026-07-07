@@ -9,6 +9,8 @@ import java.util.List;
 
 import org.junit.Test;
 
+import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper.ReadyCondition;
+
 public class MultirunMonitorPanelTest {
 
     private static MultirunMonitorPanel.Row rowWithStatus(String status) {
@@ -57,5 +59,19 @@ public class MultirunMonitorPanelTest {
     @Test
     public void urlForPortTargetsLocalhost() {
         assertEquals("http://localhost:3000", MultirunMonitorPanel.urlForPort(3000));
+    }
+
+    @Test
+    public void statusLabelIsRunningWithoutAReadinessCondition() {
+        assertEquals("running", MultirunMonitorPanel.statusLabel(ReadyCondition.Type.NONE, false));
+        assertEquals("running", MultirunMonitorPanel.statusLabel(ReadyCondition.Type.LOG, false));
+    }
+
+    @Test
+    public void statusLabelMapsPortAndHttpChecksToHealthyOrDown() {
+        assertEquals("healthy", MultirunMonitorPanel.statusLabel(ReadyCondition.Type.PORT, true));
+        assertEquals("down", MultirunMonitorPanel.statusLabel(ReadyCondition.Type.PORT, false));
+        assertEquals("healthy", MultirunMonitorPanel.statusLabel(ReadyCondition.Type.HTTP, true));
+        assertEquals("down", MultirunMonitorPanel.statusLabel(ReadyCondition.Type.HTTP, false));
     }
 }

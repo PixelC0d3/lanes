@@ -5,6 +5,14 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.38.0] — Environment viewer + Running status
+- Click a running application's **Env** cell in the monitor to open a viewer with the environment
+  variables Multiple Run loaded for it at launch (group variables + group env file + memory-limit
+  options + per-app env file, merged). A **filter by variable name** narrows the list and a **Mask
+  values** toggle hides values for screen sharing. Values are never logged — only shown on demand.
+- The **Status** column now shows **running** (green) for every live application, refining to
+  **healthy**/**down** when a port/http *Ready when* condition is set — it no longer stays blank.
+
 ## [1.37.1]
 - **Build:** disabled `buildSearchableOptions` — the plugin has no Settings pages to index, and that
   step launched a headless IDE that intermittently failed with a platform

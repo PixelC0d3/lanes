@@ -181,6 +181,8 @@ public class MultirunRunnerState implements RunProfileState {
             // per-application env file: overrides the group environment for this app (more specific)
             childEnvData = RunConfigurationHelper.withAppEnvFile(
                     childEnvData, appEnvFiles.get(runConfiguration.getName()), project);
+            // effectively-final snapshot of what Multiple Run injected, for the monitor's Env viewer
+            final EnvironmentVariablesData loadedEnvData = childEnvData;
             RunConfiguration effectiveConfiguration = RunConfigurationHelper.withEnvironmentOverride(runConfiguration, childEnvData);
             if (!saveOutputDir.isEmpty()) {
                 final RunConfiguration target = effectiveConfiguration == runConfiguration
@@ -375,6 +377,7 @@ public class MultirunRunnerState implements RunProfileState {
                                                                  runConfiguration.getName(), processHandler,
                                                                  memoryLimitMb, executionEnvironment,
                                                                  RunConfigurationHelper.envFileDisplayName(envFilePath),
+                                                                 loadedEnvData.getEnvs(), loadedEnvData.isPassParentEnvs(),
                                                                  readyConditions.get(runConfiguration.getName()),
                                                                  memAlertThreshold, memLimitRestart, cpuAlertThreshold);
                             }

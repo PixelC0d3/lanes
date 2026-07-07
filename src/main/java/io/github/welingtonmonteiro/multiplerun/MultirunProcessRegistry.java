@@ -36,6 +36,14 @@ public final class MultirunProcessRegistry {
         public final ExecutionEnvironment environment;
         /** File name of the active env profile at launch time, or "-" when none. */
         public final String envFileName;
+        /**
+         * The environment variables Multiple Run actually injected into this app at launch
+         * (group variables + group env file + memory-limit options + per-app env file, merged),
+         * so the monitor can show exactly what was loaded. Never logged - values stay in memory.
+         */
+        public final Map<String, String> loadedEnv;
+        /** Whether the app also inherits the system/parent environment on top of {@link #loadedEnv}. */
+        public final boolean includeSystemEnv;
         /** Raw "Ready when" condition of the app (port:/log:/http...), or null when none. */
         public final String readyCondition;
         /** Percent of the memory limit that triggers the alert/action. */
@@ -48,6 +56,7 @@ public final class MultirunProcessRegistry {
 
         Entry(String multirunName, String appName, ProcessHandler handler,
               Integer memoryLimitMb, ExecutionEnvironment environment, String envFileName,
+              Map<String, String> loadedEnv, boolean includeSystemEnv,
               String readyCondition, int memAlertThreshold, boolean memLimitRestart, int cpuAlertThreshold) {
             this.multirunName = multirunName;
             this.appName = appName;
@@ -55,6 +64,9 @@ public final class MultirunProcessRegistry {
             this.memoryLimitMb = memoryLimitMb;
             this.environment = environment;
             this.envFileName = envFileName == null || envFileName.isEmpty() ? "-" : envFileName;
+            this.loadedEnv = loadedEnv == null
+                    ? Collections.emptyMap() : Collections.unmodifiableMap(new LinkedHashMap<>(loadedEnv));
+            this.includeSystemEnv = includeSystemEnv;
             this.readyCondition = readyCondition;
             this.memAlertThreshold = memAlertThreshold <= 0 ? 90 : memAlertThreshold;
             this.memLimitRestart = memLimitRestart;
@@ -77,10 +89,12 @@ public final class MultirunProcessRegistry {
     public static void register(@NotNull Project project, String multirunName, String appName,
                                 @NotNull ProcessHandler handler, @Nullable Integer memoryLimitMb,
                                 @Nullable ExecutionEnvironment environment, @Nullable String envFileName,
+                                @Nullable Map<String, String> loadedEnv, boolean includeSystemEnv,
                                 @Nullable String readyCondition, int memAlertThreshold, boolean memLimitRestart,
                                 int cpuAlertThreshold) {
         final Entry entry = new Entry(multirunName, appName, handler, memoryLimitMb, environment,
-                                      envFileName, readyCondition, memAlertThreshold, memLimitRestart, cpuAlertThreshold);
+                                      envFileName, loadedEnv, includeSystemEnv, readyCondition,
+                                      memAlertThreshold, memLimitRestart, cpuAlertThreshold);
         ENTRIES.computeIfAbsent(project, p -> new CopyOnWriteArrayList<>()).add(entry);
         LAST_BY_NAME.computeIfAbsent(project, p -> new ConcurrentHashMap<>()).put(appName, entry);
         handler.addProcessListener(new ProcessListener() {

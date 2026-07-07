@@ -114,9 +114,13 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   group, or the run configuration's own icon (node, npm, jest, …) for standalone runs. An app
   restarted individually from the monitor stays in the list and keeps showing its group, env
   profile and memory limit.
-- **Env** shows the active environment profile; **Status** shows healthy/down for applications
-  with a port/http *Ready when* condition. **Double click** a row to jump to the console tab of
-  that application. **Columns are resizable** — drag the header edges.
+- **Env** shows the active environment profile — **click it** to open a viewer with the
+  environment variables Multiple Run actually loaded for that app at launch (group variables, group
+  env file, memory-limit options and per-app env file, merged). The viewer has a **filter by
+  variable name** at the top and a **Mask values** toggle for screen sharing.
+- **Status** shows **running** (green) for every live application, refining to **healthy**/**down**
+  for applications with a port/http *Ready when* condition. **Double click** a row to jump to the
+  console tab of that application. **Columns are resizable** — drag the header edges.
 
 - Works like `docker stats`: memory usage is shown against the configured *Memory limit (MB)* of
   the application (or against the total machine memory when no limit is set), so you can check at
