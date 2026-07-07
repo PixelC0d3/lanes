@@ -5,6 +5,19 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.40.0] — Leak analysis that works, process count, quick Analysis
+- The memory **Analysis** tab now loads its per-process breakdown correctly — it was stuck on
+  "Sampling…" because a modal-dialog `invokeLater` needed `ModalityState.any()`.
+- **Richer leak analysis**: a steady-leak verdict backed by the growth rate (MiB/min), projected
+  growth per hour, the **R²** of the trend (how linear/steady the growth is) and how often memory
+  was **never freed** (monotonic fraction).
+- The Analysis tab gained a **process filter** (by PID or command) and an **Export analysis…**
+  button that writes the verdict plus the per-process breakdown to a text report.
+- New toolbar button opens the memory chart **straight on the Analysis tab** for the selected
+  application — no need to click the Mem trend sparkline first.
+- The **Stop Multiple Run** toolbar button now shows the **number of running processes** next to a
+  stop icon (like WebStorm), instead of a bare icon easy to confuse with the per-row Stop.
+
 ## [1.39.0] — Memory chart axes, leak analysis, column chooser
 - The memory chart (click a **Mem trend** sparkline) now has **labeled axes** — X is elapsed time,
   Y is memory (RSS) — with grid lines and tick labels, plus the peak annotation.

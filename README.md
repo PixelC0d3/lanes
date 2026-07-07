@@ -152,13 +152,19 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   app:
   - **Chart** tab — RSS over time with **labeled axes** (X = elapsed time, Y = memory), grid lines
     and tick labels, plus an **Export CSV** button (timestamp, RSS, percent).
-  - **Analysis** tab — a memory-trend / possible **leak verdict** (growing / stable / shrinking,
-    with the growth rate in MiB/min and the first→last and min→peak figures) and a **per-process
-    breakdown** of the application's process tree (PID, command, memory, % of tree), so a runaway
-    child process is easy to spot.
+  - **Analysis** tab — a memory-trend / possible **leak verdict** (growing / stable / shrinking).
+    A *growing* trend that is steady (high R²) is flagged as a **likely leak**. Shows the growth
+    rate in MiB/min, the projected growth per hour, the R² of the trend, how often memory was never
+    freed, and the first→last / min→peak figures. Below it, a **per-process breakdown** of the
+    application's process tree (PID, command, memory, % of tree) — heaviest first — with a **filter**
+    (by PID or command) and an **Export analysis…** button that saves the verdict + breakdown as a
+    text report.
+- **Memory Analysis** (toolbar) — select a row and click it to open the memory dialog **straight on
+  the Analysis tab**, without clicking the Mem trend sparkline.
 - **Show/Hide columns** — a toolbar button opens a checkbox list to choose which columns are
   visible (the *Name* column is always shown).
-- The tool window toolbar also has a manual refresh button and the *Stop Multiple Run* action.
+- The tool window toolbar also has a manual refresh button and a **Stop Multiple Run** button that
+  shows the **number of running processes** (like WebStorm) and stops all of them.
 - Sampling uses the OS `ps` and `lsof` commands on Linux/macOS; on **Windows** memory/CPU come
   from PowerShell `Get-Process` (the Ports column and *Kill Process on Port* need `lsof`, so they
   stay Linux/macOS-only).

@@ -28,6 +28,9 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
+import com.intellij.openapi.actionSystem.Presentation;
+import com.intellij.openapi.actionSystem.ex.CustomComponentAction;
+import com.intellij.openapi.actionSystem.impl.ActionButtonWithText;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.openapi.project.Project;
@@ -254,13 +257,11 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             }
         });
         toolbarGroup.addAll(rowActions);
+        toolbarGroup.add(new MemoryAnalysisAction());
         toolbarGroup.add(new KillByPortAction());
         toolbarGroup.add(new ShowColumnsAction());
         toolbarGroup.addSeparator();
-        final AnAction stopAllAction = ActionManager.getInstance().getAction(StopRunningMultirunConfigurationsAction.ACTION_ID);
-        if (stopAllAction != null) {
-            toolbarGroup.add(stopAllAction);
-        }
+        toolbarGroup.add(new StopAllWithCountAction());
         final ActionToolbar toolbar = ActionManager.getInstance().createActionToolbar("MultipleRunMonitor", toolbarGroup, false);
         toolbar.setTargetComponent(table);
         setToolbar(toolbar.getComponent());
@@ -403,16 +404,20 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         return columnName.equals(model.getColumnName(table.convertColumnIndexToModel(viewColumn)));
     }
 
-    /** Opens the full-session memory chart for the clicked row. */
+    /** Opens the full-session memory chart for the clicked row (on the Chart tab). */
     private void openMemChartAt(java.awt.event.MouseEvent e) {
         final int viewRow = table.rowAtPoint(e.getPoint());
         if (viewRow < 0) {
             return;
         }
         final Row row = model.getItem(table.convertRowIndexToModel(viewRow));
-        if (row == null) {
-            return;
+        if (row != null) {
+            openMemChart(row, false);
         }
+    }
+
+    /** Opens the full-session memory chart/analysis dialog for a row, on the chosen initial tab. */
+    private void openMemChart(Row row, boolean analysisFirst) {
         final List<MemoryHistory.Sample> stored = fullHistory.get(row.handler);
         final List<MemoryHistory.Sample> copy;
         if (stored == null) {
@@ -422,7 +427,8 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 copy = new ArrayList<>(stored);
             }
         }
-        new MemoryChartDialog(project, row.name, copy, MultirunProcessRegistry.pidOf(row.handler)).show();
+        new MemoryChartDialog(project, row.name, copy,
+                              MultirunProcessRegistry.pidOf(row.handler), analysisFirst).show();
     }
 
     /** True when the row carries a Multiple Run environment that can be shown in the Env viewer. */
@@ -747,6 +753,80 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                             .createPopup();
             final java.awt.Component source = e.getInputEvent() != null ? e.getInputEvent().getComponent() : table;
             popup.showUnderneathOf(source);
+        }
+    }
+
+    /** Opens the memory chart/analysis of the selected application straight on the Analysis tab. */
+    private final class MemoryAnalysisAction extends DumbAwareAction {
+        MemoryAnalysisAction() {
+            super("Memory Analysis", "Open the memory chart and leak analysis of the selected application",
+                  AllIcons.Toolwindows.ToolWindowProfiler);
+        }
+
+        @Override
+        public @NotNull ActionUpdateThread getActionUpdateThread() {
+            return ActionUpdateThread.EDT;
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent e) {
+            e.getPresentation().setEnabled(selectedRow() != null);
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent e) {
+            final Row row = selectedRow();
+            if (row != null) {
+                openMemChart(row, true); // open on the Analysis tab
+            }
+        }
+    }
+
+    /** Number of processes started by Multiple Run that are still running (for the Stop-all badge). */
+    private int runningMultirunCount() {
+        final AnAction action = ActionManager.getInstance().getAction(StopRunningMultirunConfigurationsAction.ACTION_ID);
+        return action instanceof StopRunningMultirunConfigurationsAction
+                ? ((StopRunningMultirunConfigurationsAction) action).runningProcessCount(project) : 0;
+    }
+
+    /**
+     * Stops every process Multiple Run started. Unlike the per-row Stop, this button shows the
+     * <b>count of running processes</b> next to a stop icon (WebStorm-style), so it is not confused
+     * with the per-row stop; it is disabled when nothing the plugin started is running.
+     */
+    private final class StopAllWithCountAction extends DumbAwareAction implements CustomComponentAction {
+        StopAllWithCountAction() {
+            super("Stop Multiple Run", "Stop every process started by Multiple Run", AllIcons.Actions.Suspend);
+        }
+
+        @Override
+        public @NotNull ActionUpdateThread getActionUpdateThread() {
+            return ActionUpdateThread.EDT;
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent e) {
+            final int count = runningMultirunCount();
+            final Presentation p = e.getPresentation();
+            p.setText(count > 0 ? String.valueOf(count) : "");
+            p.setEnabled(count > 0);
+            p.setDescription(count == 1 ? "Stop the 1 running Multiple Run process"
+                                        : "Stop the " + count + " running Multiple Run processes");
+        }
+
+        @Override
+        public @NotNull javax.swing.JComponent createCustomComponent(@NotNull Presentation presentation, @NotNull String place) {
+            // an icon+text toolbar button, so the running-process count is actually visible
+            return new ActionButtonWithText(this, presentation, place, ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE);
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent e) {
+            final AnAction action = ActionManager.getInstance().getAction(StopRunningMultirunConfigurationsAction.ACTION_ID);
+            if (action instanceof StopRunningMultirunConfigurationsAction) {
+                ((StopRunningMultirunConfigurationsAction) action).stopAll(project);
+            }
+            refresh();
         }
     }
 
