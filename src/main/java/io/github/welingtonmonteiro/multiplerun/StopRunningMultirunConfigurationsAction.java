@@ -97,21 +97,6 @@ public class StopRunningMultirunConfigurationsAction extends AnAction {
         LOG.debug("Stopped " + stoppedCount + " processes");
     }
 
-    /** Number of still-running processes this plugin started for the project (for the toolbar badge). */
-    public int runningProcessCount(Project project) {
-        final Map<String, List<ProcessHandler>> byConfiguration = processes.get(project);
-        if (byConfiguration == null) return 0;
-        int count = 0;
-        for (List<ProcessHandler> list : byConfiguration.values()) {
-            for (ProcessHandler each : list) {
-                if (!each.isProcessTerminated()) {
-                    count++;
-                }
-            }
-        }
-        return count;
-    }
-
     /**
      * Stops the still-running processes started earlier by the given Multirun configuration
      * and returns them, so the caller can wait for their termination. Used by the restart

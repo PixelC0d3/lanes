@@ -5,6 +5,16 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.41.0] — Log filters per app + accurate Stop count
+- Logs tab: an **App** selector narrows the aggregated stream to a single application (or all of
+  them), and **advanced, composable filters** arrive: several **comma-separated terms** combined
+  with *any*/*all*, matched as **substring or regex**, **case-sensitive** or not, to **show** or
+  **hide** matches, plus a minimum **log level** (Info+ / Warn+ / Errors) detected from the text.
+  In regex mode the whole field is one pattern (so a quantifier like `\d{3,}` works).
+- Monitor: the **Stop Multiple Run** count now includes apps **restarted individually from the
+  monitor** (which the IDE relaunches as standalone runs). It no longer under-counts, and the
+  button stops those too, so the number and the action stay consistent.
+
 ## [1.40.0] — Leak analysis that works, process count, quick Analysis
 - The memory **Analysis** tab now loads its per-process breakdown correctly — it was stuck on
   "Sampling…" because a modal-dialog `invokeLater` needed `ModalityState.any()`.

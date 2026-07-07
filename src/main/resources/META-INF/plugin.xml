@@ -41,6 +41,17 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.41.0</strong>:</p>
+        <ul>
+            <li>Logs tab: an <b>App</b> selector shows the logs of a single application (or all), and
+                <b>advanced, composable filters</b> - several comma-separated terms combined with
+                <i>any</i>/<i>all</i>, matched as substring or <b>regex</b>, case-sensitive or not,
+                to <b>show</b> or <b>hide</b> matches, plus a minimum <b>log level</b> (Info+/Warn+/
+                Errors) detected from the text.</li>
+            <li>Monitor: the <b>Stop Multiple Run</b> count now includes apps <b>restarted individually
+                from the monitor</b> (which the IDE relaunches as standalone runs) - it no longer
+                under-counts, and the button stops them too.</li>
+        </ul>
         <p><strong>1.40.0</strong>:</p>
         <ul>
             <li>Monitor: the memory <b>Analysis</b> tab now loads its per-process breakdown correctly
