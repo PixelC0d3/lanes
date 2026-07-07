@@ -164,15 +164,21 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - **Show/Hide columns** — a toolbar button opens a checkbox list to choose which columns are
   visible (the *Name* column is always shown).
 - The tool window toolbar also has a manual refresh button and a **Stop Multiple Run** button that
-  shows the **number of running processes** (like WebStorm) and stops all of them.
+  shows the **number of running processes** (like WebStorm) and stops all of them — including apps
+  you **restarted individually** from the monitor (which the IDE relaunches as standalone runs).
 - Sampling uses the OS `ps` and `lsof` commands on Linux/macOS; on **Windows** memory/CPU come
   from PowerShell `Get-Process` (the Ports column and *Kill Process on Port* need `lsof`, so they
   stay Linux/macOS-only).
 - **Aggregated logs (`docker compose logs -f` style)** — the monitor's **Logs** tab merges the
   console output of every running application into one stream, each line prefixed with its
-  application name in a distinct color. A **filter** field narrows the view to matching lines, and
-  the toolbar has *Clear* and a *Scroll to End* toggle. The process table lives in the **Processes**
-  tab next to it.
+  application name in a distinct color. The header has:
+  - an **App** selector to show a single application's logs (or all of them);
+  - **advanced, composable filters** — several **comma-separated terms** combined with *any*/*all*,
+    matched as **substring or regex**, **case-sensitive** or not, to **show** or **hide** matches;
+  - a minimum **log level** (Info+ / Warn+ / Errors), detected from the line text;
+  - *Clear* and a *Scroll to End* toggle.
+
+  The process table lives in the **Processes** tab next to it.
 
 ### Status bar widget
 - A compact indicator in the IDE status bar shows how many applications Multiple Run is running,

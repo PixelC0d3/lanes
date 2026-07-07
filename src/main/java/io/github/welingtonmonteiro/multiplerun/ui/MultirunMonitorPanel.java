@@ -782,11 +782,20 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         }
     }
 
-    /** Number of processes started by Multiple Run that are still running (for the Stop-all badge). */
+    /**
+     * Number of running processes that belong to Multiple Run - counted from the monitor rows, so an
+     * app restarted individually from here (which the platform relaunches as a standalone run, no
+     * longer in the plugin's own tracking map) still counts. A row belongs to Multiple Run when it
+     * carries group metadata (meta != null); plain standalone runs never started by the plugin don't.
+     */
     private int runningMultirunCount() {
-        final AnAction action = ActionManager.getInstance().getAction(StopRunningMultirunConfigurationsAction.ACTION_ID);
-        return action instanceof StopRunningMultirunConfigurationsAction
-                ? ((StopRunningMultirunConfigurationsAction) action).runningProcessCount(project) : 0;
+        int count = 0;
+        for (Row row : model.getItems()) {
+            if (row.meta != null && row.handler != null && !row.handler.isProcessTerminated()) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /**
@@ -822,9 +831,17 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
 
         @Override
         public void actionPerformed(@NotNull AnActionEvent e) {
+            // raise the stop flag and stop everything still tracked by the plugin...
             final AnAction action = ActionManager.getInstance().getAction(StopRunningMultirunConfigurationsAction.ACTION_ID);
             if (action instanceof StopRunningMultirunConfigurationsAction) {
                 ((StopRunningMultirunConfigurationsAction) action).stopAll(project);
+            }
+            // ...plus every Multiple Run row that is no longer tracked (e.g. restarted individually,
+            // now a standalone run) - so the count and the button stay consistent.
+            for (Row row : model.getItems()) {
+                if (row.meta != null && row.handler != null && !row.handler.isProcessTerminated()) {
+                    row.handler.destroyProcess();
+                }
             }
             refresh();
         }

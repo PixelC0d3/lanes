@@ -32,8 +32,11 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.SimpleToolWindowPanel;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.ScrollPaneFactory;
+import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTextField;
+
+import io.github.welingtonmonteiro.multiplerun.LogFilter;
 
 /**
  * The "Logs" tab of the Multiple Run Monitor tool window: a single, aggregated view of the console
@@ -76,9 +79,21 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
         }
     }
 
+    /** First item of the application combo: no per-app restriction. */
+    private static final String ALL_APPS = "All apps";
+
     private final Project project;
     private final javax.swing.JTextPane textPane = new javax.swing.JTextPane();
-    private final JBTextField filterField = new JBTextField(20);
+    private final JBTextField filterField = new JBTextField(22);
+    private final javax.swing.JComboBox<String> appCombo = new javax.swing.JComboBox<>();
+    private final javax.swing.JComboBox<String> modeCombo =
+            new javax.swing.JComboBox<>(new String[]{"Match any", "Match all"});
+    private final javax.swing.JComboBox<String> actionCombo =
+            new javax.swing.JComboBox<>(new String[]{"Show matching", "Hide matching"});
+    private final javax.swing.JComboBox<String> levelCombo =
+            new javax.swing.JComboBox<>(new String[]{"All levels", "Info+", "Warn+", "Errors"});
+    private final JBCheckBox caseBox = new JBCheckBox("Aa");
+    private final JBCheckBox regexBox = new JBCheckBox(".*");
     private final Timer timer;
 
     /** All captured lines (bounded by {@link #MAX_LINES}); the source of truth for re-rendering. */
@@ -90,9 +105,13 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
             java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
     /** Stable color index per application name, assigned on first appearance. */
     private final Map<String, Integer> appColorIndex = new LinkedHashMap<>();
+    /** Every application name seen so far (for the app combo), in appearance order. */
+    private final Set<String> knownApps = new java.util.LinkedHashSet<>();
 
-    private volatile String filter = "";
+    private volatile LogFilter logFilter = LogFilter.all();
     private boolean scrollToEnd = true;
+    /** Guards combo repopulation so programmatic changes don't trigger a filter rebuild. */
+    private boolean updatingCombo = false;
 
     public AggregatedLogPanel(@NotNull Project project) {
         super(false, true);
@@ -130,25 +149,7 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
                 ActionManager.getInstance().createActionToolbar("MultipleRunAggregatedLogs", group, true);
         toolbar.setTargetComponent(textPane);
 
-        // filter field sits to the right of the action buttons in the toolbar strip
-        filterField.getEmptyText().setText("Filter...");
-        filterField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            private void changed() {
-                filter = filterField.getText();
-                rebuild();
-            }
-
-            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { changed(); }
-            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { changed(); }
-            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { changed(); }
-        });
-        final javax.swing.JPanel toolbarPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
-        toolbarPanel.add(toolbar.getComponent(), java.awt.BorderLayout.WEST);
-        final javax.swing.JPanel filterPanel = new javax.swing.JPanel();
-        filterPanel.add(new JBLabel("Filter:"));
-        filterPanel.add(filterField);
-        toolbarPanel.add(filterPanel, java.awt.BorderLayout.EAST);
-        setToolbar(toolbarPanel);
+        setToolbar(buildHeader(toolbar));
         setContent(ScrollPaneFactory.createScrollPane(textPane));
 
         timer = new Timer(FLUSH_INTERVAL_MS, e -> {
@@ -159,14 +160,104 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
         syncListeners();
     }
 
+    /** Builds the header strip: the action toolbar plus the app selector and advanced filter controls. */
+    private javax.swing.JComponent buildHeader(ActionToolbar toolbar) {
+        appCombo.addItem(ALL_APPS);
+        appCombo.setToolTipText("Show logs of a single application");
+        caseBox.setToolTipText("Case sensitive");
+        regexBox.setToolTipText("Interpret terms as regular expressions");
+        modeCombo.setToolTipText("Combine several comma-separated terms with AND (all) or OR (any)");
+        actionCombo.setToolTipText("Show only matching lines, or hide matching lines");
+        levelCombo.setToolTipText("Only show lines at or above a log level (detected from the text)");
+        filterField.getEmptyText().setText("Filter (comma-separated terms)");
+
+        filterField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { rebuildFilter(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { rebuildFilter(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { rebuildFilter(); }
+        });
+        final java.awt.event.ActionListener rebuild = e -> rebuildFilter();
+        appCombo.addActionListener(rebuild);
+        modeCombo.addActionListener(rebuild);
+        actionCombo.addActionListener(rebuild);
+        levelCombo.addActionListener(rebuild);
+        caseBox.addActionListener(rebuild);
+        regexBox.addActionListener(rebuild);
+
+        final javax.swing.JPanel controls =
+                new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 6, 2));
+        controls.add(new JBLabel("App:"));
+        controls.add(appCombo);
+        controls.add(new JBLabel("Filter:"));
+        controls.add(filterField);
+        controls.add(modeCombo);
+        controls.add(actionCombo);
+        controls.add(caseBox);
+        controls.add(regexBox);
+        controls.add(new JBLabel("Level:"));
+        controls.add(levelCombo);
+
+        final javax.swing.JPanel header = new javax.swing.JPanel(new java.awt.BorderLayout());
+        header.add(toolbar.getComponent(), java.awt.BorderLayout.WEST);
+        header.add(controls, java.awt.BorderLayout.CENTER);
+        return header;
+    }
+
+    /** Rebuilds {@link #logFilter} from the current controls and re-renders. */
+    private void rebuildFilter() {
+        if (updatingCombo) {
+            return;
+        }
+        final Object selectedApp = appCombo.getSelectedItem();
+        final String app = selectedApp == null || ALL_APPS.equals(selectedApp) ? null : selectedApp.toString();
+        final LogFilter.Mode mode = modeCombo.getSelectedIndex() == 1 ? LogFilter.Mode.ALL : LogFilter.Mode.ANY;
+        final boolean exclude = actionCombo.getSelectedIndex() == 1;
+        logFilter = LogFilter.from(app, filterField.getText(), mode, exclude,
+                                   caseBox.isSelected(), regexBox.isSelected(),
+                                   levelForIndex(levelCombo.getSelectedIndex()));
+        rebuild();
+    }
+
+    private static LogFilter.Level levelForIndex(int index) {
+        switch (index) {
+            case 1:  return LogFilter.Level.INFO;
+            case 2:  return LogFilter.Level.WARN;
+            case 3:  return LogFilter.Level.ERROR;
+            default: return null; // "All levels"
+        }
+    }
+
+    /** Adds any newly seen application to the combo, preserving the current selection. */
+    private void refreshAppCombo() {
+        final Object selected = appCombo.getSelectedItem();
+        updatingCombo = true;
+        try {
+            appCombo.removeAllItems();
+            appCombo.addItem(ALL_APPS);
+            for (String app : knownApps) {
+                appCombo.addItem(app);
+            }
+            appCombo.setSelectedItem(selected == null ? ALL_APPS : selected);
+            if (appCombo.getSelectedItem() == null) {
+                appCombo.setSelectedItem(ALL_APPS);
+            }
+        } finally {
+            updatingCombo = false;
+        }
+    }
+
     /** Attaches the capturing listener to every running process not yet followed. */
     private void syncListeners() {
+        boolean appsChanged = false;
         for (RunContentDescriptor descriptor : RunContentManager.getInstance(project).getAllDescriptors()) {
             final ProcessHandler handler = descriptor.getProcessHandler();
+            final String app = descriptor.getDisplayName();
+            if (knownApps.add(app)) {
+                appsChanged = true; // a new application appeared: offer it in the app combo
+            }
             if (handler == null || handler.isProcessTerminated() || !listened.add(handler)) {
                 continue;
             }
-            final String app = descriptor.getDisplayName();
             handler.addProcessListener(new ProcessListener() {
                 @Override
                 public void onTextAvailable(@NotNull ProcessEvent event, @NotNull com.intellij.openapi.util.Key outputType) {
@@ -181,6 +272,9 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
                 }
             });
         }
+        if (appsChanged) {
+            refreshAppCombo();
+        }
     }
 
     /** Moves buffered output into the model and the text pane; runs on the EDT (timer thread). */
@@ -193,7 +287,7 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
             for (String line : splitKeepingLines(chunk[1])) {
                 final LogLine logLine = new LogLine(app, colorIndex, line);
                 allLines.add(logLine);
-                if (matchesFilter(line, filter)) {
+                if (logFilter.accepts(app, line)) {
                     appendToPane(logLine);
                     added = true;
                 }
@@ -212,7 +306,7 @@ public class AggregatedLogPanel extends SimpleToolWindowPanel implements Disposa
     private void rebuild() {
         textPane.setText("");
         for (LogLine line : allLines) {
-            if (matchesFilter(line.text, filter)) {
+            if (logFilter.accepts(line.app, line.text)) {
                 appendToPane(line);
             }
         }
