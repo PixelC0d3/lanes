@@ -1,16 +1,29 @@
 plugins {
-    id "org.jetbrains.intellij" version "1.16.0"
+    id "org.jetbrains.intellij.platform" version "2.17.0"
 }
 
 group = 'io.github.welingtonmonteiro'
-version = '1.42.2'
+version = '1.43.0'
 
 repositories {
     mavenCentral()
+    intellijPlatform {
+        defaultRepositories()
+    }
 }
 
 dependencies {
     testImplementation 'junit:junit:4.13.2'
+
+    intellijPlatform {
+        // target platform (was: intellij { version = '2023.3' })
+        intellijIdeaCommunity('2023.3')
+        // bundled plugin that provides com.intellij.profiler.DefaultProfilerExecutorGroup
+        bundledPlugin('com.jetbrains.performancePlugin.async')
+        // JetBrains Plugin Verifier + zip signer
+        pluginVerifier()
+        zipSigner()
+    }
 }
 
 java {
@@ -18,25 +31,73 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
-intellij {
-    pluginName = 'multiple_run'
-    version = '2023.3'
-    // Bundled plugin that provides com.intellij.profiler.DefaultProfilerExecutorGroup
-    plugins = ['com.jetbrains.performancePlugin.async']
-    updateSinceUntilBuild = false
+// Load the plugin repo api key from local.properties file (kept from the 1.x setup)
+Properties properties = new Properties()
+def propertiesFile = project.rootProject.file('local.properties')
+if (propertiesFile.exists()) {
+    properties.load(propertiesFile.newDataInputStream())
 }
 
-// The plugin registers no Settings pages (no applicationConfigurable/projectConfigurable), so
-// buildSearchableOptions has nothing to index. It launches a full headless IDE that intermittently
-// fails with a platform ConcurrentModificationException during shutdown; disabling it removes a
-// useless, flaky build step (buildPlugin no longer depends on a headless IDE run).
-buildSearchableOptions {
-    enabled = false
+intellijPlatform {
+    // GUI form instrumentation: the run-config editor binds a .form, whose $$$setupUI$$$ is woven
+    // at build time - without it the editor breaks at runtime. Keep this explicitly on.
+    instrumentCode = true
+
+    pluginConfiguration {
+        name = 'multiple_run'
+        ideaVersion {
+            sinceBuild = '233'
+            // no upper bound (previously: intellij { updateSinceUntilBuild = false })
+            untilBuild = provider { null }
+        }
+    }
+
+    // The plugin registers no Settings pages, so buildSearchableOptions has nothing to index and
+    // its headless IDE run was flaky - keep it disabled.
+    buildSearchableOptions = false
+
+    // JetBrains Plugin Verifier: same IDE matrix the Marketplace runs (see the plugin page's
+    // "Compatibility verification"). Each IDE is a ~1GB download on first run, cached afterwards.
+    // Run a subset with: ./gradlew verifyPlugin -PverifierIdes=2023.3.8,2026.1.4
+    pluginVerification {
+        // Fail only on what would actually break users - mirroring the Marketplace, which reports
+        // "Compatible" with warnings. The one known internal-API usage (ExecutionManager.
+        // startRunProfile, the core launch call inherited from the original Multirun) and the
+        // deprecated usages stay visible in the reports without failing the build.
+        failureLevel = [
+                org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+                org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
+                org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
+        ]
+        ides {
+            def marketplaceMatrix = '2023.3.8,2024.1.7,2024.2.6,2024.3.7.1,' +
+                                    '2025.1.7.1,2025.2.6.2,2025.3.6,2026.1.4'
+            String requested = (findProperty('verifierIdes') ?: marketplaceMatrix)
+            requested.split(',').each { v ->
+                def version = v.trim()
+                def parts = version.split('\\.')
+                def major = parts[0].toInteger()
+                def minor = parts.length > 1 ? parts[1].toInteger() : 0
+                if (major > 2025 || (major == 2025 && minor >= 3)) {
+                    // the Community edition is no longer published since 2025.3 - the unified
+                    // IntelliJ IDEA distribution replaces it
+                    create(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdea, version)
+                } else {
+                    create('IC', version)
+                }
+            }
+        }
+    }
+
+    publishing {
+        def hubToken = properties.getProperty('hub.token')
+        if (hubToken != null) {
+            token = hubToken
+        }
+    }
 }
 
-// Keep a rolling archive of the last built plugin zips in dist/, which lives outside build/ and so
-// survives `gradlew clean`. buildPlugin copies its zip here and the oldest are pruned, keeping at
-// least the KEEP_LAST_ZIPS most recently built ones.
+// Keep a rolling archive of the last built plugin zips in dist/ (survives `gradlew clean`).
 def pluginArchiveDir = file("$rootDir/dist")
 def KEEP_LAST_ZIPS = 5
 
@@ -44,14 +105,11 @@ tasks.register('archivePluginZip') {
     description = "Copy the built plugin zip into dist/ and keep only the last ${KEEP_LAST_ZIPS}."
     doLast {
         pluginArchiveDir.mkdirs()
-        // copy every freshly built zip into the archive (overwriting a same-named one)
-        fileTree(dir: "$buildDir/distributions", include: '*.zip').files.each { zip ->
+        fileTree(dir: layout.buildDirectory.dir('distributions').get().asFile, include: '*.zip').files.each { zip ->
             java.nio.file.Files.copy(zip.toPath(),
                     new File(pluginArchiveDir, zip.name).toPath(),
                     java.nio.file.StandardCopyOption.REPLACE_EXISTING)
         }
-        // prune: keep the KEEP_LAST_ZIPS most recently modified zips, delete the rest.
-        // NB: sort the List explicitly (Array.sort in place is unreliable here) - newest first.
         def zips = pluginArchiveDir.listFiles({ dir, name -> name.endsWith('.zip') } as FilenameFilter)
         if (zips != null && zips.length > KEEP_LAST_ZIPS) {
             def newestFirst = zips.toList().sort(false) { -it.lastModified() }
@@ -62,18 +120,4 @@ tasks.register('archivePluginZip') {
 
 tasks.named('buildPlugin').configure {
     finalizedBy('archivePluginZip')
-}
-
-// Load the plugin repo api key from local.properties file
-Properties properties = new Properties()
-def propertiesFile = project.rootProject.file('local.properties')
-if (propertiesFile.exists()) {
-    properties.load(propertiesFile.newDataInputStream())
-}
-
-publishPlugin {
-    def hubToken = properties.getProperty('hub.token')
-    if (hubToken != null) {
-        token = hubToken
-    }
 }

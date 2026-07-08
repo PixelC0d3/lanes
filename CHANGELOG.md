@@ -5,6 +5,17 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.43.0] — IntelliJ Platform Gradle Plugin 2.x + local Plugin Verifier
+- **Build:** migrated from the legacy `org.jetbrains.intellij` 1.16 Gradle plugin to the
+  **IntelliJ Platform Gradle Plugin 2.x** — the tooling JetBrains now recommends. Same targets
+  (IC 2023.3, `since-build 233`, no upper bound), same GUI-form instrumentation (verified in the
+  produced jar), no functional change to the plugin itself.
+- **Plugin Verifier locally:** `./gradlew verifyPlugin` now runs the JetBrains Plugin Verifier
+  against the **same IDE matrix the Marketplace uses** (2023.3.8 → 2026.1.4), so API problems are
+  caught before publishing. Run a subset with `-PverifierIdes=2023.3.8,2026.1.4`.
+- **Tests:** +6 unit tests covering executor matching (`Run`/`Debug`/`Coverage`/JRebel,
+  case-insensitive) and the memory/CPU alert threshold clamps. 136 total.
+
 ## [1.42.2]
 - Maintenance (Marketplace verifier): migrated off two flagged platform APIs, with no functional
   change:
