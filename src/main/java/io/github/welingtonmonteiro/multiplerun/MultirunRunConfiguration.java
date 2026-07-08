@@ -229,7 +229,12 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     }
 
     public void setMemAlertThreshold(int memAlertThreshold) {
-        this.memAlertThreshold = Math.max(1, Math.min(100, memAlertThreshold));
+        this.memAlertThreshold = clampMemAlertThreshold(memAlertThreshold);
+    }
+
+    /** Memory alert threshold is a percentage of the limit: clamped to 1..100. */
+    static int clampMemAlertThreshold(int value) {
+        return Math.max(1, Math.min(100, value));
     }
 
     public boolean isMemLimitRestart() {
@@ -245,8 +250,12 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
     }
 
     public void setCpuAlertThreshold(int cpuAlertThreshold) {
-        // 0 disables the alert; the upper bound is generous because multi-core CPU % can exceed 100
-        this.cpuAlertThreshold = Math.max(0, Math.min(1000, cpuAlertThreshold));
+        this.cpuAlertThreshold = clampCpuAlertThreshold(cpuAlertThreshold);
+    }
+
+    /** CPU alert: 0 disables it; the upper bound is generous because multi-core CPU % can exceed 100. */
+    static int clampCpuAlertThreshold(int value) {
+        return Math.max(0, Math.min(1000, value));
     }
 
     public String getEnvFilePath() {

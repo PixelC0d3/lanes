@@ -281,22 +281,33 @@ tasks before a group of applications or tests.
 
 ## Building from source
 
-The project builds with the Gradle IntelliJ Plugin. You need a JDK 17+ (the JetBrains Runtime that
-ships inside any recent IntelliJ-based IDE works well).
+The project builds with the **IntelliJ Platform Gradle Plugin 2.x** (the tooling JetBrains
+recommends) on the Gradle wrapper. You need a JDK 17+ (the JetBrains Runtime that ships inside any
+recent IntelliJ-based IDE works well).
 
 ```bash
 # point JAVA_HOME at a JDK 17+ (e.g. a bundled JBR)
 export JAVA_HOME=/path/to/jbr
 
-# build the installable plugin zip -> build/distributions/multirun-<version>.zip
+# build the installable plugin zip -> build/distributions/multiple_run-<version>.zip
+# (also archived into dist/, which keeps the last 5 builds)
 ./gradlew buildPlugin
+
+# run the unit tests
+./gradlew test
 
 # or launch a sandbox IDE with the plugin pre-installed, for quick testing
 ./gradlew runIde
+
+# run the JetBrains Plugin Verifier against the same IDE matrix the Marketplace uses
+./gradlew verifyPlugin
+# ... or against a subset (each IDE is a ~1GB download on first run, cached afterwards)
+./gradlew verifyPlugin -PverifierIdes=2023.3.8,2026.1.4
 ```
 
 The plugin version is managed from `build.gradle` (`version = '…'`) and injected into
-`plugin.xml` at build time by `patchPluginXml`.
+`plugin.xml` at build time by `patchPluginXml`. Verifier reports land in
+`build/reports/pluginVerifier/`.
 
 ## Credits By
 

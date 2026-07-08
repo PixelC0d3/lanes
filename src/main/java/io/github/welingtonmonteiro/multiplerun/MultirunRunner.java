@@ -58,12 +58,16 @@ public class MultirunRunner implements ProgramRunner<MultirunRunConfiguration> {
 
     @Override
     public boolean canRun(@NotNull String executorId, @NotNull RunProfile runProfile) {
-        return runProfile instanceof MultirunRunConfiguration &&
-                (DefaultRunExecutor.EXECUTOR_ID.equalsIgnoreCase(executorId)
-                        || DefaultDebugExecutor.EXECUTOR_ID.equalsIgnoreCase(executorId)
-                        || DefaultProfilerExecutorGroup.EXECUTOR_ID.equalsIgnoreCase(executorId)
-                        || CoverageExecutor.EXECUTOR_ID.equalsIgnoreCase(executorId)
-                        || JREBEL_EXECUTOR_ID.equalsIgnoreCase(executorId)
-                        || JREBEL_DEBUG_ID.equalsIgnoreCase(executorId));
+        return runProfile instanceof MultirunRunConfiguration && isSupportedExecutor(executorId);
+    }
+
+    /** True for the executors a Multirun group can be launched with (case-insensitive). */
+    static boolean isSupportedExecutor(String executorId) {
+        return DefaultRunExecutor.EXECUTOR_ID.equalsIgnoreCase(executorId)
+                || DefaultDebugExecutor.EXECUTOR_ID.equalsIgnoreCase(executorId)
+                || DefaultProfilerExecutorGroup.EXECUTOR_ID.equalsIgnoreCase(executorId)
+                || CoverageExecutor.EXECUTOR_ID.equalsIgnoreCase(executorId)
+                || JREBEL_EXECUTOR_ID.equalsIgnoreCase(executorId)
+                || JREBEL_DEBUG_ID.equalsIgnoreCase(executorId);
     }
 }

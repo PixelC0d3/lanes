@@ -41,6 +41,16 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.43.0</strong>:</p>
+        <ul>
+            <li>Build: migrated to the <b>IntelliJ Platform Gradle Plugin 2.x</b> (the tooling
+                JetBrains recommends) on Gradle 9. Same compatibility targets (2023.3+, no upper
+                bound); no functional change to the plugin.</li>
+            <li>Build: the <b>JetBrains Plugin Verifier</b> now runs locally against the same IDE
+                matrix the Marketplace verifies (2023.3.8 → 2026.1.4), so API problems are caught
+                before publishing.</li>
+            <li>Tests: +6 unit tests (executor matching and alert-threshold clamps), 136 total.</li>
+        </ul>
         <p><strong>1.42.2</strong>:</p>
         <ul>
             <li>Maintenance: migrate off two platform APIs the Marketplace verifier flagged - the
