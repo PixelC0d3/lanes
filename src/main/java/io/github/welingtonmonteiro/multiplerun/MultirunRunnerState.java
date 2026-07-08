@@ -210,7 +210,9 @@ public class MultirunRunnerState implements RunProfileState {
 
             final ExecutionEnvironment executionEnvironment = new ExecutionEnvironment(executor, runner, configuration, project);
 
-            executionEnvironment.setCallback(
+            // pass the callback to runner.execute(env, callback) instead of the internal
+            // ExecutionEnvironment.setCallback - same effect, public API
+            final ProgramRunner.Callback multirunCallback =
                     new ProgramRunner.Callback() {
                         private final AtomicBoolean processTerminated = new AtomicBoolean(false);
                         private final AtomicBoolean firstStart = new AtomicBoolean(true);
@@ -479,13 +481,12 @@ public class MultirunRunnerState implements RunProfileState {
                                 stopRunningMultirunConfiguration.doneStaringConfigurations();
                             }
                         }
-                    }
-            );
+                    };
 
             ApplicationManager.getApplication().invokeLater(
                     () -> {
                         try {
-                            runner.execute(executionEnvironment);
+                            runner.execute(executionEnvironment, multirunCallback);
                         } catch (ExecutionException e) {
                             ExecutionUtil.handleExecutionError(project, executor.getToolWindowId(), configuration.getConfiguration(), e);
                         }

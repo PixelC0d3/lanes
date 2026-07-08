@@ -224,7 +224,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
 
         // Import a docker-compose.yml onto the matching run configurations (by service name):
         // mem_limit -> Memory limit, env_file -> profile, depends_on -> order + Ready when.
-        myDecorator.addExtraAction(new AnActionButton(
+        myDecorator.addExtraAction(new com.intellij.openapi.project.DumbAwareAction(
                 "Import from docker-compose.yml…",
                 "Apply a docker-compose.yml to the run configurations whose name matches a service",
                 com.intellij.icons.AllIcons.Actions.Download) {
