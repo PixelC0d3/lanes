@@ -41,6 +41,14 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.42.2</strong>:</p>
+        <ul>
+            <li>Maintenance: migrate off two platform APIs the Marketplace verifier flagged - the
+                docker-compose import button no longer uses the removal-scheduled
+                <code>ToolbarDecorator.addExtraAction(AnActionButton)</code>, and child processes are
+                launched via the public <code>ProgramRunner.execute(env, callback)</code> instead of
+                the internal <code>ExecutionEnvironment.setCallback</code>. No functional change.</li>
+        </ul>
         <p><strong>1.42.1</strong>:</p>
         <ul>
             <li>Fix: Logs tab layout - the filter controls now sit as a full-width strip on

@@ -5,6 +5,16 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.42.2]
+- Maintenance (Marketplace verifier): migrated off two flagged platform APIs, with no functional
+  change:
+  - the **docker-compose import** button no longer uses `ToolbarDecorator.addExtraAction(AnActionButton)`
+    (scheduled for removal) — it uses the `addExtraAction(AnAction)` overload with a `DumbAwareAction`;
+  - child processes are launched via the public `ProgramRunner.execute(environment, callback)` instead
+    of the internal `ExecutionEnvironment.setCallback`.
+  - Note: `ExecutionManager.startRunProfile` (internal) is kept for now — it is the core launch
+    mechanism inherited from the original Multirun and has no clean public replacement.
+
 ## [1.42.1]
 - Fix: **Logs tab layout** — the filter controls now sit as a full-width strip on **top** and the
   log fills the whole width **below** them (they were being laid out as a left-hand column, which
