@@ -179,8 +179,13 @@ public class MultirunRunnerState implements RunProfileState {
                 childEnvData = RunConfigurationHelper.withMemoryLimit(childEnvData, memoryLimitMb);
             }
             // per-application env file: overrides the group environment for this app (more specific)
-            childEnvData = RunConfigurationHelper.withAppEnvFile(
-                    childEnvData, appEnvFiles.get(runConfiguration.getName()), project);
+            final String appEnvFile = appEnvFiles.get(runConfiguration.getName());
+            childEnvData = RunConfigurationHelper.withAppEnvFile(childEnvData, appEnvFile, project);
+            // the env file actually in effect for THIS app - its per-app override when set, else the
+            // group profile - so the monitor's Env column shows the app's real environment, not just
+            // the group's (matters after a per-app switch from the monitor).
+            final String effectiveEnvFilePath =
+                    (appEnvFile != null && !appEnvFile.trim().isEmpty()) ? appEnvFile : envFilePath;
             // effectively-final snapshot of what Multiple Run injected, for the monitor's Env viewer
             final EnvironmentVariablesData loadedEnvData = childEnvData;
             RunConfiguration effectiveConfiguration = RunConfigurationHelper.withEnvironmentOverride(runConfiguration, childEnvData);
@@ -378,7 +383,7 @@ public class MultirunRunnerState implements RunProfileState {
                                 MultirunProcessRegistry.register(project, configurationName,
                                                                  runConfiguration.getName(), processHandler,
                                                                  memoryLimitMb, executionEnvironment,
-                                                                 RunConfigurationHelper.envFileDisplayName(envFilePath),
+                                                                 RunConfigurationHelper.envFileDisplayName(effectiveEnvFilePath),
                                                                  loadedEnvData.getEnvs(), loadedEnvData.isPassParentEnvs(),
                                                                  readyConditions.get(runConfiguration.getName()),
                                                                  memAlertThreshold, memLimitRestart, cpuAlertThreshold);

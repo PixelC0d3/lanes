@@ -41,6 +41,15 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.45.2</strong>:</p>
+        <ul>
+            <li>Fix: after switching an app's environment, the monitor's <b>Env column now shows the
+                env actually in effect</b> for that app (its per-app override), instead of still
+                showing the group's profile.</li>
+            <li>The <b>Switch Environment</b> modal marks and pre-selects the <b>active</b> environment;
+                the group-wide switch is authoritative - it clears the running apps' per-app overrides
+                so they all follow the chosen environment (and the Env column shows it uniformly).</li>
+        </ul>
         <p><strong>1.45.1</strong>:</p>
         <ul>
             <li>Env switching (refines 1.45.0 after feedback): the <b>Env column dropdown now switches
