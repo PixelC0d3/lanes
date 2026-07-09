@@ -5,6 +5,20 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.45.0] — Environment switching from the monitor
+- **Multi-file env selection:** the group's *Environment file* browse button now accepts **several
+  `.env` files at once** (Ctrl/Shift-select) when building the profile dropdown — no more one click
+  per file.
+- **Env column dropdown:** in the monitor, a group with more than one env profile shows the **Env
+  cell as a dropdown** (`▾`). Pick another profile to switch the whole group to it and restart its
+  running apps; a *view loaded variables* entry still opens the read-only viewer.
+- **Batch Switch Environment:** a new toolbar button (badge = number of running apps) opens a modal
+  to choose one environment and applies it to **every running group at once**, restarting all apps —
+  instead of switching them app by app. Because Multiple Run bakes the environment into each app at
+  launch, switching stops the apps and re-runs the group with the newly selected profile.
+- **Tests:** +6 unit tests (multi-file selection merge, switchable-profile union, batch grouping).
+  145 total.
+
 ## [1.44.0] — Monitor: multi-selection survives refresh + Restart All
 - **Multi-selection batch actions:** selecting several applications and then running *Restart*,
   *Stop* or *Force Kill* now keeps the **whole selection across the automatic 2s refresh**. Before,

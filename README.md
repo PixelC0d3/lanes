@@ -63,11 +63,13 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   Point it to a `.env` file (browse button or type the path — relative paths are resolved against
   the project root) and the file becomes a **profile** that stays in the dropdown; switch between
   environments (`.env.development` / `.env.staging` / `.env.production`, …) by just picking another
-  profile — no retyping. The ✕ button removes the selected profile from the list. The file uses the usual
-  dotenv format: `KEY=VALUE` lines, `#` comments, optional `export` prefix and quoted values.
-  It is re-read on every run, so editing the file requires no configuration changes. Variables
-  from the table above win over the file on conflicts. The **Multiple Run Monitor** shows the
-  active profile of each running application in its *Env* column.
+  profile — no retyping. The browse button takes **several `.env` files at once** (Ctrl/Shift-select),
+  adding them all to the dropdown in one go. The ✕ button removes the selected profile from the list.
+  The file uses the usual dotenv format: `KEY=VALUE` lines, `#` comments, optional `export` prefix and
+  quoted values. It is re-read on every run, so editing the file requires no configuration changes.
+  Variables from the table above win over the file on conflicts. The **Multiple Run Monitor** shows the
+  active profile of each running application in its *Env* column — and, when the group has more than one
+  profile, lets you **switch the whole group's environment from there** (see below).
 - Works with configuration types that expose environment variables (Node.js, npm, Java
   Application, etc.); other types run unchanged.
 - **Per-application env file**: the applications table has an **Env file (app)** column — point an
@@ -143,6 +145,12 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   readiness check is currently down.
 - **Restart All** (toolbar) — a badge shows the number of running applications; one click relaunches
   the whole set (sits next to **Stop All**).
+- **Switch environment** — when a group has more than one env profile, the *Env* cell becomes a
+  dropdown (`▾`): pick another profile to move the **whole group** to it and restart its apps (a
+  *view loaded variables* entry still opens the read-only viewer). The **Switch Environment** toolbar
+  button (badge = running apps) does it in bulk: choose one environment in a modal and it is applied
+  to every running group at once, restarting all apps — no need to change them one by one. Switching
+  stops the apps and re-runs the group, because the environment is baked into each app at launch.
 - **Stop / Force Kill per row** (toolbar or right-click): *Stop* asks the application to terminate
   (same as the stop button of its run tab); *Force Kill* sends SIGKILL to the whole process tree
   of the selected application, after confirmation — for processes that refuse to die.
