@@ -634,6 +634,24 @@ public class MultirunRunConfiguration extends RunConfigurationBase implements Ru
                                        getProject(), getName());
     }
 
+    /**
+     * A runner state that launches only {@code apps} (a subset of this group), reusing all of the
+     * group's current settings and environment but <b>without</b> stopping the rest of the group
+     * ({@code restartRunning} and {@code startOneByOne} are forced off). Used by the Multiple Run
+     * Monitor to relaunch a single application - e.g. after switching its environment - while
+     * keeping it tracked, grouped and shown with its live environment exactly like a normal launch.
+     */
+    public MultirunRunnerState createStateForApps(@NotNull List<RunConfiguration> apps) {
+        return new MultirunRunnerState(apps, false, delayTime,
+                                       reuseTabs, reuseTabsWithFailure,
+                                       markFailedProcess, hideSuccessProcess, envData, envFilePath,
+                                       saveOutputDir, getMemoryLimits(), getReadyConditions(),
+                                       getAppEnvFiles(),
+                                       false, restartOnCrash, memAlertThreshold, memLimitRestart,
+                                       cpuAlertThreshold,
+                                       getProject(), getName());
+    }
+
     @Override
     public void checkConfiguration() throws RuntimeConfigurationException {
         if (runConfigurations.isEmpty()) {

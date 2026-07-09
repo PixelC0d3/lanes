@@ -41,16 +41,24 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.45.1</strong>:</p>
+        <ul>
+            <li>Env switching (refines 1.45.0 after feedback): the <b>Env column dropdown now switches
+                just that application</b> (a per-app override) and restarts only it - the toolbar
+                <b>Switch Environment</b> button stays the group-wide "switch all" option.</li>
+            <li>Both now <b>keep each app's executor</b>: an app running under Debug comes back under
+                Debug (Run stays Run, …). They relaunch the app through the group, so it stays tracked
+                and shows its new environment.</li>
+            <li>The Switch Environment toolbar icon is now an environment-like icon (was a reddish one).</li>
+        </ul>
         <p><strong>1.45.0</strong>:</p>
         <ul>
             <li>Environment file: the group's env-file browse button now takes <b>several .env files
                 at once</b> (Ctrl/Shift-select), instead of one per click, when building the profile list.</li>
             <li>Monitor: when a group has more than one env profile, the <b>Env column becomes a
-                dropdown</b> - pick another profile to switch the whole group to it (and restart its
-                apps); a "view loaded variables" entry still opens the read-only viewer.</li>
-            <li>Monitor: new <b>Switch Environment</b> toolbar button (badge = running apps) - opens a
-                modal to choose one environment and applies it to every running group at once, then
-                restarts all apps, instead of switching them app by app.</li>
+                dropdown</b> to switch the environment; a "view loaded variables" entry still opens the viewer.</li>
+            <li>Monitor: new <b>Switch Environment</b> toolbar button (badge = running apps) switches the
+                environment of the running apps from a single modal, instead of app by app.</li>
             <li>Tests: +6 unit tests (multi-file selection, switchable profiles, batch grouping). 145 total.</li>
         </ul>
         <p><strong>1.44.0</strong>:</p>

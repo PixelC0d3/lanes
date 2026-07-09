@@ -146,11 +146,13 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - **Restart All** (toolbar) — a badge shows the number of running applications; one click relaunches
   the whole set (sits next to **Stop All**).
 - **Switch environment** — when a group has more than one env profile, the *Env* cell becomes a
-  dropdown (`▾`): pick another profile to move the **whole group** to it and restart its apps (a
-  *view loaded variables* entry still opens the read-only viewer). The **Switch Environment** toolbar
-  button (badge = running apps) does it in bulk: choose one environment in a modal and it is applied
-  to every running group at once, restarting all apps — no need to change them one by one. Switching
-  stops the apps and re-runs the group, because the environment is baked into each app at launch.
+  dropdown (`▾`): pick another profile to switch **just that application** (a per-app override) and
+  restart only it — the rest of the group keeps running (a *view loaded variables* entry still opens
+  the read-only viewer). The **Switch Environment** toolbar button (badge = running apps) does it in
+  bulk: choose one environment in a modal and it is applied to **every running app at once**,
+  restarting them — no need to change them one by one. Both keep each app's **executor** (Debug comes
+  back as Debug), relaunching the app through the group so it stays tracked and shows the new
+  environment; the chosen profile is saved on the run configuration.
 - **Stop / Force Kill per row** (toolbar or right-click): *Stop* asks the application to terminate
   (same as the stop button of its run tab); *Force Kill* sends SIGKILL to the whole process tree
   of the selected application, after confirmation — for processes that refuse to die.

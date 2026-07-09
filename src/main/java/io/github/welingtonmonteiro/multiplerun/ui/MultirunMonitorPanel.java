@@ -16,13 +16,13 @@ import javax.swing.Timer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import com.intellij.execution.ProgramRunnerUtil;
+import com.intellij.execution.Executor;
 import com.intellij.execution.RunManager;
-import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.execution.executors.DefaultRunExecutor;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.runners.ExecutionUtil;
+import com.intellij.execution.runners.ProgramRunner;
 import com.intellij.execution.ui.RunContentDescriptor;
 import com.intellij.execution.ui.RunContentManager;
 import com.intellij.icons.AllIcons;
@@ -49,6 +49,7 @@ import com.intellij.util.ui.ListTableModel;
 import io.github.welingtonmonteiro.multiplerun.MemoryHistory;
 import io.github.welingtonmonteiro.multiplerun.MultirunProcessRegistry;
 import io.github.welingtonmonteiro.multiplerun.MultirunRunConfiguration;
+import io.github.welingtonmonteiro.multiplerun.MultirunRunnerState;
 import io.github.welingtonmonteiro.multiplerun.ProcessStatsSampler;
 import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper;
 import io.github.welingtonmonteiro.multiplerun.StopRunningMultirunConfigurationsAction;
@@ -477,9 +478,10 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     }
 
     /**
-     * Dropdown for the Env cell of a group with several profiles: one item per profile switches the
-     * whole group to it (and restarts its apps); the active one is disabled; a trailing "view loaded
-     * variables" item opens the read-only viewer.
+     * Dropdown for the Env cell of a group with several profiles: one item per profile switches
+     * <b>just this application</b> to it (via a per-app override) and restarts only that app; the
+     * active one is disabled; a trailing "view loaded variables" item opens the read-only viewer.
+     * (The toolbar's Switch Environment button is the group-wide counterpart.)
      */
     private void showEnvSwitchPopup(Row row, java.awt.event.MouseEvent e) {
         final javax.swing.JPopupMenu menu = new javax.swing.JPopupMenu("Environment");
@@ -491,7 +493,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             if (active) {
                 item.setEnabled(false);
             } else {
-                item.addActionListener(a -> switchGroupEnv(row.multirunName, profile, true));
+                item.addActionListener(a -> switchAppEnv(row, profile));
             }
             menu.add(item);
         }
@@ -555,64 +557,81 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     }
 
     /**
-     * Switches a group's active environment file to {@code envProfile} (persisted on the run
-     * configuration, so it also applies to the next launch) and restarts the group's running apps
-     * with it. Because Multiple Run bakes the environment into each app at launch, a plain restart
-     * would keep the old env - so the apps are stopped and the group is re-run with the new profile.
+     * Switches <b>a single application</b> to {@code envProfile} through a per-app env override
+     * (persisted on the group, so it also applies to the next launch) and restarts only that app -
+     * everything else in the group keeps running with its own environment. Because Multiple Run
+     * bakes the environment into each app at launch, a plain restart would keep the old values, so
+     * the app is stopped and relaunched through the group's pipeline with the new profile - keeping
+     * its executor (Run/Debug/...) and staying tracked in the monitor.
      */
-    private void switchGroupEnv(String groupName, String envProfile, boolean confirm) {
-        final MultirunRunConfiguration group = findGroupConfig(groupName);
+    private void switchAppEnv(Row row, String envProfile) {
+        final MultirunRunConfiguration group = findGroupConfig(row.multirunName);
         if (group == null) {
             Messages.showErrorDialog(project,
-                    "The Multiple Run group '" + groupName + "' no longer exists.", "Switch Environment");
+                    "The Multiple Run group '" + row.multirunName + "' no longer exists.", "Switch Environment");
             return;
         }
-        final List<Row> groupRows = runningRowsOfGroup(groupName);
-        if (confirm) {
-            final int answer = Messages.showYesNoDialog(
-                    project,
-                    "Switch '" + groupName + "' to environment '" + RunConfigurationHelper.envFileDisplayName(envProfile)
-                            + "' and restart its " + groupRows.size() + " running app(s)?",
-                    "Switch Environment", "Switch & Restart", "Cancel", Messages.getQuestionIcon());
-            if (answer != Messages.YES) {
-                return;
+        final int answer = Messages.showYesNoDialog(
+                project,
+                "Switch '" + row.name + "' to environment '" + RunConfigurationHelper.envFileDisplayName(envProfile)
+                        + "' and restart just this application?",
+                "Switch Environment", "Switch & Restart", "Cancel", Messages.getQuestionIcon());
+        if (answer != Messages.YES) {
+            return;
+        }
+        // per-app override wins over the group environment for this app only
+        final Map<String, String> appEnvFiles = new LinkedHashMap<>(group.getAppEnvFiles());
+        appEnvFiles.put(row.name, envProfile);
+        group.setAppEnvFiles(appEnvFiles);
+        relaunchApp(group, row.name, executorOf(row), row.handler);
+    }
+
+    /** The executor the app is running under (so a relaunch keeps Debug as Debug), Run as fallback. */
+    private Executor executorOf(Row row) {
+        if (row.meta != null && row.meta.environment != null) {
+            final Executor executor = row.meta.environment.getExecutor();
+            if (executor != null) {
+                return executor;
             }
         }
-        group.setEnvFilePath(envProfile);
-        restartGroup(group, groupRows);
+        return DefaultRunExecutor.getRunExecutorInstance();
     }
 
     /**
-     * Stops the given running apps of a group and re-runs the group configuration once they are
-     * gone, so it relaunches every app with the group's (just updated) environment. Falls back to a
-     * direct re-run if the group has no running apps to stop.
+     * Stops the given app and relaunches only it through the group's pipeline (which re-reads the
+     * environment, re-registers the app in the monitor and honors the group's settings), under the
+     * given executor. Used by both the per-row env switch and the batch Switch Environment button.
      */
-    private void restartGroup(MultirunRunConfiguration group, List<Row> groupRows) {
-        final RunnerAndConfigurationSettings settings = RunManager.getInstance(project).findSettings(group);
-        if (settings == null) {
+    private void relaunchApp(MultirunRunConfiguration group, String appName, Executor executor,
+                             ProcessHandler oldHandler) {
+        RunConfiguration base = null;
+        for (RunConfiguration child : group.getRunConfigurations()) {
+            if (appName.equals(child.getName())) {
+                base = child;
+                break;
+            }
+        }
+        if (base == null) {
+            return; // the app was removed from the group in the meantime
+        }
+        final RunConfiguration target = base;
+        final ProgramRunner<?> runner = ProgramRunner.getRunner(executor.getId(), target);
+        if (runner == null) {
             Messages.showErrorDialog(project,
-                    "Could not locate the run settings for '" + group.getName() + "'.", "Switch Environment");
+                    "No runner is available for '" + appName + "' with " + executor.getId() + ".", "Switch Environment");
             return;
         }
-        final List<ProcessHandler> handlers = new ArrayList<>();
-        for (Row row : groupRows) {
-            if (row.handler != null && !row.handler.isProcessTerminated()) {
-                row.handler.destroyProcess();
-                handlers.add(row.handler);
-            }
+        if (oldHandler != null && !oldHandler.isProcessTerminated()) {
+            oldHandler.destroyProcess();
         }
+        final MultirunRunnerState state = group.createStateForApps(java.util.Collections.singletonList(target));
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            // wait (bounded) for the old processes to release their ports before starting again
-            final long deadline = System.currentTimeMillis() + 10_000;
-            for (ProcessHandler handler : handlers) {
-                final long remaining = deadline - System.currentTimeMillis();
-                if (remaining <= 0) {
-                    break;
-                }
-                handler.waitFor(remaining);
+            // let the old process release its port(s) before the new one starts
+            if (oldHandler != null) {
+                oldHandler.waitFor(10_000);
             }
             ApplicationManager.getApplication().invokeLater(() -> {
-                ProgramRunnerUtil.executeConfiguration(settings, DefaultRunExecutor.getRunExecutorInstance());
+                state.execute(executor, runner);
                 refresh();
             });
         });
@@ -1138,7 +1157,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     private final class BatchEnvSwitchAction extends DumbAwareAction implements CustomComponentAction {
         BatchEnvSwitchAction() {
             super("Switch Environment", "Switch the environment of all running apps and restart them",
-                  AllIcons.Nodes.Variable);
+                  AllIcons.FileTypes.Properties);
         }
 
         @Override
@@ -1174,11 +1193,16 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             if (chosen == null) {
                 return;
             }
+            // group-wide switch: set the active env file of each affected group, then relaunch every
+            // running app individually - each keeps its own executor (Run/Debug/...)
             for (String groupName : groupsWithProfile(model.getItems(), chosen)) {
                 final MultirunRunConfiguration group = findGroupConfig(groupName);
-                if (group != null) {
-                    group.setEnvFilePath(chosen);
-                    restartGroup(group, runningRowsOfGroup(groupName));
+                if (group == null) {
+                    continue;
+                }
+                group.setEnvFilePath(chosen);
+                for (Row row : runningRowsOfGroup(groupName)) {
+                    relaunchApp(group, row.name, executorOf(row), row.handler);
                 }
             }
         }
