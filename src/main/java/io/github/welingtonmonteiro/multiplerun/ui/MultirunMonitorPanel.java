@@ -637,12 +637,22 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         });
     }
 
-    /** Modal combo to pick one env profile to apply to every running app (null when cancelled). */
+    /**
+     * Modal combo to pick one env profile to apply to every running app (null when cancelled). The
+     * currently-active profile(s) are marked "(active)" and one is pre-selected, so the dialog opens
+     * on the environment already in use.
+     */
     @Nullable
-    private String chooseEnvProfile(List<String> profiles) {
+    private String chooseEnvProfile(List<String> profiles, Set<String> activePaths) {
         final com.intellij.openapi.ui.ComboBox<String> combo =
                 new com.intellij.openapi.ui.ComboBox<>(profiles.toArray(new String[0]));
-        combo.setRenderer(new EnvProfileListRenderer());
+        combo.setRenderer(new EnvProfileListRenderer(activePaths));
+        for (String profile : profiles) {
+            if (activePaths.contains(profile)) {
+                combo.setSelectedItem(profile);
+                break;
+            }
+        }
         final com.intellij.openapi.ui.DialogWrapper dialog =
                 new com.intellij.openapi.ui.DialogWrapper(project, true) {
                     {
@@ -672,13 +682,20 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         return (String) combo.getSelectedItem();
     }
 
-    /** Shows env profiles by their file name (the full path stays as the tooltip / stored value). */
+    /** Shows env profiles by their file name (full path as tooltip), marking the active one(s). */
     private static final class EnvProfileListRenderer extends com.intellij.ui.SimpleListCellRenderer<String> {
+        private final Set<String> activePaths;
+
+        EnvProfileListRenderer(Set<String> activePaths) {
+            this.activePaths = activePaths;
+        }
+
         @Override
         public void customize(@NotNull javax.swing.JList<? extends String> list, String value, int index,
                               boolean selected, boolean hasFocus) {
             if (value != null) {
-                setText(RunConfigurationHelper.envFileDisplayName(value));
+                setText(RunConfigurationHelper.envFileDisplayName(value)
+                                + (activePaths.contains(value) ? "  (active)" : ""));
                 setToolTipText(value);
             }
         }
@@ -1189,7 +1206,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             if (profiles.isEmpty()) {
                 return;
             }
-            final String chosen = chooseEnvProfile(profiles);
+            final String chosen = chooseEnvProfile(profiles, activeGroupEnvPaths());
             if (chosen == null) {
                 return;
             }
@@ -1200,12 +1217,38 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 if (group == null) {
                     continue;
                 }
+                final List<Row> rows = runningRowsOfGroup(groupName);
+                // a group-wide switch is authoritative: drop any per-app override on the running apps
+                // so they all follow the new group environment (and the Env column shows it uniformly)
+                final Map<String, String> appEnvFiles = new LinkedHashMap<>(group.getAppEnvFiles());
+                for (Row row : rows) {
+                    appEnvFiles.remove(row.name);
+                }
+                group.setAppEnvFiles(appEnvFiles);
                 group.setEnvFilePath(chosen);
-                for (Row row : runningRowsOfGroup(groupName)) {
+                for (Row row : rows) {
                     relaunchApp(group, row.name, executorOf(row), row.handler);
                 }
             }
         }
+    }
+
+    /** The env file currently active on each switchable group (to mark/pre-select it in the modal). */
+    private Set<String> activeGroupEnvPaths() {
+        final Set<String> groupNames = new LinkedHashSet<>();
+        for (Row row : model.getItems()) {
+            if (row.envProfiles.size() > 1 && row.multirunName != null && !"-".equals(row.multirunName)) {
+                groupNames.add(row.multirunName);
+            }
+        }
+        final Set<String> paths = new LinkedHashSet<>();
+        for (String groupName : groupNames) {
+            final MultirunRunConfiguration group = findGroupConfig(groupName);
+            if (group != null && !group.getEnvFilePath().isEmpty()) {
+                paths.add(group.getEnvFilePath());
+            }
+        }
+        return paths;
     }
 
     /** Kills whatever is listening on a TCP port - started by the IDE or not (the EADDRINUSE classic). */

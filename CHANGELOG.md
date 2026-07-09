@@ -5,6 +5,17 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.45.2] — Env column shows the effective per-app environment
+- **Fix:** after switching an app's environment (per-app dropdown), the monitor's **Env column now
+  shows the env actually in effect** for that app — its per-app override — instead of still showing
+  the group's profile. The registry now records the effective env file (per-app override when set,
+  else the group profile).
+- **Switch Environment modal:** marks and **pre-selects the active** environment, so it opens on the
+  one already in use.
+- **Group-wide switch is authoritative:** the toolbar *Switch Environment* button now **clears the
+  running apps' per-app overrides** before applying the chosen profile, so every app follows it and
+  the Env column shows it uniformly (a per-row switch still sets only that app's override).
+
 ## [1.45.1] — Env switching: per-app dropdown + preserved executor
 Refines the 1.45.0 env switching after testing:
 - **Per-app Env dropdown:** the monitor's *Env* cell dropdown now switches **just that application**
