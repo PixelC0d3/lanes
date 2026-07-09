@@ -41,6 +41,18 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.45.0</strong>:</p>
+        <ul>
+            <li>Environment file: the group's env-file browse button now takes <b>several .env files
+                at once</b> (Ctrl/Shift-select), instead of one per click, when building the profile list.</li>
+            <li>Monitor: when a group has more than one env profile, the <b>Env column becomes a
+                dropdown</b> - pick another profile to switch the whole group to it (and restart its
+                apps); a "view loaded variables" entry still opens the read-only viewer.</li>
+            <li>Monitor: new <b>Switch Environment</b> toolbar button (badge = running apps) - opens a
+                modal to choose one environment and applies it to every running group at once, then
+                restarts all apps, instead of switching them app by app.</li>
+            <li>Tests: +6 unit tests (multi-file selection, switchable profiles, batch grouping). 145 total.</li>
+        </ul>
         <p><strong>1.44.0</strong>:</p>
         <ul>
             <li>Monitor: selecting several applications and then running a batch action

@@ -269,22 +269,34 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
 
         final com.intellij.openapi.ui.FixedSizeButton browseEnvFile =
                 new com.intellij.openapi.ui.FixedSizeButton(envFileCombo);
-        browseEnvFile.setToolTipText("Select a .env file and add it to the profile list");
+        browseEnvFile.setToolTipText("Select one or more .env files and add them to the profile list");
         browseEnvFile.addActionListener(e -> {
-            final VirtualFile chosen = FileChooser.chooseFile(
-                    FileChooserDescriptorFactory.createSingleFileDescriptor()
-                                                .withTitle("Select Environment File")
+            // multi-select: pick several .env files at once (Ctrl/Shift) instead of one per click
+            final VirtualFile[] chosen = FileChooser.chooseFiles(
+                    FileChooserDescriptorFactory.createMultipleFilesNoJarsDescriptor()
+                                                .withTitle("Select Environment File(s)")
                                                 // .env files are dotfiles, hidden by the chooser by default
                                                 .withShowHiddenFiles(true),
                     project, null);
-            if (chosen != null) {
-                final String path = chosen.getPresentableUrl();
-                final DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) envFileCombo.getModel();
-                if (model.getIndexOf(path) < 0) {
-                    model.addElement(path);
-                }
-                envFileCombo.setSelectedItem(path);
+            if (chosen.length == 0) {
+                return;
             }
+            final DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) envFileCombo.getModel();
+            final java.util.List<String> existing = new ArrayList<>();
+            for (int i = 0; i < model.getSize(); i++) {
+                existing.add(model.getElementAt(i));
+            }
+            final java.util.List<String> chosenPaths = new ArrayList<>();
+            for (VirtualFile file : chosen) {
+                chosenPaths.add(file.getPresentableUrl());
+            }
+            final java.util.List<String> merged = addEnvProfiles(existing, chosenPaths);
+            model.removeAllElements();
+            for (String path : merged) {
+                model.addElement(path);
+            }
+            // select the last file picked, so a single new choice behaves like before
+            envFileCombo.setSelectedItem(chosenPaths.get(chosenPaths.size() - 1));
         });
 
         final com.intellij.openapi.ui.FixedSizeButton removeEnvProfile =
@@ -444,6 +456,21 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
         configurationsListChanged.setVisible(false);
 
         return myMainPanel;
+    }
+
+    /**
+     * Appends the chosen env-file paths to the existing profile list, skipping duplicates and
+     * preserving order (existing first, then the new ones in the order they were picked). Pure, so
+     * the multi-file selection behaviour is unit-testable without a file chooser.
+     */
+    static java.util.List<String> addEnvProfiles(java.util.List<String> existing, java.util.List<String> chosen) {
+        final java.util.List<String> result = new ArrayList<>(existing);
+        for (String path : chosen) {
+            if (path != null && !path.isEmpty() && !result.contains(path)) {
+                result.add(path);
+            }
+        }
+        return result;
     }
 
     /** The text of the (possibly in-edition) env profile combo editor. */

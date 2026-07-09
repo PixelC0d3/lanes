@@ -16,7 +16,13 @@ public class MultirunMonitorPanelTest {
     private static MultirunMonitorPanel.Row rowWithStatus(String status) {
         return new MultirunMonitorPanel.Row(
                 "app", null, "-", "-", null, null, null, "123", "-", "1m", status,
-                "n/a", "n/a", "n/a", new double[0]);
+                "n/a", "n/a", "n/a", new double[0], java.util.Collections.emptyList());
+    }
+
+    private static MultirunMonitorPanel.Row rowWith(String multirunName, String envFileName, String... profiles) {
+        return new MultirunMonitorPanel.Row(
+                "app", null, multirunName, envFileName, null, null, null, "123", "-", "1m", "running",
+                "n/a", "n/a", "n/a", new double[0], Arrays.asList(profiles));
     }
 
     @Test
@@ -111,5 +117,33 @@ public class MultirunMonitorPanelTest {
     public void selectionIndicesIsEmptyWhenNothingWasSelected() {
         assertTrue(MultirunMonitorPanel.selectionIndices(
                 Arrays.asList("a", "b"), java.util.Collections.<String>emptySet()).isEmpty());
+    }
+
+    @Test
+    public void switchableEnvProfilesUnionsOnlyGroupsWithMoreThanOne() {
+        final List<MultirunMonitorPanel.Row> rows = Arrays.asList(
+                rowWith("A", "com.env", "/p/com.env", "/p/def.env"),   // 2 profiles -> offered
+                rowWith("A", "com.env", "/p/com.env", "/p/def.env"),   // same group, duplicates collapse
+                rowWith("B", "only.env", "/p/only.env"));              // 1 profile -> ignored
+        assertEquals(Arrays.asList("/p/com.env", "/p/def.env"),
+                     MultirunMonitorPanel.switchableEnvProfiles(rows));
+    }
+
+    @Test
+    public void switchableEnvProfilesEmptyWhenNoGroupHasChoices() {
+        assertTrue(MultirunMonitorPanel.switchableEnvProfiles(
+                Arrays.asList(rowWith("A", "only.env", "/p/only.env"))).isEmpty());
+    }
+
+    @Test
+    public void groupsWithProfileReturnsOnlyGroupsThatOfferIt() {
+        final List<MultirunMonitorPanel.Row> rows = Arrays.asList(
+                rowWith("A", "com.env", "/p/com.env", "/p/def.env"),
+                rowWith("B", "com.env", "/p/com.env", "/p/qa.env"),
+                rowWith("C", "only.env", "/p/only.env"));  // single profile, never a target
+        assertEquals(new java.util.LinkedHashSet<>(Arrays.asList("A", "B")),
+                     MultirunMonitorPanel.groupsWithProfile(rows, "/p/com.env"));
+        assertEquals(new java.util.LinkedHashSet<>(Arrays.asList("A")),
+                     MultirunMonitorPanel.groupsWithProfile(rows, "/p/def.env"));
     }
 }

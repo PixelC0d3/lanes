@@ -16,6 +16,11 @@ import javax.swing.Timer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import com.intellij.execution.ProgramRunnerUtil;
+import com.intellij.execution.RunManager;
+import com.intellij.execution.RunnerAndConfigurationSettings;
+import com.intellij.execution.configurations.RunConfiguration;
+import com.intellij.execution.executors.DefaultRunExecutor;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.runners.ExecutionUtil;
 import com.intellij.execution.ui.RunContentDescriptor;
@@ -43,6 +48,7 @@ import com.intellij.util.ui.ColumnInfo;
 import com.intellij.util.ui.ListTableModel;
 import io.github.welingtonmonteiro.multiplerun.MemoryHistory;
 import io.github.welingtonmonteiro.multiplerun.MultirunProcessRegistry;
+import io.github.welingtonmonteiro.multiplerun.MultirunRunConfiguration;
 import io.github.welingtonmonteiro.multiplerun.ProcessStatsSampler;
 import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper;
 import io.github.welingtonmonteiro.multiplerun.StopRunningMultirunConfigurationsAction;
@@ -100,11 +106,14 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         final String memPercent;
         final String cpuPercent;
         final double[] memTrend;
+        /** The env-file profiles configured on the app's Multiple Run group (empty when unknown). */
+        final List<String> envProfiles;
 
         Row(String name, javax.swing.Icon icon, String multirunName, String envFileName,
             ProcessHandler handler, RunContentDescriptor descriptor, MultirunProcessRegistry.Entry meta,
             String pid, String ports, String uptime, String status,
-            String memUsage, String memPercent, String cpuPercent, double[] memTrend) {
+            String memUsage, String memPercent, String cpuPercent, double[] memTrend,
+            List<String> envProfiles) {
             this.name = name;
             this.icon = icon;
             this.multirunName = multirunName;
@@ -120,6 +129,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             this.memPercent = memPercent;
             this.cpuPercent = cpuPercent;
             this.memTrend = memTrend;
+            this.envProfiles = envProfiles == null ? java.util.Collections.emptyList() : envProfiles;
         }
     }
 
@@ -191,7 +201,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
 
                     @Override
                     public javax.swing.table.TableCellRenderer getRenderer(Row row) {
-                        return new EnvCellRenderer(hasLoadedEnv(row));
+                        return new EnvCellRenderer(hasLoadedEnv(row), row.envProfiles.size() > 1);
                     }
                 },
                 column("PID", row -> row.pid),
@@ -263,6 +273,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         toolbarGroup.addSeparator();
         toolbarGroup.add(new RestartAllWithCountAction());
         toolbarGroup.add(new StopAllWithCountAction());
+        toolbarGroup.add(new BatchEnvSwitchAction());
         final ActionToolbar toolbar = ActionManager.getInstance().createActionToolbar("MultipleRunMonitor", toolbarGroup, false);
         toolbar.setTargetComponent(table);
         setToolbar(toolbar.getComponent());
@@ -437,17 +448,221 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         return row.meta != null && !row.meta.loadedEnv.isEmpty();
     }
 
-    /** Opens a read-only viewer with the environment variables loaded for the clicked application. */
+    /**
+     * Handles a click on the Env cell: when the app's group has a single environment (or none) it
+     * opens the read-only variable viewer straight away, as before; when the group has more than one
+     * environment profile it opens a dropdown to switch between them, with a "view variables" entry.
+     */
     private void openEnvAt(java.awt.event.MouseEvent e) {
         final int viewRow = table.rowAtPoint(e.getPoint());
         if (viewRow < 0) {
             return;
         }
         final Row row = model.getItem(table.convertRowIndexToModel(viewRow));
-        if (row == null || !hasLoadedEnv(row)) {
+        if (row == null) {
             return;
         }
-        new EnvVarsDialog(project, row.name, row.envFileName, row.meta.includeSystemEnv, row.meta.loadedEnv).show();
+        if (row.envProfiles.size() > 1) {
+            showEnvSwitchPopup(row, e);
+        } else if (hasLoadedEnv(row)) {
+            openEnvViewer(row);
+        }
+    }
+
+    /** The read-only viewer with the environment variables loaded for the row's application. */
+    private void openEnvViewer(Row row) {
+        if (hasLoadedEnv(row)) {
+            new EnvVarsDialog(project, row.name, row.envFileName, row.meta.includeSystemEnv, row.meta.loadedEnv).show();
+        }
+    }
+
+    /**
+     * Dropdown for the Env cell of a group with several profiles: one item per profile switches the
+     * whole group to it (and restarts its apps); the active one is disabled; a trailing "view loaded
+     * variables" item opens the read-only viewer.
+     */
+    private void showEnvSwitchPopup(Row row, java.awt.event.MouseEvent e) {
+        final javax.swing.JPopupMenu menu = new javax.swing.JPopupMenu("Environment");
+        for (String profile : row.envProfiles) {
+            final boolean active = RunConfigurationHelper.envFileDisplayName(profile).equals(row.envFileName);
+            final javax.swing.JMenuItem item = new javax.swing.JMenuItem(
+                    RunConfigurationHelper.envFileDisplayName(profile) + (active ? "  (active)" : ""));
+            item.setToolTipText(profile);
+            if (active) {
+                item.setEnabled(false);
+            } else {
+                item.addActionListener(a -> switchGroupEnv(row.multirunName, profile, true));
+            }
+            menu.add(item);
+        }
+        if (hasLoadedEnv(row)) {
+            menu.addSeparator();
+            final javax.swing.JMenuItem detail =
+                    new javax.swing.JMenuItem("View loaded variables…", AllIcons.Actions.Show);
+            detail.addActionListener(a -> openEnvViewer(row));
+            menu.add(detail);
+        }
+        menu.show(table, e.getX(), e.getY());
+    }
+
+    /** The distinct env profiles offered for switching: only groups with more than one qualify. */
+    static List<String> switchableEnvProfiles(List<Row> rows) {
+        final Set<String> profiles = new LinkedHashSet<>();
+        for (Row row : rows) {
+            if (row.envProfiles.size() > 1) {
+                profiles.addAll(row.envProfiles);
+            }
+        }
+        return new ArrayList<>(profiles);
+    }
+
+    /** Group names (from the rows) whose configured profiles include the chosen one - the batch targets. */
+    static Set<String> groupsWithProfile(List<Row> rows, String profile) {
+        final Set<String> groups = new LinkedHashSet<>();
+        for (Row row : rows) {
+            if (row.multirunName != null && !"-".equals(row.multirunName)
+                    && row.envProfiles.size() > 1 && row.envProfiles.contains(profile)) {
+                groups.add(row.multirunName);
+            }
+        }
+        return groups;
+    }
+
+    /** The Multiple Run group configuration with this name, or null when it no longer exists. */
+    @Nullable
+    private MultirunRunConfiguration findGroupConfig(String groupName) {
+        if (groupName == null) {
+            return null;
+        }
+        for (RunConfiguration cfg : RunManager.getInstance(project).getAllConfigurationsList()) {
+            if (cfg instanceof MultirunRunConfiguration && groupName.equals(cfg.getName())) {
+                return (MultirunRunConfiguration) cfg;
+            }
+        }
+        return null;
+    }
+
+    /** Live rows belonging to a Multiple Run group (matched by the group name shown on the row). */
+    private List<Row> runningRowsOfGroup(String groupName) {
+        final List<Row> result = new ArrayList<>();
+        for (Row row : model.getItems()) {
+            if (groupName != null && groupName.equals(row.multirunName)
+                    && row.handler != null && !row.handler.isProcessTerminated()) {
+                result.add(row);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Switches a group's active environment file to {@code envProfile} (persisted on the run
+     * configuration, so it also applies to the next launch) and restarts the group's running apps
+     * with it. Because Multiple Run bakes the environment into each app at launch, a plain restart
+     * would keep the old env - so the apps are stopped and the group is re-run with the new profile.
+     */
+    private void switchGroupEnv(String groupName, String envProfile, boolean confirm) {
+        final MultirunRunConfiguration group = findGroupConfig(groupName);
+        if (group == null) {
+            Messages.showErrorDialog(project,
+                    "The Multiple Run group '" + groupName + "' no longer exists.", "Switch Environment");
+            return;
+        }
+        final List<Row> groupRows = runningRowsOfGroup(groupName);
+        if (confirm) {
+            final int answer = Messages.showYesNoDialog(
+                    project,
+                    "Switch '" + groupName + "' to environment '" + RunConfigurationHelper.envFileDisplayName(envProfile)
+                            + "' and restart its " + groupRows.size() + " running app(s)?",
+                    "Switch Environment", "Switch & Restart", "Cancel", Messages.getQuestionIcon());
+            if (answer != Messages.YES) {
+                return;
+            }
+        }
+        group.setEnvFilePath(envProfile);
+        restartGroup(group, groupRows);
+    }
+
+    /**
+     * Stops the given running apps of a group and re-runs the group configuration once they are
+     * gone, so it relaunches every app with the group's (just updated) environment. Falls back to a
+     * direct re-run if the group has no running apps to stop.
+     */
+    private void restartGroup(MultirunRunConfiguration group, List<Row> groupRows) {
+        final RunnerAndConfigurationSettings settings = RunManager.getInstance(project).findSettings(group);
+        if (settings == null) {
+            Messages.showErrorDialog(project,
+                    "Could not locate the run settings for '" + group.getName() + "'.", "Switch Environment");
+            return;
+        }
+        final List<ProcessHandler> handlers = new ArrayList<>();
+        for (Row row : groupRows) {
+            if (row.handler != null && !row.handler.isProcessTerminated()) {
+                row.handler.destroyProcess();
+                handlers.add(row.handler);
+            }
+        }
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            // wait (bounded) for the old processes to release their ports before starting again
+            final long deadline = System.currentTimeMillis() + 10_000;
+            for (ProcessHandler handler : handlers) {
+                final long remaining = deadline - System.currentTimeMillis();
+                if (remaining <= 0) {
+                    break;
+                }
+                handler.waitFor(remaining);
+            }
+            ApplicationManager.getApplication().invokeLater(() -> {
+                ProgramRunnerUtil.executeConfiguration(settings, DefaultRunExecutor.getRunExecutorInstance());
+                refresh();
+            });
+        });
+    }
+
+    /** Modal combo to pick one env profile to apply to every running app (null when cancelled). */
+    @Nullable
+    private String chooseEnvProfile(List<String> profiles) {
+        final com.intellij.openapi.ui.ComboBox<String> combo =
+                new com.intellij.openapi.ui.ComboBox<>(profiles.toArray(new String[0]));
+        combo.setRenderer(new EnvProfileListRenderer());
+        final com.intellij.openapi.ui.DialogWrapper dialog =
+                new com.intellij.openapi.ui.DialogWrapper(project, true) {
+                    {
+                        setTitle("Switch Environment");
+                        setOKButtonText("Apply & Restart");
+                        init();
+                    }
+
+                    @Override
+                    protected javax.swing.JComponent createCenterPanel() {
+                        final javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout(8, 8));
+                        panel.add(new javax.swing.JLabel(
+                                "Environment applied to all running apps (they will restart):"),
+                                  java.awt.BorderLayout.NORTH);
+                        panel.add(combo, java.awt.BorderLayout.CENTER);
+                        return panel;
+                    }
+
+                    @Override
+                    public javax.swing.JComponent getPreferredFocusedComponent() {
+                        return combo;
+                    }
+                };
+        if (!dialog.showAndGet()) {
+            return null;
+        }
+        return (String) combo.getSelectedItem();
+    }
+
+    /** Shows env profiles by their file name (the full path stays as the tooltip / stored value). */
+    private static final class EnvProfileListRenderer extends com.intellij.ui.SimpleListCellRenderer<String> {
+        @Override
+        public void customize(@NotNull javax.swing.JList<? extends String> list, String value, int index,
+                              boolean selected, boolean hasFocus) {
+            if (value != null) {
+                setText(RunConfigurationHelper.envFileDisplayName(value));
+                setToolTipText(value);
+            }
+        }
     }
 
     /** Opens the port(s) of the clicked row in the browser (a menu when there is more than one). */
@@ -527,12 +742,19 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         }
     }
 
-    /** Renders the Env cell as a clickable hyperlink when the row has a loaded environment to show. */
+    /**
+     * Renders the Env cell as a clickable hyperlink when the row has a loaded environment to show.
+     * When the app's group has more than one environment profile the cell also gets a {@code ▾}
+     * affordance, so it reads as a dropdown: clicking it offers the profiles to switch to (plus a
+     * "view variables" entry) instead of opening the viewer straight away.
+     */
     private static final class EnvCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
         private final boolean clickable;
+        private final boolean switchable;
 
-        EnvCellRenderer(boolean clickable) {
+        EnvCellRenderer(boolean clickable, boolean switchable) {
             this.clickable = clickable;
+            this.switchable = switchable;
         }
 
         @Override
@@ -540,7 +762,10 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                                                                 boolean isSelected, boolean hasFocus,
                                                                 int row, int column) {
             super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            if (clickable) {
+            if (switchable) {
+                setText((value == null ? "" : value.toString()) + "  ▾");
+            }
+            if (clickable || switchable) {
                 if (!isSelected) {
                     setForeground(com.intellij.ui.JBColor.BLUE);
                 }
@@ -548,7 +773,9 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                         new java.util.HashMap<>(getFont().getAttributes());
                 attributes.put(java.awt.font.TextAttribute.UNDERLINE, java.awt.font.TextAttribute.UNDERLINE_ON);
                 setFont(getFont().deriveFont(attributes));
-                setToolTipText("Click to view the loaded environment variables");
+                setToolTipText(switchable
+                        ? "Click to switch the group's environment or view the loaded variables"
+                        : "Click to view the loaded environment variables");
             } else {
                 setToolTipText(null);
             }
@@ -902,6 +1129,61 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         }
     }
 
+    /**
+     * Switches the environment of every running Multiple Run group that offers more than one env
+     * profile, and restarts their apps with it - the batch counterpart of the per-row Env dropdown,
+     * so the whole set moves to a chosen .env from a single modal instead of app by app. Shows the
+     * running-app count as a badge; enabled only when at least one running group has a choice.
+     */
+    private final class BatchEnvSwitchAction extends DumbAwareAction implements CustomComponentAction {
+        BatchEnvSwitchAction() {
+            super("Switch Environment", "Switch the environment of all running apps and restart them",
+                  AllIcons.Nodes.Variable);
+        }
+
+        @Override
+        public @NotNull ActionUpdateThread getActionUpdateThread() {
+            return ActionUpdateThread.EDT;
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent e) {
+            final int count = runningAppCount();
+            final boolean hasChoices = !switchableEnvProfiles(model.getItems()).isEmpty();
+            final Presentation p = e.getPresentation();
+            p.setText(count > 0 ? String.valueOf(count) : "");
+            p.setEnabled(count > 0 && hasChoices);
+            p.setDescription(hasChoices
+                    ? "Switch the environment of all running apps and restart them"
+                    : "Add more than one environment profile to a group to switch between them here");
+        }
+
+        @Override
+        public @NotNull javax.swing.JComponent createCustomComponent(@NotNull Presentation presentation, @NotNull String place) {
+            // an icon+text toolbar button, so the running-app count shows as a badge like Stop All
+            return new ActionButtonWithText(this, presentation, place, ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE);
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent e) {
+            final List<String> profiles = switchableEnvProfiles(model.getItems());
+            if (profiles.isEmpty()) {
+                return;
+            }
+            final String chosen = chooseEnvProfile(profiles);
+            if (chosen == null) {
+                return;
+            }
+            for (String groupName : groupsWithProfile(model.getItems(), chosen)) {
+                final MultirunRunConfiguration group = findGroupConfig(groupName);
+                if (group != null) {
+                    group.setEnvFilePath(chosen);
+                    restartGroup(group, runningRowsOfGroup(groupName));
+                }
+            }
+        }
+    }
+
     /** Kills whatever is listening on a TCP port - started by the IDE or not (the EADDRINUSE classic). */
     private final class KillByPortAction extends DumbAwareAction {
         KillByPortAction() {
@@ -971,9 +1253,18 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
             }
         }
         final List<MultirunProcessRegistry.Entry> entries = MultirunProcessRegistry.getEntries(project);
+        // the env profiles configured on each Multiple Run group - read on the EDT (RunManager),
+        // so the Env column can offer them as a dropdown and the batch env switch can list them
+        final Map<String, List<String>> envProfilesByGroup = new HashMap<>();
+        for (RunConfiguration cfg : RunManager.getInstance(project).getAllConfigurationsList()) {
+            if (cfg instanceof MultirunRunConfiguration) {
+                envProfilesByGroup.put(cfg.getName(),
+                                       new ArrayList<>(((MultirunRunConfiguration) cfg).getEnvProfiles()));
+            }
+        }
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             try {
-                final List<Row> rows = buildRows(snapshots, entries);
+                final List<Row> rows = buildRows(snapshots, entries, envProfilesByGroup);
                 ApplicationManager.getApplication().invokeLater(() -> {
                     if (!project.isDisposed()) {
                         setItemsKeepingSelection(rows);
@@ -1035,7 +1326,8 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
      * lsof call). Also keeps the previous CPU-time sample, so CPU % is the instantaneous
      * docker-stats-style delta between two refreshes - not the lifetime average.
      */
-    private List<Row> buildRows(List<ProcessSnapshot> snapshots, List<MultirunProcessRegistry.Entry> entries) {
+    private List<Row> buildRows(List<ProcessSnapshot> snapshots, List<MultirunProcessRegistry.Entry> entries,
+                                Map<String, List<String>> envProfilesByGroup) {
         final long hostTotalKb = ProcessStatsSampler.hostTotalMemoryKb();
 
         final Map<ProcessHandler, MultirunProcessRegistry.Entry> liveByHandler = new HashMap<>();
@@ -1136,9 +1428,14 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 }
             }
 
+            final List<String> envProfiles = meta != null
+                    ? envProfilesByGroup.getOrDefault(meta.multirunName, java.util.Collections.emptyList())
+                    : java.util.Collections.emptyList();
+
             rows.add(new Row(name, icon, multirunName, envFileName, snapshot.handler, snapshot.descriptor, meta,
                              rootPid > 0 ? String.valueOf(rootPid) : "n/a",
-                             portsText, uptimeText, statusText, memUsage, memPercent, cpuPercent, memTrend));
+                             portsText, uptimeText, statusText, memUsage, memPercent, cpuPercent, memTrend,
+                             envProfiles));
         }
 
         // baseline for the next CPU delta
