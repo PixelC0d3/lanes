@@ -5,6 +5,15 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.44.0] — Monitor: multi-selection survives refresh + Restart All
+- **Multi-selection batch actions:** selecting several applications and then running *Restart*,
+  *Stop* or *Force Kill* now keeps the **whole selection across the automatic 2s refresh**. Before,
+  the refresh collapsed the selection to a single row, so a batch action could end up acting on just
+  one app — now it always targets every app you selected.
+- **Restart All:** a new toolbar button (next to *Stop All*) with a **badge showing the number of
+  running applications**; one click relaunches every running app instead of restarting them one by one.
+- **Tests:** +3 unit tests for the multi-selection restore. 139 total.
+
 ## [1.43.0] — IntelliJ Platform Gradle Plugin 2.x + local Plugin Verifier
 - **Build:** migrated from the legacy `org.jetbrains.intellij` 1.16 Gradle plugin to the
   **IntelliJ Platform Gradle Plugin 2.x** — the tooling JetBrains now recommends. Same targets

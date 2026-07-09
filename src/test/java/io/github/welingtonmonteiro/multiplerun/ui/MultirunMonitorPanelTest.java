@@ -88,4 +88,28 @@ public class MultirunMonitorPanelTest {
         final List<String> all = Arrays.asList("Name", "Env", "PID");
         assertEquals(all, MultirunMonitorPanel.visibleColumns(all, java.util.Collections.emptySet()));
     }
+
+    @Test
+    public void selectionIndicesMatchesEverySelectedRowNotJustOne() {
+        // a refresh rebuilds the rows: the whole multi-selection must be restored, not a single row
+        final List<String> rowKeys = Arrays.asList("a", "b", "c", "d");
+        final List<Integer> indices = MultirunMonitorPanel.selectionIndices(
+                rowKeys, new java.util.HashSet<>(Arrays.asList("a", "c", "d")));
+        assertEquals(Arrays.asList(0, 2, 3), indices);
+    }
+
+    @Test
+    public void selectionIndicesSkipsKeysThatAreNoLongerPresent() {
+        // an app that stopped between refreshes simply drops out of the restored selection
+        final List<String> rowKeys = Arrays.asList("a", "b");
+        final List<Integer> indices = MultirunMonitorPanel.selectionIndices(
+                rowKeys, new java.util.HashSet<>(Arrays.asList("b", "gone")));
+        assertEquals(Arrays.asList(1), indices);
+    }
+
+    @Test
+    public void selectionIndicesIsEmptyWhenNothingWasSelected() {
+        assertTrue(MultirunMonitorPanel.selectionIndices(
+                Arrays.asList("a", "b"), java.util.Collections.<String>emptySet()).isEmpty());
+    }
 }
