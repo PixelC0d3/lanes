@@ -261,6 +261,7 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         toolbarGroup.add(new KillByPortAction());
         toolbarGroup.add(new ShowColumnsAction());
         toolbarGroup.addSeparator();
+        toolbarGroup.add(new RestartAllWithCountAction());
         toolbarGroup.add(new StopAllWithCountAction());
         final ActionToolbar toolbar = ActionManager.getInstance().createActionToolbar("MultipleRunMonitor", toolbarGroup, false);
         toolbar.setTargetComponent(table);
@@ -798,6 +799,60 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         return count;
     }
 
+    /** Number of running applications currently listed - grouped or standalone, every live row. */
+    private int runningAppCount() {
+        int count = 0;
+        for (Row row : model.getItems()) {
+            if (row.handler != null && !row.handler.isProcessTerminated()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Restarts every running application at once. Like the Stop-all button, it shows the
+     * <b>count of running applications</b> as a badge next to a restart icon, so a single click
+     * relaunches the whole set instead of restarting apps one by one; disabled when nothing runs.
+     */
+    private final class RestartAllWithCountAction extends DumbAwareAction implements CustomComponentAction {
+        RestartAllWithCountAction() {
+            super("Restart All", "Restart every running application", AllIcons.Actions.Restart);
+        }
+
+        @Override
+        public @NotNull ActionUpdateThread getActionUpdateThread() {
+            return ActionUpdateThread.EDT;
+        }
+
+        @Override
+        public void update(@NotNull AnActionEvent e) {
+            final int count = runningAppCount();
+            final Presentation p = e.getPresentation();
+            p.setText(count > 0 ? String.valueOf(count) : "");
+            p.setEnabled(count > 0);
+            p.setDescription(count == 1 ? "Restart the 1 running application"
+                                        : "Restart all " + count + " running applications");
+        }
+
+        @Override
+        public @NotNull javax.swing.JComponent createCustomComponent(@NotNull Presentation presentation, @NotNull String place) {
+            // an icon+text toolbar button, so the running-app count is visible as a badge
+            return new ActionButtonWithText(this, presentation, place, ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE);
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent e) {
+            for (Row row : model.getItems()) {
+                // re-run the same environment of every live application; each one reappears on the
+                // next refresh (all IDE processes are listed)
+                if (row.descriptor != null && row.handler != null && !row.handler.isProcessTerminated()) {
+                    ExecutionUtil.restart(row.descriptor);
+                }
+            }
+        }
+    }
+
     /**
      * Stops every process Multiple Run started. Unlike the per-row Stop, this button shows the
      * <b>count of running processes</b> next to a stop icon (WebStorm-style), so it is not confused
@@ -931,22 +986,48 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
     }
 
     /**
-     * Replaces the table content without losing the user's selection: rows are fresh objects
-     * on every refresh, so the selected application is matched back by its process handler.
+     * Replaces the table content without losing the user's selection: rows are fresh objects on
+     * every refresh, so the selected applications are matched back by their process handlers. The
+     * whole multi-selection is preserved (not just a single row), so selecting several apps and
+     * then running a batch action still targets all of them even across a refresh.
      */
     private void setItemsKeepingSelection(List<Row> rows) {
-        final Row selected = table.getSelectedObject();
+        final List<Row> previouslySelected = table.getSelectedObjects();
         model.setItems(rows);
-        if (selected == null) {
+        if (previouslySelected.isEmpty()) {
             return;
         }
-        for (int i = 0; i < rows.size(); i++) {
-            if (rows.get(i).handler == selected.handler) {
-                final int viewIndex = table.convertRowIndexToView(i);
-                table.getSelectionModel().setSelectionInterval(viewIndex, viewIndex);
-                return;
+        final Set<ProcessHandler> selectedHandlers = new java.util.HashSet<>();
+        for (Row row : previouslySelected) {
+            selectedHandlers.add(row.handler);
+        }
+        final List<ProcessHandler> rowHandlers = new ArrayList<>(rows.size());
+        for (Row row : rows) {
+            rowHandlers.add(row.handler);
+        }
+        final javax.swing.ListSelectionModel selectionModel = table.getSelectionModel();
+        selectionModel.setValueIsAdjusting(true);
+        selectionModel.clearSelection();
+        for (int modelIndex : selectionIndices(rowHandlers, selectedHandlers)) {
+            final int viewIndex = table.convertRowIndexToView(modelIndex);
+            selectionModel.addSelectionInterval(viewIndex, viewIndex);
+        }
+        selectionModel.setValueIsAdjusting(false);
+    }
+
+    /**
+     * Indices of the rows whose key was selected before a refresh, used to restore a multi-selection
+     * after the row objects are rebuilt. Kept pure (keyed on any identity) so it is unit-testable
+     * without a live table.
+     */
+    static <T> List<Integer> selectionIndices(List<T> rowKeys, Set<T> selectedKeys) {
+        final List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < rowKeys.size(); i++) {
+            if (selectedKeys.contains(rowKeys.get(i))) {
+                indices.add(i);
             }
         }
+        return indices;
     }
 
     /**

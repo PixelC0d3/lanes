@@ -41,6 +41,15 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.44.0</strong>:</p>
+        <ul>
+            <li>Monitor: selecting several applications and then running a batch action
+                (Restart / Stop / Force Kill) now keeps the whole selection across the automatic
+                refresh - the action targets every selected app, no longer collapsing to a single row.</li>
+            <li>Monitor: new <b>Restart All</b> toolbar button with a badge showing the number of
+                running applications - relaunches the whole set in one click, next to Stop All.</li>
+            <li>Tests: +3 unit tests for the multi-selection restore, 139 total.</li>
+        </ul>
         <p><strong>1.43.0</strong>:</p>
         <ul>
             <li>Build: migrated to the <b>IntelliJ Platform Gradle Plugin 2.x</b> (the tooling
