@@ -5,6 +5,29 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [2.0.1] — Verifier: migrate off ProgramRunner.execute(env, callback)
+- **Deprecated API removed:** the launch pipeline no longer calls the deprecated
+  `ProgramRunner.execute(environment, callback)`. The environment is now built **with its callback
+  attached** through `ExecutionEnvironmentBuilder.build(callback)` and run with the non-deprecated
+  `execute(environment)`. A holder (`AtomicReference`) breaks the env↔callback cycle (the crash-restart
+  action needs the environment). No functional change to launching.
+- Effect (Marketplace verifier): **2023.3–2024.x now verify with 0 deprecated warnings** (this was
+  the only one there); 2025.x/2026.x drop to the `FileSaverDescriptor` (and, on 2026.2, the
+  `EnvironmentVariablesComponent`) warnings, which can't be removed while the 2023.3 baseline lacks
+  their non-deprecated replacements.
+
+## [2.0.0] — Kotlin migration begins: toolchain + first module
+- **Build now compiles Java and Kotlin together** (Kotlin `2.2.20`, JVM target 17). The Kotlin
+  stdlib is **provided by the IDE, not bundled** into the plugin zip
+  (`kotlin.stdlib.default.dependency=false`), so there is no stdlib clash and the artifact stays a
+  single jar.
+- **First class migrated:** `LogFilter` (the aggregated-Logs filter — pure logic, fully unit-tested)
+  is now Kotlin. Its public API is unchanged (`@JvmStatic` factories), so the existing Java tests and
+  callers keep working untouched. 145 tests still green.
+- The migration is **incremental**: complex/critical classes (the `.form`-bound run-config editor,
+  the monitor panel, the launch pipeline) stay Java for now and move to Kotlin gradually; Java and
+  Kotlin interoperate in the same module in the meantime.
+
 ## [1.45.3] — Marketplace verifier: internal API removed
 - **Internal API removed (the approval blocker):** `MultirunRunner` now extends
   **`GenericProgramRunner`** instead of calling the internal `ExecutionManager.startRunProfile` — the

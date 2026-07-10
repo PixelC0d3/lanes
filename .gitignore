@@ -9,6 +9,7 @@ build
 out
 dist
 .intellijPlatform
+.kotlin
 !gradle/wrapper/gradle-wrapper.jar
 .idea/
 .claude/

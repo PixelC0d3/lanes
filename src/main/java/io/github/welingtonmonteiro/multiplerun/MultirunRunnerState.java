@@ -24,6 +24,7 @@ import com.intellij.execution.process.ProcessEvent;
 import com.intellij.execution.process.ProcessListener;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.runners.ExecutionEnvironment;
+import com.intellij.execution.runners.ExecutionEnvironmentBuilder;
 import com.intellij.execution.runners.ExecutionUtil;
 import com.intellij.execution.runners.ProgramRunner;
 import com.intellij.execution.ui.RunContentDescriptor;
@@ -213,7 +214,11 @@ public class MultirunRunnerState implements RunProfileState {
             if (runner == null) {return;}
             if (!checkRunConfiguration(executor, project, configuration)) {return;}
 
-            final ExecutionEnvironment executionEnvironment = new ExecutionEnvironment(executor, runner, configuration, project);
+            // The callback needs the environment (crash-restart) and the environment is built with
+            // the callback attached (the public API that replaces the deprecated execute(env, callback)).
+            // A holder breaks that cycle: it is set right after the environment is built, below.
+            final java.util.concurrent.atomic.AtomicReference<ExecutionEnvironment> environmentRef =
+                    new java.util.concurrent.atomic.AtomicReference<>();
 
             // pass the callback to runner.execute(env, callback) instead of the internal
             // ExecutionEnvironment.setCallback - same effect, public API
@@ -315,7 +320,7 @@ public class MultirunRunnerState implements RunProfileState {
                                                                 com.intellij.notification.NotificationType.WARNING)
                                                         .notify(project);
                                                 ApplicationManager.getApplication().invokeLater(
-                                                        () -> ExecutionUtil.restart(executionEnvironment));
+                                                        () -> ExecutionUtil.restart(environmentRef.get()));
                                             } else {
                                                 // no auto-restart (disabled, or attempts exhausted): surface the
                                                 // crash with a one-click Restart action
@@ -330,7 +335,7 @@ public class MultirunRunnerState implements RunProfileState {
                                                 notification.addAction(
                                                         com.intellij.notification.NotificationAction.createSimpleExpiring(
                                                                 "Restart",
-                                                                () -> ExecutionUtil.restart(executionEnvironment)));
+                                                                () -> ExecutionUtil.restart(environmentRef.get())));
                                                 notification.notify(project);
                                             }
                                         }
@@ -382,7 +387,7 @@ public class MultirunRunnerState implements RunProfileState {
                                 // feed the "Multiple Run Monitor" tool window with live processes
                                 MultirunProcessRegistry.register(project, configurationName,
                                                                  runConfiguration.getName(), processHandler,
-                                                                 memoryLimitMb, executionEnvironment,
+                                                                 memoryLimitMb, environmentRef.get(),
                                                                  RunConfigurationHelper.envFileDisplayName(effectiveEnvFilePath),
                                                                  loadedEnvData.getEnvs(), loadedEnvData.isPassParentEnvs(),
                                                                  readyConditions.get(runConfiguration.getName()),
@@ -488,10 +493,16 @@ public class MultirunRunnerState implements RunProfileState {
                         }
                     };
 
+            // build the environment with the callback attached, then run it - public API replacing
+            // the deprecated ProgramRunner.execute(environment, callback)
+            final ExecutionEnvironment executionEnvironment = new ExecutionEnvironmentBuilder(project, executor)
+                    .runnerAndSettings(runner, configuration)
+                    .build(multirunCallback);
+            environmentRef.set(executionEnvironment);
             ApplicationManager.getApplication().invokeLater(
                     () -> {
                         try {
-                            runner.execute(executionEnvironment, multirunCallback);
+                            runner.execute(executionEnvironment);
                         } catch (ExecutionException e) {
                             ExecutionUtil.handleExecutionError(project, executor.getToolWindowId(), configuration.getConfiguration(), e);
                         }
