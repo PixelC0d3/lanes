@@ -253,12 +253,18 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
         // batch actions: the row actions operate on every selected row
         table.getSelectionModel().setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 
+        // shared action instances: the same objects go into the toolbar and the right-click popup
+        final AnAction restartSelected = new RestartSelectedAction();
+        final AnAction stopSelected = new StopSelectedAction();
+        final AnAction killSelected = new KillSelectedAction();
+        final AnAction restartUnhealthy = new RestartUnhealthyAction();
+
         final DefaultActionGroup rowActions = new DefaultActionGroup();
-        rowActions.add(new RestartSelectedAction());
-        rowActions.add(new StopSelectedAction());
-        rowActions.add(new KillSelectedAction());
+        rowActions.add(restartSelected);
+        rowActions.add(stopSelected);
+        rowActions.add(killSelected);
         rowActions.addSeparator();
-        rowActions.add(new RestartUnhealthyAction());
+        rowActions.add(restartUnhealthy);
 
         final DefaultActionGroup toolbarGroup = new DefaultActionGroup();
         toolbarGroup.add(new DumbAwareAction("Refresh", "Refresh the process list now", AllIcons.Actions.Refresh) {
@@ -267,7 +273,10 @@ public class MultirunMonitorPanel extends SimpleToolWindowPanel implements Dispo
                 refresh();
             }
         });
-        toolbarGroup.addAll(rowActions);
+        // add the row actions individually (avoids the deprecated DefaultActionGroup.addAll(ActionGroup))
+        toolbarGroup.addAll(restartSelected, stopSelected, killSelected);
+        toolbarGroup.addSeparator();
+        toolbarGroup.add(restartUnhealthy);
         toolbarGroup.add(new MemoryAnalysisAction());
         toolbarGroup.add(new KillByPortAction());
         toolbarGroup.add(new ShowColumnsAction());

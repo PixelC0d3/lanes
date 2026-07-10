@@ -5,6 +5,20 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [1.45.3] — Marketplace verifier: internal API removed
+- **Internal API removed (the approval blocker):** `MultirunRunner` now extends
+  **`GenericProgramRunner`** instead of calling the internal `ExecutionManager.startRunProfile` — the
+  platform performs that call itself, so the plugin no longer touches any internal API. No functional
+  change to launching.
+- **Deprecated APIs migrated (3):** `new URL(String)` → `URI.create(url).toURL()`;
+  `DefaultActionGroup.addAll(ActionGroup)` → the row actions are added individually;
+  `FileChooserDescriptorFactory.createSingleFileDescriptor()` → `createSingleFileNoJarsDescriptor()`.
+- The verifier now reports **0 internal / 3 deprecated** (was 1 internal / 6–7 deprecated). The
+  remaining warnings — `ProgramRunner.execute(env, callback)` (in the launch pipeline) and
+  `FileSaverDescriptor(…, extensions)` (its non-varargs constructor does not exist on the 2023.3
+  baseline we compile against) — are non-blocking and will be handled when those classes are migrated
+  to Kotlin.
+
 ## [1.45.2] — Env column shows the effective per-app environment
 - **Fix:** after switching an app's environment (per-app dropdown), the monitor's **Env column now
   shows the env actually in effect** for that app — its per-app override — instead of still showing

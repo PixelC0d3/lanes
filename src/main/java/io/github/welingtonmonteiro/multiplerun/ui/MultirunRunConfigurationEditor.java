@@ -488,7 +488,7 @@ public class MultirunRunConfigurationEditor extends SettingsEditor<MultirunRunCo
      */
     private void importFromCompose() {
         final VirtualFile chosen = FileChooser.chooseFile(
-                FileChooserDescriptorFactory.createSingleFileDescriptor()
+                FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
                                             .withTitle("Select a docker-compose.yml"),
                 project, null);
         if (chosen == null) {

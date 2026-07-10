@@ -159,7 +159,7 @@ public class RunConfigurationHelper {
     public static boolean isHttpHealthy(String url) {
         try {
             final java.net.HttpURLConnection connection =
-                    (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                    (java.net.HttpURLConnection) java.net.URI.create(url).toURL().openConnection();
             connection.setConnectTimeout(750);
             connection.setReadTimeout(750);
             connection.setRequestMethod("GET");

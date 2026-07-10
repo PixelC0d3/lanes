@@ -5,7 +5,6 @@ import org.jetbrains.annotations.Nullable;
 
 import com.intellij.coverage.CoverageExecutor;
 import com.intellij.execution.ExecutionException;
-import com.intellij.execution.ExecutionManager;
 import com.intellij.execution.Executor;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.execution.configurations.RunProfile;
@@ -14,18 +13,23 @@ import com.intellij.execution.executors.DefaultDebugExecutor;
 import com.intellij.execution.executors.DefaultRunExecutor;
 import com.intellij.execution.runners.DefaultProgramRunnerKt;
 import com.intellij.execution.runners.ExecutionEnvironment;
-import com.intellij.execution.runners.ProgramRunner;
+import com.intellij.execution.runners.GenericProgramRunner;
+import com.intellij.execution.ui.RunContentDescriptor;
 import com.intellij.openapi.options.SettingsEditor;
-import com.intellij.openapi.project.Project;
 import com.intellij.profiler.DefaultProfilerExecutorGroup;
 import io.github.welingtonmonteiro.multiplerun.ui.MultirunRunConfigurationEditor;
 
 /**
  * Runner for Multirun configurations.
  *
+ * <p>Extends {@link GenericProgramRunner} so the platform performs the {@code startRunProfile} call
+ * itself: the plugin no longer touches the internal {@code ExecutionManager.startRunProfile} API
+ * (flagged by the JetBrains Marketplace verifier). This runner only hands the state to the
+ * platform's default state execution.</p>
+ *
  * @author Ruslan Khmelyuk
  */
-public class MultirunRunner implements ProgramRunner<MultirunRunConfiguration> {
+public class MultirunRunner extends GenericProgramRunner<MultirunRunConfiguration> {
 
     public static final String JREBEL_EXECUTOR_ID = "JRebel Executor";
     public static final String JREBEL_DEBUG_ID = "JRebel Debug";
@@ -36,18 +40,11 @@ public class MultirunRunner implements ProgramRunner<MultirunRunConfiguration> {
         return "multirun";
     }
 
+    @Nullable
     @Override
-    public void execute(@NotNull final ExecutionEnvironment environment) throws ExecutionException {
-        final RunProfileState runProfileState = environment.getState();
-        if (runProfileState != null) {
-            final Project project = environment.getProject();
-
-            ExecutionManager.Companion.getInstance(project).startRunProfile(
-                    environment,
-                    runProfileState,
-                    runProfileState1 -> DefaultProgramRunnerKt.executeState(runProfileState1, environment, MultirunRunner.this)
-            );
-        }
+    protected RunContentDescriptor doExecute(@NotNull final RunProfileState state,
+                                             @NotNull final ExecutionEnvironment environment) throws ExecutionException {
+        return DefaultProgramRunnerKt.executeState(state, environment, this);
     }
 
     @Override
