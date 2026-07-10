@@ -41,6 +41,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.2</strong>:</p>
+        <ul>
+            <li>Internal (Kotlin migration): converted the memory-history/leak-analysis helper
+                (<code>MemoryHistory</code>, with its <code>Sample</code>/<code>Analysis</code>/trend
+                model and CSV export) from Java to Kotlin. Its public surface is unchanged, so the
+                monitor and the memory chart keep working exactly as before. No functional change.</li>
+        </ul>
         <p><strong>2.0.1</strong>:</p>
         <ul>
             <li>Maintenance (Marketplace verifier): migrated off the deprecated
