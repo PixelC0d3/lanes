@@ -219,6 +219,8 @@ public class MemoryChartDialog extends DialogWrapper {
     /** Writes the leak analysis plus the current per-process breakdown to a text report. */
     private void exportAnalysis() {
         final FileSaverDescriptor descriptor =
+                // NOTE: the (title, description) ctor does not exist on the 2023.3 baseline, so this
+                // compiles to the varargs ctor either way; keep the extension for the save dialog.
                 new FileSaverDescriptor("Export Memory Analysis", "Save the memory analysis as a text report", "txt");
         final VirtualFileWrapper wrapper = FileChooserFactory.getInstance()
                 .createSaveFileDialog(descriptor, project)

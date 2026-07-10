@@ -41,6 +41,16 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.45.3</strong>:</p>
+        <ul>
+            <li>Maintenance (Marketplace verifier): removed the <b>only internal-API usage</b> - the
+                runner now extends <code>GenericProgramRunner</code>, so the platform performs the
+                <code>ExecutionManager.startRunProfile</code> call itself. No functional change.</li>
+            <li>Also migrated off three deprecated APIs (<code>URL(String)</code> →
+                <code>URI.toURL()</code>, <code>DefaultActionGroup.addAll(ActionGroup)</code>,
+                <code>FileChooserDescriptorFactory.createSingleFileDescriptor()</code>). Verifier now
+                reports <b>0 internal / 3 deprecated</b> (down from 1 internal / 6-7 deprecated).</li>
+        </ul>
         <p><strong>1.45.2</strong>:</p>
         <ul>
             <li>Fix: after switching an app's environment, the monitor's <b>Env column now shows the
