@@ -41,6 +41,14 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.0</strong>:</p>
+        <ul>
+            <li>Internal milestone: started the incremental <b>migration to Kotlin</b> (hence the 2.0
+                bump). The build now compiles Java and Kotlin together (Kotlin stdlib provided by the
+                IDE, not bundled); the first pure-logic class (the Logs filter) is now Kotlin. No
+                user-facing change; the complex UI/launch classes stay Java for now and move over
+                gradually.</li>
+        </ul>
         <p><strong>1.45.3</strong>:</p>
         <ul>
             <li>Maintenance (Marketplace verifier): removed the <b>only internal-API usage</b> - the

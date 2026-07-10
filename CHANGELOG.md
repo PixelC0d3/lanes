@@ -5,6 +5,18 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [2.0.0] — Kotlin migration begins: toolchain + first module
+- **Build now compiles Java and Kotlin together** (Kotlin `2.2.20`, JVM target 17). The Kotlin
+  stdlib is **provided by the IDE, not bundled** into the plugin zip
+  (`kotlin.stdlib.default.dependency=false`), so there is no stdlib clash and the artifact stays a
+  single jar.
+- **First class migrated:** `LogFilter` (the aggregated-Logs filter — pure logic, fully unit-tested)
+  is now Kotlin. Its public API is unchanged (`@JvmStatic` factories), so the existing Java tests and
+  callers keep working untouched. 145 tests still green.
+- The migration is **incremental**: complex/critical classes (the `.form`-bound run-config editor,
+  the monitor panel, the launch pipeline) stay Java for now and move to Kotlin gradually; Java and
+  Kotlin interoperate in the same module in the meantime.
+
 ## [1.45.3] — Marketplace verifier: internal API removed
 - **Internal API removed (the approval blocker):** `MultirunRunner` now extends
   **`GenericProgramRunner`** instead of calling the internal `ExecutionManager.startRunProfile` — the
