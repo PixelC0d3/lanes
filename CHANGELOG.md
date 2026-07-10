@@ -5,6 +5,15 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [2.0.2] — Kotlin migration: memory-history / leak-analysis helper
+- **Second class migrated:** `MemoryHistory` (the per-app memory-trend model — `Sample`,
+  `Analysis`, the `Trend` verdict, least-squares slope / R² leak detection, the human-readable
+  summary and the CSV export) is now Kotlin. Pure logic, no IDE dependency, fully unit-tested.
+- Its public surface is **unchanged**: the nested `Sample`/`Analysis`/`Trend` types stay nested and
+  their fields stay field-accessible (`@JvmField`), the static helpers stay static (`@JvmStatic`),
+  so the monitor panel and the memory chart dialog (still Java) keep calling it untouched and the
+  existing Java `MemoryHistoryTest` stays green. 145 tests still pass. No functional change.
+
 ## [2.0.1] — Verifier: migrate off ProgramRunner.execute(env, callback)
 - **Deprecated API removed:** the launch pipeline no longer calls the deprecated
   `ProgramRunner.execute(environment, callback)`. The environment is now built **with its callback
