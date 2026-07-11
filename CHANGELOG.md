@@ -5,6 +5,14 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [2.0.10] — Docs: README revamp + support link
+- Reorganized the README's feature sections with short emoji labels for faster scanning, added a
+  screenshot near the top, and a punchier opening summary.
+- Added a "Support This Project" section (and a matching line in the Marketplace description)
+  linking to [buymeacoffee.com/welingtonmonteiro](https://buymeacoffee.com/welingtonmonteiro) for
+  anyone who wants to support the plugin's upkeep.
+- No functional change.
+
 ## [2.0.9] — Kotlin migration: the test suite (and the last Java file, the .form)
 - **All 14 remaining JUnit test classes converted from Java to Kotlin** — `AppEnvFileTest`,
   `ComposeImporterTest`, `HealthWatcherTest`, `LogFilterTest`, `MemoryHistoryTest`,
