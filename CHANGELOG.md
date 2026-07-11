@@ -5,6 +5,38 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [2.0.7] — Kotlin migration: launch pipeline, persistence and the monitor
+- **Sixteenth through twentieth classes migrated (five at once) - the last batch before the
+  GUI-form editor:**
+  - `MultirunRunner` — the `GenericProgramRunner` launcher (executor matching, settings editor
+    hookup).
+  - `AggregatedLogPanel` — the `docker compose logs -f`-style aggregated Logs tab, including the
+    ANSI/CSI escape-sequence parser and the color palette.
+  - `MultirunRunnerState` — the launch pipeline: one-by-one chaining with readiness gates
+    (port/http/log), per-app env resolution, crash-restart (`ProgramRunner.Callback`), console
+    tab pin/hide/mark-failed handling.
+  - `MultirunRunConfiguration` — persistence (`readExternal`/`writeExternal`), the `Preset` and
+    env-profile model, `getState`/`createStateForApps`, `checkConfiguration`. Extends
+    `RunConfigurationBase<RunConfigurationOptions>` (the raw-typed Java supertype needed an
+    explicit type argument in Kotlin).
+  - `MultirunMonitorPanel` — the monitor tool window: the `Row`/`ProcessSnapshot` model, all
+    table columns and cell renderers, the batch/row actions, per-app and batch environment
+    switching, the memory sparkline.
+- Public surfaces are **unchanged**: every getter/setter/`isX` method keeps its exact Java name
+  (no Kotlin property sugar), `MultirunMonitorPanel.Row`'s constructor stays public and
+  positional (constructed directly from Java test code), nested types
+  (`MultirunRunConfiguration.Preset`) keep their fields `@JvmField`-accessible. 145 tests still
+  pass, including `MultirunMonitorPanelTest` (which builds `Row` instances directly),
+  `AggregatedLogPanelTest`, `MultirunPresetTest` and `MultirunRunnerTest` - all unmodified.
+- Two API-compatibility notes for the curious: the platform's `RunManager` class is itself
+  Kotlin-sourced, so calling `RunManager.getInstance(project).allConfigurationsList` needs Kotlin
+  property syntax rather than `.getAllConfigurationsList()`; and `RunConfigurationBase` (extended
+  with a raw type in the old Java code) now takes an explicit `RunConfigurationOptions` type
+  argument. Neither changes behavior.
+- Only the run-config editor (bound to a GUI-Designer `.form`) stays Java - migrating it means
+  rewriting the UI in Kotlin UI DSL, deferred as its own effort. No functional change in this
+  release.
+
 ## [2.0.6] — Kotlin migration: five UI/watcher classes
 - **Eleventh through fifteenth classes migrated (five at once):**
   - `EnvVarsDialog` — the read-only viewer of the environment variables loaded for one app at
