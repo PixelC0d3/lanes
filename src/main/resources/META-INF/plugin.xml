@@ -41,6 +41,15 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.6</strong>:</p>
+        <ul>
+            <li>Internal (Kotlin migration, five classes): converted <code>EnvVarsDialog</code> (the
+                read-only loaded-variables viewer), <code>MultirunProcessRegistry</code> (the
+                per-project registry of running apps the monitor lists), <code>MultirunStatusBarWidget</code>,
+                <code>MemoryLimitWatcher</code> (the background memory/health/CPU alert watcher) and
+                <code>MemoryChartDialog</code> (the full-session memory chart + leak analysis + CSV
+                export) from Java to Kotlin. Public surfaces and behavior are unchanged. No functional change.</li>
+        </ul>
         <p><strong>2.0.5</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration, five classes): converted the IDE-glue registration
