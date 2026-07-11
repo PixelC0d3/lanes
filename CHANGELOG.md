@@ -5,6 +5,25 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [2.0.9] — Kotlin migration: the test suite (and the last Java file, the .form)
+- **All 14 remaining JUnit test classes converted from Java to Kotlin** — `AppEnvFileTest`,
+  `ComposeImporterTest`, `HealthWatcherTest`, `LogFilterTest`, `MemoryHistoryTest`,
+  `MultirunPresetTest`, `MultirunRunnerTest`, `ProcessStatsSamplerTest`,
+  `RunConfigurationHelperTest`, `AggregatedLogPanelTest`, `EnvVarsDialogTest`,
+  `MultirunMonitorPanelTest`, `MultirunRunConfigurationEditorTest`,
+  `MultirunStatusBarWidgetTest`. Same test names, same assertions, same coverage.
+- Moved `MultirunRunConfigurationEditor.form` from `src/main/java` to
+  `src/main/kotlin/.../ui`, next to its Kotlin class - confirmed with a clean build that the
+  GUI-Designer form-to-bytecode instrumentation still discovers and weaves it correctly from
+  there. `src/main/java` no longer exists.
+- Two Kotlin/JUnit gotchas worth noting: `@Rule` fields need `@JvmField` (JUnit's rule runner
+  looks for a public *field*, and a plain Kotlin `val` only generates a private field + getter);
+  and `String.split(delimiter)` in Kotlin, unlike Java's `String.split(regex)`, does **not** drop
+  a trailing empty element when the string ends with the delimiter - `MemoryHistoryTest` needed
+  `.dropLastWhile { it.isEmpty() }` after splitting a CSV that ends with a newline.
+- **The entire codebase is now Kotlin** - `src/main` and `src/test` alike. 145 tests still pass.
+  No functional change.
+
 ## [2.0.8] — Kotlin migration complete: the run configuration editor
 - **Twenty-first and last class migrated:** `MultirunRunConfigurationEditor`, the run
   configuration editor UI (table of grouped configurations with inline Memory limit/Ready

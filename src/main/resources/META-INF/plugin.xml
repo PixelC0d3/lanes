@@ -41,6 +41,16 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.9</strong>:</p>
+        <ul>
+            <li>Internal (Kotlin migration, the rest of the codebase): converted the remaining 14
+                JUnit test classes from Java to Kotlin. Moved
+                <code>MultirunRunConfigurationEditor.form</code> next to its Kotlin class under
+                <code>src/main/kotlin</code> (confirmed the GUI-Designer form instrumentation still
+                works from there). The entire codebase - <code>src/main</code> and
+                <code>src/test</code> - is now Kotlin; there is no Java source left in the project.
+                145 tests still pass. No functional change.</li>
+        </ul>
         <p><strong>2.0.8</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration complete): converted the last remaining Java class,
