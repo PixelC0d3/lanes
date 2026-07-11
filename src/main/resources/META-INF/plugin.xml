@@ -41,6 +41,14 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.3</strong>:</p>
+        <ul>
+            <li>Internal (Kotlin migration): converted the docker-compose parser
+                (<code>ComposeImporter</code> - reads <code>mem_limit</code>, <code>env_file</code>,
+                <code>depends_on</code>, <code>ports</code> and topologically orders services) from
+                Java to Kotlin. Its public surface is unchanged, so the run-config editor's
+                "Import from docker-compose.yml" keeps working exactly as before. No functional change.</li>
+        </ul>
         <p><strong>2.0.2</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration): converted the memory-history/leak-analysis helper
