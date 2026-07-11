@@ -41,6 +41,15 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.4</strong>:</p>
+        <ul>
+            <li>Internal (Kotlin migration, two classes): converted <code>RunConfigurationHelper</code>
+                (env file parsing/merging, the "Ready when" condition parser, the env-override
+                reflection fallbacks) and <code>ProcessStatsSampler</code> (ps/lsof/proc parsing,
+                docker-stats-style formatting) from Java to Kotlin. Both public surfaces are
+                unchanged, so every caller (the launch pipeline, the monitor, the status bar
+                widget, the memory chart) keeps working exactly as before. No functional change.</li>
+        </ul>
         <p><strong>2.0.3</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration): converted the docker-compose parser

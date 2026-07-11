@@ -5,6 +5,25 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [2.0.4] — Kotlin migration: RunConfigurationHelper + ProcessStatsSampler
+- **Fourth and fifth classes migrated (two at once):**
+  - `RunConfigurationHelper` — dotenv parsing/merging (`parseEnvFile`, `withEnvFile`,
+    `withAppEnvFile`, `mergeEnvData`, `withMemoryLimit`), the "Ready when" condition parser
+    (`ReadyCondition`, `parseReadyCondition`, `isPortOpen`, `isHttpHealthy`), the loop-guard
+    (`containsLoopies`) and the environment-override reflection fallbacks
+    (`withEnvironmentOverride` and its `CommonProgramRunConfigurationParameters`/`getEnvData`/
+    `getEnvs`/`getRunSettings` strategies) used for run configuration types (e.g. Node.js) that
+    don't implement the common IntelliJ SDK interface.
+  - `ProcessStatsSampler` — `ps`/PowerShell/`lsof`/`/proc` output parsing, process-tree
+    aggregation and the docker-stats-style formatting (`formatMemory`, `formatUptime`,
+    `memoryPercent`) that feed the monitor, the status bar widget and the memory chart.
+- Both public surfaces are **unchanged**: nested types (`ReadyCondition`+`Type`, `Stats`) stay
+  nested with `@JvmField` members, every entry point stays static via `@JvmStatic`, so all Java
+  callers (the launch pipeline, the monitor panel, the memory-limit watcher, the status bar
+  widget, the memory chart dialog, the run-config editor) keep calling them untouched, and the
+  existing `RunConfigurationHelperTest`/`ProcessStatsSamplerTest` (including the real-socket and
+  real-`ps` integration tests) stay green. 145 tests still pass. No functional change.
+
 ## [2.0.3] — Kotlin migration: docker-compose parser
 - **Third class migrated:** `ComposeImporter` (the `docker-compose.yml` reader — `mem_limit` and
   `deploy.resources.limits.memory`, `env_file`, `depends_on`, `ports`, plus the depth-first
