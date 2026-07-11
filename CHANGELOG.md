@@ -5,6 +5,28 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [2.0.8] — Kotlin migration complete: the run configuration editor
+- **Twenty-first and last class migrated:** `MultirunRunConfigurationEditor`, the run
+  configuration editor UI (table of grouped configurations with inline Memory limit/Ready
+  when/Env file columns, environment variables + `.env` profile pickers, execution presets,
+  docker-compose import). It stays bound to its existing `MultirunRunConfigurationEditor.form`
+  (GUI Designer) - the platform's form-to-bytecode instrumentation weaves `$$$setupUI$$$` into a
+  Kotlin class exactly as it did into the Java one (verified by inspecting the compiled `.class`),
+  so the panel's layout, widgets and bindings are unchanged. `.form`-bound fields are declared
+  `lateinit var` so the instrumentation can assign them directly.
+- Public surface preserved: `addEnvProfiles(existing, chosen)` stays a `@JvmStatic` companion
+  function so `MultirunRunConfigurationEditorTest` (Java, unmodified) keeps calling it exactly as
+  before. 145 tests still pass.
+- Two Kotlin-specific fixes worth noting for anyone touching this pattern again: `SettingsEditor`'s
+  `resetEditorFrom`/`applyEditorTo` are declared with a non-null settings parameter in the SDK
+  bytecode (the original Java code annotated them `@Nullable`, which Java never enforced across
+  overrides but Kotlin does - the override now takes a non-null `MultirunRunConfiguration`); and
+  string literals built with a leading `+` on the continuation line don't parse in Kotlin (the
+  operator must trail the previous line, not lead the next one).
+- **`src/main` is now 100% Kotlin** - `src/main/java` contains no source files, only the
+  `.form`. Only the test suite (`src/test/java`) remains Java. This closes out the incremental
+  Java-to-Kotlin migration started in 2.0.2.
+
 ## [2.0.7] — Kotlin migration: launch pipeline, persistence and the monitor
 - **Sixteenth through twentieth classes migrated (five at once) - the last batch before the
   GUI-form editor:**

@@ -41,6 +41,16 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.8</strong>:</p>
+        <ul>
+            <li>Internal (Kotlin migration complete): converted the last remaining Java class,
+                <code>MultirunRunConfigurationEditor</code> (the run configuration editor UI), to
+                Kotlin. It still binds to its existing GUI-Designer <code>.form</code> file - the
+                form-to-bytecode weaving works the same for a Kotlin class as it did for Java, so
+                the editor's layout and behavior are unchanged. <code>src/main/java</code> now
+                contains no source files at all (100% Kotlin); only the test suite stays Java. No
+                functional change.</li>
+        </ul>
         <p><strong>2.0.7</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration, five classes - the last batch before the GUI-form-bound
