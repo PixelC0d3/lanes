@@ -41,6 +41,21 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.7</strong>:</p>
+        <ul>
+            <li>Internal (Kotlin migration, five classes - the last batch before the GUI-form-bound
+                editor): converted <code>MultirunRunner</code> (the launcher extending
+                <code>GenericProgramRunner</code>), <code>AggregatedLogPanel</code> (the docker-compose-
+                logs-style aggregated Logs tab), <code>MultirunRunnerState</code> (the launch pipeline:
+                one-by-one chaining, readiness gates, crash-restart, tab/content handling),
+                <code>MultirunRunConfiguration</code> (persistence: readExternal/writeExternal,
+                presets, env profiles) and <code>MultirunMonitorPanel</code> (the monitor tool window:
+                table model, columns, batch actions, env switching) from Java to Kotlin. Public
+                surfaces and behavior are unchanged - every getter/setter keeps its exact Java name.
+                Only the GUI-form-bound run-config editor stays Java (its <code>.form</code> is tied to
+                a Java class; migrating it means rewriting the UI in Kotlin UI DSL, deferred). No
+                functional change.</li>
+        </ul>
         <p><strong>2.0.6</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration, five classes): converted <code>EnvVarsDialog</code> (the
