@@ -5,6 +5,27 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [2.0.6] — Kotlin migration: five UI/watcher classes
+- **Eleventh through fifteenth classes migrated (five at once):**
+  - `EnvVarsDialog` — the read-only viewer of the environment variables loaded for one app at
+    launch (filter + mask-values), including the pure `filterByName`/`maskValue` helpers.
+  - `MultirunProcessRegistry` — the per-project registry of running apps (`register`/`unregister`/
+    `getEntries`/`snapshot`/`findMetadataByName`/`pidOf`) that backs the monitor, the status bar
+    widget and the memory/health watcher.
+  - `MultirunStatusBarWidget` — the status bar summary (apps · memory · unhealthy count).
+  - `MemoryLimitWatcher` — the background watcher raising memory-limit, health and sustained-CPU
+    notifications independently of the monitor tool window.
+  - `MemoryChartDialog` — the full-session memory chart (custom-painted, labeled axes), the leak
+    analysis tab with a per-process breakdown, and CSV/text export.
+- Public surfaces are **unchanged**: nested types (`MultirunProcessRegistry.Entry`) stay
+  field-accessible (`@JvmField`), static entry points stay static (`@JvmStatic`), package-private
+  Java helpers (`EnvVarsDialog.filterByName`/`maskValue`, `MultirunStatusBarWidget.ID`) become plain
+  public Kotlin members (Kotlin has no package-private visibility) - a safe, harmless widening. The
+  `ChartComponent` inner class keeps its non-static (`inner`) binding to the dialog so it still
+  reads `samples` directly. 145 tests still pass (`EnvVarsDialogTest`, `MultirunStatusBarWidgetTest`,
+  `HealthWatcherTest`, and the `MemoryLimitWatcher.isNearLimit` cases in `ProcessStatsSamplerTest`
+  all compile and pass against the new Kotlin classes unmodified). No functional change.
+
 ## [2.0.5] — Kotlin migration: five IDE-glue registration classes
 - **Sixth through tenth classes migrated (five at once):** the platform-registered glue classes
   that had little logic of their own now live in Kotlin:
