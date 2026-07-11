@@ -5,6 +5,15 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [2.0.3] — Kotlin migration: docker-compose parser
+- **Third class migrated:** `ComposeImporter` (the `docker-compose.yml` reader — `mem_limit` and
+  `deploy.resources.limits.memory`, `env_file`, `depends_on`, `ports`, plus the depth-first
+  topological ordering of services) is now Kotlin. Pure logic, no IDE dependency, fully unit-tested.
+- Its public surface is **unchanged**: the nested `Service` type stays nested with field-accessible
+  members (`@JvmField`), the entry points stay static (`@JvmStatic`), so the run-config editor's
+  *Import from docker-compose.yml* keeps calling it untouched and the existing Java
+  `ComposeImporterTest` stays green. 145 tests still pass. No functional change.
+
 ## [2.0.2] — Kotlin migration: memory-history / leak-analysis helper
 - **Second class migrated:** `MemoryHistory` (the per-app memory-trend model — `Sample`,
   `Analysis`, the `Trend` verdict, least-squares slope / R² leak detection, the human-readable
