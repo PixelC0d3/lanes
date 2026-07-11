@@ -41,6 +41,15 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.5</strong>:</p>
+        <ul>
+            <li>Internal (Kotlin migration, five classes): converted the IDE-glue registration
+                classes - <code>MultirunConfigurationType</code>, <code>ShowMultirunMonitorAction</code>,
+                <code>MultirunMonitorToolWindowFactory</code>, <code>MultirunStatusBarWidgetFactory</code>
+                and <code>StopRunningMultirunConfigurationsAction</code> (the stop-all action and the
+                per-project process registry it keeps) - from Java to Kotlin. Same class names/ids, so
+                the plugin.xml registrations and every caller are untouched. No functional change.</li>
+        </ul>
         <p><strong>2.0.4</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration, two classes): converted <code>RunConfigurationHelper</code>

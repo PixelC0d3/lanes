@@ -5,6 +5,24 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one (existing configurations keep working).
 
+## [2.0.5] — Kotlin migration: five IDE-glue registration classes
+- **Sixth through tenth classes migrated (five at once):** the platform-registered glue classes
+  that had little logic of their own now live in Kotlin:
+  - `MultirunConfigurationType` — the `ConfigurationType`/`SimpleConfigurationType` that creates
+    the template `MultirunRunConfiguration` (the persisted type id stays `"Multirun"`, unchanged).
+  - `ShowMultirunMonitorAction` — the Run-menu action that activates the monitor tool window.
+  - `MultirunMonitorToolWindowFactory` — registers the "Multiple Run Monitor" tool window and its
+    two tabs (Processes, Logs); `TOOL_WINDOW_ID` stays a `public static final` constant.
+  - `MultirunStatusBarWidgetFactory` — registers the status bar widget.
+  - `StopRunningMultirunConfigurationsAction` — the "stop all" action *and* the per-project
+    registry of processes it started (`addProcess`/`removeProcess`/`stopAll`/`stopProcessesOf`),
+    used throughout the launch pipeline and the monitor; `ACTION_ID` stays a `public static final`
+    constant.
+- Class names, ids and every public method signature are **unchanged**, so the `plugin.xml`
+  registrations and every Java caller (the launch pipeline, the monitor panel) keep working
+  untouched. 145 tests still pass (none of these five had dedicated unit tests before - they are
+  IDE-registration glue with no pure logic to isolate). No functional change.
+
 ## [2.0.4] — Kotlin migration: RunConfigurationHelper + ProcessStatsSampler
 - **Fourth and fifth classes migrated (two at once):**
   - `RunConfigurationHelper` — dotenv parsing/merging (`parseEnvFile`, `withEnvFile`,
