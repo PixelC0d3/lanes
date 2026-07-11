@@ -1,15 +1,14 @@
 plugins {
     id "org.jetbrains.intellij.platform" version "2.17.0"
-    // src/main is 100% Kotlin (the Java -> Kotlin migration finished in 2.0.8); src/test stays
-    // Java, compiling against the Kotlin classes in the same module. The Kotlin version is the one
-    // the platform plugin already brings in; the runtime stdlib is provided by the IDE (see
-    // kotlin.stdlib.default.dependency=false in gradle.properties), so it is not bundled into the
-    // plugin zip.
+    // The whole codebase (src/main and src/test) is Kotlin - the Java -> Kotlin migration finished
+    // in 2.0.9. The Kotlin version is the one the platform plugin already brings in; the runtime
+    // stdlib is provided by the IDE (see kotlin.stdlib.default.dependency=false in
+    // gradle.properties), so it is not bundled into the plugin zip.
     id "org.jetbrains.kotlin.jvm" version "2.2.20"
 }
 
 group = 'io.github.welingtonmonteiro'
-version = '2.0.8'
+version = '2.0.9'
 
 repositories {
     mavenCentral()
