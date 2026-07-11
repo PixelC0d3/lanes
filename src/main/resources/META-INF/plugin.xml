@@ -36,11 +36,19 @@
 
         <p>Multirun + Before Launch Tasks gives even more functionality: read more at <a href="https://goo.gl/KwHvx">https://goo.gl/KwHvx</a></p>
 
+        <p>If this plugin saves you time, consider <a href="https://buymeacoffee.com/welingtonmonteiro">buying me a coffee</a> ☕</p>
+
         ]]>
     </description>
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.10</strong>:</p>
+        <ul>
+            <li>Docs: revamped the README (feature sections now scannable at a glance, a screenshot
+                up top) and added a support link for anyone who wants to buy the maintainer a
+                coffee. No functional change.</li>
+        </ul>
         <p><strong>2.0.9</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration, the rest of the codebase): converted the remaining 14

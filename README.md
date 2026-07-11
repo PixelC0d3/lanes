@@ -1,19 +1,26 @@
 Multiple Run
 ============
 
-IntelliJ-based IDE plugin to execute multiple Run Configurations in a single click.
-Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) plugin.
+> **Group, launch and control multiple Run Configurations from a single click — with the
+> environment, ordering and monitoring that a real multi-service workflow needs.**
+>
+> Multiple Run turns IntelliJ IDEA, WebStorm and every other JetBrains IDE into a lightweight
+> orchestrator for the services, tests and tools you run together every day.
+
+Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) plugin by Ruslan Khmeliuk.
+
+![Add a Multiple Run configuration](screenshots/Screenshot1.png)
 
 IntelliJ ships with a built-in [Compound run/debug configuration](https://www.jetbrains.com/help/idea/run-debug-configuration-compound.html),
 but if you need more flexibility and control over *how* the configurations are executed
-(order, delay, tab handling, marking failures, etc.) then Multirun is for you.
+(order, delay, tab handling, marking failures, etc.) then Multiple Run is for you.
 
-You create a **Multirun** run configuration, add the run configurations you want to it, pick a
+You create a **Multiple Run** run configuration, add the run configurations you want to it, pick a
 few options, and run everything at once — as a group, in parallel or one-by-one.
 
-## Features
+## ✨ Features
 
-### Grouping
+### 📦 Grouping
 - Group any number of run configurations into a single **Multirun** configuration and start
   them with one click.
 - **Nesting / composite configurations**: a Multirun configuration can contain other Multirun
@@ -21,7 +28,7 @@ few options, and run everything at once — as a group, in parallel or one-by-on
 - **Loop protection**: the editor and runner detect and prevent cycles (A contains B, B contains
   A), so you can nest freely without breaking anything.
 
-### Execution modes
+### ▶️ Execution modes
 - **Parallel** — start all configurations at the same time.
 - **One by one** — start the next configuration only after the previous one has started. This is
   useful when "Before launch" tasks would otherwise run in parallel and interfere with each other.
@@ -41,7 +48,7 @@ few options, and run everything at once — as a group, in parallel or one-by-on
   also feed the *Status* column of the Multiple Run Monitor (healthy/down, re-checked every
   refresh, like `docker ps`).
 
-### Delay between configurations (one-by-one mode only)
+### ⏱️ Delay between configurations (one-by-one mode only)
 The delay field accepts fractional seconds (e.g. `0.5`) and behaves as follows:
 
 | Delay value | Behavior |
@@ -53,7 +60,7 @@ The delay field accepts fractional seconds (e.g. `0.5`) and behaves as follows:
 The delay field is only enabled when *Start configurations one by one* is checked, and the value
 is parsed using the current locale (so `0,5` works on locales that use a comma as the decimal separator).
 
-### Environment variables override
+### 🌱 Environment variables override
 - Define environment variables directly on the Multirun configuration — they are applied to
   **every** configuration in the list, overriding the child's own variables with the same name.
 - Uses the standard IDE dialog (add variables one by one, paste, and toggle
@@ -77,7 +84,7 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   the group env file) for that app only. Empty = use the group's environment. Re-read on every run;
   relative paths resolve against the project root.
 
-### Execution presets
+### 🎛️ Execution presets
 - Save the current **On/Off** selection of applications plus the active **environment profile** as
   a named **preset**, then flip between scenarios from the **Preset** dropdown in the editor —
   "backend only", "full stack", "everything but the workers", … — without re-checking boxes.
@@ -85,7 +92,7 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   picking a preset applies its enabled apps and its profile to the list. Presets are stored in the
   run configuration, so they travel with it.
 
-### Import from docker-compose.yml
+### 🐳 Import from docker-compose.yml
 - The list toolbar has an **Import from docker-compose.yml…** button that reads a compose file and
   applies it to the run configurations **already in the list** whose name matches a service:
   - `mem_limit` (and the Swarm-style `deploy.resources.limits.memory`) → the **Memory limit** column;
@@ -95,7 +102,7 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - It never creates run configurations: services with no matching configuration are listed in a
   report and skipped. Add configurations with matching names and import again.
 
-### Per-application memory limit
+### 🧠 Per-application memory limit
 - The configurations list is a table with an editable **Memory limit (MB)** column — click the
   cell next to an application and type the cap (empty = no limit). The process-level analog of
   Docker's `mem_limit`.
@@ -104,7 +111,7 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 - Note: unlike Docker, a plain OS process has no enforced swap/reservation limits — this caps the
   runtime heap, which is what usually matters for Node/JVM apps in development.
 
-### Process monitor (docker-stats style)
+### 📊 Process monitor (docker-stats style)
 - The **Multiple Run Monitor** tool window (bottom stripe of the IDE, or `Run → Multiple Run
   Monitor`) shows a live table with **every process the IDE is running** — apps started by
   Multiple Run *and* standalone (singleton) runs:
@@ -195,20 +202,20 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 
   The process table lives in the **Processes** tab next to it.
 
-### Status bar widget
+### 📌 Status bar widget
 - A compact indicator in the IDE status bar shows how many applications Multiple Run is running,
   their **combined memory** and how many are **unhealthy** (a `port:`/`http` *Ready when* that is
   currently down) — e.g. `▶ 3 apps · 1.2 GiB · ⚠ 1`. **Click it** to open the Multiple Run Monitor.
 - It hides itself when nothing this plugin started is running. Toggle it from the status bar
   widgets menu (right-click the status bar).
 
-### Memory limit alert
+### 🔔 Memory limit alert
 - When an application with a configured *Memory limit (MB)* crosses **90%** of it, the IDE raises
   a warning notification (balloon + Notifications tool window) — you don't need to keep the
   monitor open. The check runs in the background every 10 seconds; each process is alerted at
   most once (a restart re-arms the alert).
 
-### Console tab handling
+### 📑 Console tab handling
 - **Mark the tab of a failed configuration** — adds an alert icon to the tab of any configuration
   that exits with a non-zero status, so you can spot failures at a glance.
 - **Close tab of a successfully completed configuration** — leaves only the failed tabs open.
@@ -224,7 +231,7 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   (the same one behind the Logs tab of individual run configurations). Relative paths are
   resolved against the project root.
 
-### Restart policies (docker style)
+### ⚡ Restart policies (docker style)
 - **Restart application on crash** — like docker's `restart: on-failure`: an application that
   exits with a crash code is relaunched automatically, at most 3 times per run. Intentional stops
   (stop button, *Stop Multiple Run*, Force Kill — SIGINT/SIGTERM/SIGKILL) never trigger a restart.
@@ -244,7 +251,7 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   balloon) or **Restart application** (docker-like OOM handling — the app is restarted before it
   degrades into GC thrashing). One action per process; a restart re-arms it.
 
-### Restarting and stopping
+### 🔁 Restarting and stopping
 - **Restart on rerun** (enabled by default) — running a Multirun that is already running first stops
   the processes it started before, waits for them to terminate, and then starts everything again —
   just like the built-in Compound configuration. No need to stop the services manually before
@@ -257,18 +264,19 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   - Windows/Linux: <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>K</kbd>
   - macOS: <kbd>Control</kbd>+<kbd>Alt</kbd>+<kbd>K</kbd>
 
-### Supported executors
-Multirun configurations can be launched with:
+### ⚙️ Supported executors
+Multiple Run configurations can be launched with:
 - **Run**
 - **Debug**
 - **Run with Coverage**
 - **Profiler**
 - **JRebel** (Run and Debug)
 
-## Supported IDEs
+## 🌍 Supported IDEs
 
-Multirun only depends on the platform and language modules, so it works in IntelliJ IDEA and the
-other IntelliJ-based IDEs: **WebStorm, PyCharm, PhpStorm, RubyMine, GoLand, CLion, Rider, AppCode**, etc.
+Multiple Run only depends on the platform and language modules, so it works in IntelliJ IDEA and
+the other IntelliJ-based IDEs: **WebStorm, PyCharm, PhpStorm, RubyMine, GoLand, CLion, Rider,
+AppCode**, etc.
 
 Compatible with builds since `233` (**2023.3** and newer).
 
@@ -321,6 +329,19 @@ export JAVA_HOME=/path/to/jbr
 The plugin version is managed from `build.gradle` (`version = '…'`) and injected into
 `plugin.xml` at build time by `patchPluginXml`. Verifier reports land in
 `build/reports/pluginVerifier/`.
+
+## ⭐ Open Source
+
+GitHub repository: [WelingtonMonteiro/multiple_run](https://github.com/WelingtonMonteiro/multiple_run)
+
+Contributions, feature requests and bug reports are always welcome.
+
+## ☕ Support This Project
+
+If Multiple Run saves you time, consider buying me a coffee — it helps keep the plugin maintained
+and new features coming:
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-orange?logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/welingtonmonteiro)
 
 ## Credits By
 
