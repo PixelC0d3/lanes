@@ -14,15 +14,23 @@
         <!-- The Marketplace renders this description as standalone HTML - it has no access to the
              plugin's own .zip, so the image below is pulled from GitHub's raw content CDN instead
              of a local path. It only resolves once this branch is merged into mainline. -->
-        <p><img src="https://raw.githubusercontent.com/WelingtonMonteiro/multiple_run/mainline/brand/banner.png" alt="Multiple Run" width="100%"/></p>
+        <!-- width is capped (not 100%) so the banner stays modest in the IDE's install panel, where
+             the description also renders - a full-width hero looked oversized there. -->
+        <p><img src="https://raw.githubusercontent.com/WelingtonMonteiro/multiple_run/mainline/brand/banner.png" alt="Multiple Run" width="420"/></p>
 
-        <p>Fork of the <a href="https://github.com/rkhmelyuk/multirun">Multirun</a> plugin by Ruslan Khmeliuk, with
-        additional features such as an environment variables override applied to all grouped configurations.
+        <p><b>Run, monitor and manage multiple run configurations at once.</b> Group your apps, servers,
+        microservices or tests and start them with a single click - one by one with "ready when"
+        (port / HTTP / log) checks when you need startup ordering. Then watch everything live in a
+        docker-stats-style monitor: memory, CPU, listening ports, uptime and health, with memory-leak
+        analysis, per-process memory charts and aggregated logs.</p>
+
+        <p>Manage environments without leaving the IDE: load <b>.env</b> environment files per app or group,
+        switch between environment profiles on the fly, and <b>import a docker-compose</b> file to create run
+        configurations. Not only application and test configurations can be grouped - other Multiple Run
+        configurations can be nested into a single one.</p>
+
+        <p>Fork of the <a href="https://github.com/rkhmelyuk/multirun">Multirun</a> plugin by Ruslan Khmeliuk.
         It replaces the original plugin (uninstall Multirun before installing this one).</p>
-
-        <p>Run multiple run configurations at once: group multiple run configurations and start them in a single click.
-        Not only application and test run configurations can be grouped, but other Multiple Run configurations can be
-        organized into single run configuration.</p>
 
         <p>Use cases:</p>
         <ul>
@@ -48,6 +56,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.1.1</strong>:</p>
+        <ul>
+            <li>New: the Multiple Run Monitor tool window shows a badge with the number of running
+                apps on its stripe button (hidden when none are running).</li>
+            <li>Fix: the plugin now shows as "Multiple Run" (not "multiple_run") in the Marketplace,
+                the plugins list and search.</li>
+        </ul>
         <p><strong>2.1.0</strong>:</p>
         <ul>
             <li>New: load a .env file on a plain Play/Debug, not only through Multiple Run. Node-based
@@ -794,5 +809,7 @@
                                 order="last"/>
         <!-- balloon warnings raised by the memory limit watcher -->
         <notificationGroup id="Multiple Run" displayType="BALLOON"/>
+        <!-- keeps the running-apps count badge on the monitor tool window in sync with process start/stop -->
+        <postStartupActivity implementation="io.github.welingtonmonteiro.multiplerun.ui.MultiplerunMonitorBadgeActivity"/>
     </extensions>
 </idea-plugin>
