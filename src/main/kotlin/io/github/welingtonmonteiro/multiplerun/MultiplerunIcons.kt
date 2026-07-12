@@ -31,4 +31,10 @@ object MultiplerunIcons {
     // block were dropped (real JBLabels handle the text and theme colors on the Swing side; see
     // MultiplerunMonitorPanel's empty-state panel), leaving just the illustration.
     @JvmField val EmptyState: Icon = IconLoader.getIcon("/icons/empty-state.svg", MultiplerunIcons::class.java)
+
+    // Shown instead of Mark for any saved Multiple Run instance (MultiplerunRunConfiguration.getIcon()
+    // and grouped rows in the Monitor) - the lanes wrapped in a restart/orchestration arrow. Not the
+    // type-level icon: MultiplerunConfigurationType.getIcon() (the "Add New Configuration" entry,
+    // the tree's category node) keeps using Mark, since it represents the type, not one instance.
+    @JvmField val Configured: Icon = IconLoader.getIcon("/icons/configured.svg", MultiplerunIcons::class.java)
 }

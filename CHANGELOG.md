@@ -5,6 +5,28 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [2.1.3] — "Configured" icon for every Multiple Run instance
+- **Feature:** a Multiple Run configuration now shows a distinct **"configured"** icon (lanes wrapped
+  by a restart/orchestration arrow) instead of the plain Lanes mark, everywhere the platform renders
+  that specific saved instance: the run/debug switcher dropdown, the toolbar Play/Debug widget, and
+  the leaf nodes of the "Edit Configurations" tree. The type-level icon is untouched: the "Multiple
+  Run" category node in that same tree and the entry in "Add New Configuration" still show the plain
+  Lanes mark, since those represent the type in general, not one specific configuration.
+- Implemented via `RunConfiguration.getIcon()` (the SDK's per-instance icon hook - `RunManagerImpl`'s
+  icon cache calls `settings.getConfiguration().getIcon()` directly, confirmed by disassembling the
+  platform classes), not a UI-surface-by-surface patch, so it stays correct anywhere the platform
+  decides to render a saved configuration's icon.
+- Deliberately unconditional, not "only once it has child apps" as first implemented: that icon
+  cache stores whatever `getIcon()` returns on the FIRST call for a configuration and never
+  recomputes it. On a real IDE that first call can land before `readExternal` finishes populating
+  the configuration's fields from its saved XML, permanently locking in the "empty" icon for a
+  config that in fact already has apps - confirmed by disassembling `RunConfigurationIconAndInvalidCache`
+  on a real installed build, not just the compile-time SDK. Any condition here would need data
+  available synchronously at construction, which "has child apps" isn't (it's deserialized state).
+- The Multiple Run Monitor's Name column now shows the same "configured" icon for every grouped app
+  row.
+- 152 tests pass.
+
 ## [2.1.2] — Fix ClassCastException on the monitor's running-apps badge
 - **Fix (crash):** starting any run configuration threw `ClassCastException: CountBadgeIcon cannot
   be cast to class com.intellij.openapi.util.ScalableIcon` from
