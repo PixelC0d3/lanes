@@ -1,1 +1,7 @@
+plugins {
+    // Lets Gradle auto-download a matching JDK when the required toolchain (Java 17) isn't
+    // installed locally, instead of failing the build outright.
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 rootProject.name = 'multiple_run'

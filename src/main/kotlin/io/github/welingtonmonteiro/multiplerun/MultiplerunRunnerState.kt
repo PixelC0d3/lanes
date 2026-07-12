@@ -169,7 +169,7 @@ class MultiplerunRunnerState(
 
             // pass the callback to runner.execute(env, callback) instead of the internal
             // ExecutionEnvironment.setCallback - same effect, public API
-            val multirunCallback = object : ProgramRunner.Callback {
+            val multiplerunCallback = object : ProgramRunner.Callback {
                 private val processTerminated = AtomicBoolean(false)
                 private val firstStart = AtomicBoolean(true)
 
@@ -435,7 +435,7 @@ class MultiplerunRunnerState(
             // the deprecated ProgramRunner.execute(environment, callback)
             val executionEnvironment = ExecutionEnvironmentBuilder(project, executor)
                 .runnerAndSettings(runner, configuration)
-                .build(multirunCallback)
+                .build(multiplerunCallback)
             environmentRef.set(executionEnvironment)
             ApplicationManager.getApplication().invokeLater {
                 try {
