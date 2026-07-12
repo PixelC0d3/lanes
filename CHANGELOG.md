@@ -5,6 +5,18 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [2.1.2] — Fix ClassCastException on the monitor's running-apps badge
+- **Fix (crash):** starting any run configuration threw `ClassCastException: CountBadgeIcon cannot
+  be cast to class com.intellij.openapi.util.ScalableIcon` from
+  `SquareStripeButton.updatePresentation`. The New UI's tool window stripe button hard-casts
+  whatever icon `ToolWindow.setIcon(...)` was given to `ScalableIcon` - the 2.1.1 badge icon was a
+  hand-rolled `Icon` that didn't implement it. Rebuilt the badge with `LayeredIcon` (base icon +
+  a small count-bubble layer) instead: `LayeredIcon` extends `JBCachingScalableIcon`, the same
+  composition mechanism the platform itself uses for icon badges/overlays, so it satisfies
+  `ScalableIcon` (and `DarkIconProvider`/`IconWithToolTip`) correctly everywhere, not just this one
+  call site.
+- 152 tests pass.
+
 ## [2.1.1] — Monitor count badge, proper display name, search-friendly description
 - **Feature:** the **Multiple Run Monitor tool window now shows a badge** with the number of running
   applications on its stripe button — it grows as apps start, shrinks as they stop and disappears
