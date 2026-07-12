@@ -5,6 +5,22 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [2.0.14] — Fix EDT threading crash when a child configuration needs editing first
+- **Fix (crash):** `MultiplerunRunnerState.checkRunConfiguration` calls
+  `RunDialog.editConfiguration`/`Messages.showYesNoDialog` (modal Swing dialogs, EDT-only) whenever
+  a child configuration can't run as-is - not registered/valid yet, or has "Edit configuration
+  before run" checked. `checkRunConfiguration` is reached from `runConfigurations()`, and the
+  one-by-one delay/wait chaining deliberately re-enters `runConfigurations()` from a background
+  pooled thread (`ApplicationManager.executeOnPooledThread`) so the wait doesn't freeze the IDE.
+  Combined, that meant the dialog call could happen off the EDT, throwing
+  `RuntimeExceptionWithAttachments: Access is allowed from Event Dispatch Thread (EDT) only` and
+  aborting the run instead of prompting the user to fix the configuration. This is pre-existing
+  code, unrelated to the Kotlin migration or the recent rename/branding work - it only manifests
+  for a configuration that genuinely can't run yet, so it went unnoticed until now. Fixed by
+  wrapping just the dialog logic in `ApplicationManager.invokeAndWait { ... }`, which blocks
+  whichever thread called it (background or EDT) until the dialog finishes on the UI thread.
+- 145/145 tests pass.
+
 ## [2.0.13] — Fix two regressions found in manual testing of 2.0.12
 - **Fix (crash):** creating, applying, or running a Multiple Run configuration could throw
   `NullPointerException: Parameter specified as non-null is null` from

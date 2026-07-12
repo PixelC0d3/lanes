@@ -472,20 +472,33 @@ class MultiplerunRunnerState(
         }
 
         if (!RunManagerImpl.canRunConfiguration(configuration, executor) || configuration.isEditBeforeRun()) {
-            if (!RunDialog.editConfiguration(project, configuration, "Edit Configuration", executor)) {
-                return false
-            }
+            // RunDialog.editConfiguration/Messages.showYesNoDialog are modal Swing dialogs and
+            // require the EDT - but checkRunConfiguration also runs from background pooled
+            // threads (the one-by-one delay/wait chaining in runConfigurations() above calls back
+            // in via executeOnPooledThread). invokeAndWait blocks whichever thread called this
+            // method until the dialog logic finishes on the EDT (it runs immediately, inline, if
+            // already called from the EDT).
+            var ok = true
+            ApplicationManager.getApplication().invokeAndWait {
+                if (!RunDialog.editConfiguration(project, configuration, "Edit Configuration", executor)) {
+                    ok = false
+                    return@invokeAndWait
+                }
 
-            while (!RunManagerImpl.canRunConfiguration(configuration, executor)) {
-                if (Messages.showYesNoDialog(project, "Configuration is still incorrect. Do you want to edit it again?",
-                                             "Change Configuration Settings",
-                                             "Edit", "Continue Anyway", Messages.getErrorIcon()) == 0) {
-                    if (!RunDialog.editConfiguration(project, configuration, "Edit Configuration", executor)) {
+                while (!RunManagerImpl.canRunConfiguration(configuration, executor)) {
+                    if (Messages.showYesNoDialog(project, "Configuration is still incorrect. Do you want to edit it again?",
+                                                 "Change Configuration Settings",
+                                                 "Edit", "Continue Anyway", Messages.getErrorIcon()) == 0) {
+                        if (!RunDialog.editConfiguration(project, configuration, "Edit Configuration", executor)) {
+                            break
+                        }
+                    } else {
                         break
                     }
-                } else {
-                    break
                 }
+            }
+            if (!ok) {
+                return false
             }
         }
         return true

@@ -48,6 +48,16 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.14</strong>:</p>
+        <ul>
+            <li>Fix: running a group where a child configuration needed "Edit Configuration" first
+                (an invalid/incomplete configuration, or one with "Edit configuration before run"
+                checked) could throw a threading exception ("Access is allowed from Event Dispatch
+                Thread only") and abort the run, instead of showing the edit dialog. The one-by-one
+                delay/wait chaining runs this check from a background thread on purpose (so the
+                wait doesn't freeze the IDE), but showing the dialog itself needs the UI thread -
+                now correctly switches to it just for that part.</li>
+        </ul>
         <p><strong>2.0.13</strong>:</p>
         <ul>
             <li>Fix: creating a new Multiple Run configuration (or applying/running one) could throw
