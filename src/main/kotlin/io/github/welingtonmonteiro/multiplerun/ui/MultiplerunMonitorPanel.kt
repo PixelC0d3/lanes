@@ -38,7 +38,6 @@ import javax.swing.table.TableColumnModel
 
 import com.intellij.execution.Executor
 import com.intellij.execution.RunManager
-import com.intellij.execution.configurations.ConfigurationTypeUtil
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.execution.process.ProcessHandler
@@ -81,7 +80,6 @@ import com.intellij.util.ui.ListTableModel
 import com.intellij.util.ui.UIUtil
 
 import io.github.welingtonmonteiro.multiplerun.MemoryHistory
-import io.github.welingtonmonteiro.multiplerun.MultiplerunConfigurationType
 import io.github.welingtonmonteiro.multiplerun.MultiplerunIcons
 import io.github.welingtonmonteiro.multiplerun.MultiplerunProcessRegistry
 import io.github.welingtonmonteiro.multiplerun.MultiplerunRunConfiguration
@@ -141,7 +139,7 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
     private val table: TableView<Row>
     private val timer: Timer
     private val sampling = AtomicBoolean()
-    private val multiplerunIcon: Icon
+    private val configuredAppIcon: Icon
 
     /** Swapped between the table and the "Lanes" empty-state illustration; see [CARD_TABLE]/[CARD_EMPTY]. */
     private val cardLayout = CardLayout()
@@ -161,11 +159,10 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
     private val statusRenderer = StatusCellRenderer()
 
     init {
-        multiplerunIcon = try {
-            ConfigurationTypeUtil.findConfigurationType(MultiplerunConfigurationType::class.java).getIcon()
-        } catch (t: Throwable) {
-            AllIcons.RunConfigurations.Compound
-        }
+        // a row only exists here because the app actually ran as part of a Multiple Run group, so
+        // it is always "configured" in that context - same icon MultiplerunRunConfiguration.getIcon()
+        // shows for a group that has child apps, never the plain type mark
+        configuredAppIcon = MultiplerunIcons.Configured
 
         model = ListTableModel(
             object : ColumnInfo<Row, String>("Name") {
@@ -1207,7 +1204,7 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
             val meta = live ?: MultiplerunProcessRegistry.findMetadataByName(project, snapshot.name)
 
             val name = live?.appName ?: snapshot.name
-            val icon: Icon = if (live != null) multiplerunIcon
+            val icon: Icon = if (live != null) configuredAppIcon
                              else snapshot.icon ?: AllIcons.RunConfigurations.Application
             val multiplerunName = meta?.multiplerunName ?: "-"
             // grouped app: its Multiple Run env; standalone app: the env the plugin loaded into it

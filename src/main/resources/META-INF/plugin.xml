@@ -56,6 +56,14 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.1.3</strong>:</p>
+        <ul>
+            <li>New: every saved Multiple Run configuration shows a distinct "configured" icon
+                instead of the plain mark - in the run/debug switcher, the toolbar Play/Debug widget,
+                the "Edit Configurations" tree and the Multiple Run Monitor's Name column. The
+                "Multiple Run" type icon (category node, "Add New Configuration") stays the plain
+                mark.</li>
+        </ul>
         <p><strong>2.1.2</strong>:</p>
         <ul>
             <li>Fix: starting any run configuration could throw a ClassCastException from the New

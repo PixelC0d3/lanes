@@ -2,6 +2,7 @@ package io.github.welingtonmonteiro.multiplerun
 
 import java.util.LinkedHashMap
 import java.util.LinkedHashSet
+import javax.swing.Icon
 
 import org.jdom.Element
 
@@ -282,6 +283,27 @@ class MultiplerunRunConfiguration(project: Project, factory: ConfigurationFactor
     override fun getConfigurationEditor(): SettingsEditor<out RunConfiguration> {
         return MultiplerunRunConfigurationEditor(getProject())
     }
+
+    /**
+     * The "configured" mark for every saved Multiple Run instance. `RunConfiguration.getIcon()` is
+     * the SDK's per-INSTANCE icon hook - `RunManagerImpl`'s icon cache calls
+     * `settings.getConfiguration().getIcon()` directly, which is what backs the run/debug switcher
+     * dropdown, the toolbar Play/Debug widget and the leaf nodes of the "Edit Configurations" tree.
+     * The type-level icon (the "Multiple Run" category node in that same tree, and the entry in
+     * "Add New Configuration") comes from `MultiplerunConfigurationType.getIcon()` instead and is
+     * untouched by this override.
+     *
+     * Deliberately unconditional (NOT "only once it has child apps", despite that reading better
+     * matching a freshly-created empty stub): that cache stores whatever `getIcon()` first returns
+     * for a given configuration id and never recomputes it. On a real IDE the very first call can
+     * happen before `readExternal` finishes populating `runConfigurations` from the saved XML (some
+     * eager pass over the run configuration list), permanently locking in the "empty" icon for a
+     * config that in fact already has apps - confirmed by disassembling
+     * `RunConfigurationIconAndInvalidCache.get()` on a real installed build, not just the compile-time
+     * SDK. Any condition here would need to be based on data available synchronously at construction,
+     * which "has child apps" fundamentally isn't (it is deserialized state).
+     */
+    override fun getIcon(): Icon = MultiplerunIcons.Configured
 
     override fun readExternal(element: Element) {
         super.readExternal(element)
