@@ -5,6 +5,22 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [2.0.15] — "Lanes" empty state for the Multiple Run Monitor
+- **Feature:** when no process is running, the Multiple Run Monitor now shows the "Lanes" brand
+  illustration (dashed board + ghost lanes + an "add" affordance) with a bold title and a
+  secondary hint, instead of the table's plain single-line empty text. The graphic comes from
+  `brand/empty-state.svg`, trimmed down to just the artwork (its `<text>` lines and CSS
+  `@media (prefers-color-scheme: dark)` block don't survive IntelliJ's static SVG icon rasterizer)
+  and split into `icons/empty-state.svg`/`empty-state_dark.svg`, matching the light/dark pair
+  convention already used for `mark.svg`. The title and subtitle are real `JBLabel`s instead of
+  baked-into-the-SVG text, so they pick up the IDE's actual font and theme colors
+  (`UIUtil.getContextHelpForeground()` for the subtitle) automatically.
+- The monitor panel now swaps between the table and the empty-state panel via a `CardLayout`
+  (`MultiplerunMonitorPanel.setItemsKeepingSelection`), driven by whether the latest refresh
+  produced any rows - not by `JBTable`'s built-in empty text, which can only render a short line,
+  not a custom illustration.
+- 145/145 tests pass.
+
 ## [2.0.14] — Fix EDT threading crash when a child configuration needs editing first
 - **Fix (crash):** `MultiplerunRunnerState.checkRunConfiguration` calls
   `RunDialog.editConfiguration`/`Messages.showYesNoDialog` (modal Swing dialogs, EDT-only) whenever

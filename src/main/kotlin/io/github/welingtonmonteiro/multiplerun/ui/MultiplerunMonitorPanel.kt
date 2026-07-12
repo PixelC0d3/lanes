@@ -1,9 +1,11 @@
 package io.github.welingtonmonteiro.multiplerun.ui
 
 import java.awt.BorderLayout
+import java.awt.CardLayout
 import java.awt.Component
 import java.awt.Graphics
 import java.awt.Graphics2D
+import java.awt.GridBagLayout
 import java.awt.Point
 import java.awt.RenderingHints
 import java.awt.event.MouseAdapter
@@ -18,6 +20,8 @@ import java.util.TreeSet
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
+import javax.swing.Box
+import javax.swing.BoxLayout
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JLabel
@@ -67,10 +71,14 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.PopupHandler
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.SimpleListCellRenderer
+import com.intellij.ui.components.JBLabel
 import com.intellij.ui.content.Content
 import com.intellij.ui.table.TableView
 import com.intellij.util.ui.ColumnInfo
+import com.intellij.util.ui.JBFont
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
+import com.intellij.util.ui.UIUtil
 
 import io.github.welingtonmonteiro.multiplerun.MemoryHistory
 import io.github.welingtonmonteiro.multiplerun.MultiplerunConfigurationType
@@ -133,6 +141,10 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
     private val timer: Timer
     private val sampling = AtomicBoolean()
     private val multiplerunIcon: Icon
+
+    /** Swapped between the table and the "Lanes" empty-state illustration; see [CARD_TABLE]/[CARD_EMPTY]. */
+    private val cardLayout = CardLayout()
+    private val contentCards = JPanel(cardLayout)
 
     /** CPU time per pid at the previous sample - the baseline for the docker-style CPU %. */
     private var prevCpuSecondsByPid: Map<Long, Double> = emptyMap()
@@ -201,7 +213,6 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
             column("CPU %") { it.cpuPercent },
         )
         table = TableView(model)
-        table.getEmptyText().setText("No run configurations are running")
         // apply initial widths (and honor any hidden columns); all columns stay resizable
         applyColumnVisibility()
         // batch actions: the row actions operate on every selected row
@@ -240,7 +251,10 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
         val toolbar: ActionToolbar = ActionManager.getInstance().createActionToolbar("MultipleRunMonitor", toolbarGroup, false)
         toolbar.setTargetComponent(table)
         setToolbar(toolbar.getComponent())
-        setContent(ScrollPaneFactory.createScrollPane(table))
+        contentCards.add(ScrollPaneFactory.createScrollPane(table), CARD_TABLE)
+        contentCards.add(buildEmptyStatePanel(), CARD_EMPTY)
+        cardLayout.show(contentCards, CARD_EMPTY)
+        setContent(contentCards)
         PopupHandler.installPopupMenu(table, rowActions, "MultipleRunMonitorPopup")
         // double click on a row jumps to the console tab of that application
         table.addMouseListener(object : MouseAdapter() {
@@ -270,6 +284,34 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
         }
         timer.start()
         refresh()
+    }
+
+    /** The "Lanes" illustration + hint shown instead of the table while no process is running. */
+    private fun buildEmptyStatePanel(): JComponent {
+        val icon = JLabel(MultiplerunIcons.EmptyState)
+        icon.setAlignmentX(Component.CENTER_ALIGNMENT)
+
+        val title = JBLabel("No applications are being monitored")
+        title.setFont(JBFont.label().asBold())
+        title.setAlignmentX(Component.CENTER_ALIGNMENT)
+
+        val subtitle = JBLabel("Add an application or discover running processes to get started")
+        subtitle.setForeground(UIUtil.getContextHelpForeground())
+        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT)
+
+        val stack = JPanel()
+        stack.setOpaque(false)
+        stack.setLayout(BoxLayout(stack, BoxLayout.Y_AXIS))
+        stack.add(icon)
+        stack.add(Box.createVerticalStrut(JBUI.scale(16)))
+        stack.add(title)
+        stack.add(Box.createVerticalStrut(JBUI.scale(4)))
+        stack.add(subtitle)
+
+        // GridBagLayout with a single, unconstrained child centers it both ways for free
+        val wrapper = JPanel(GridBagLayout())
+        wrapper.add(stack)
+        return wrapper
     }
 
     /** All column header names, in model order. */
@@ -1092,6 +1134,7 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
     private fun setItemsKeepingSelection(rows: List<Row>) {
         val previouslySelected = table.getSelectedObjects()
         model.setItems(rows)
+        cardLayout.show(contentCards, if (rows.isEmpty()) CARD_EMPTY else CARD_TABLE)
         if (previouslySelected.isEmpty()) {
             return
         }
@@ -1298,6 +1341,10 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
 
     companion object {
         private const val REFRESH_INTERVAL_MS = 2000
+
+        /** [contentCards] card names - swapped between the table and the empty-state illustration. */
+        private const val CARD_TABLE = "table"
+        private const val CARD_EMPTY = "empty"
 
         /** Initial column widths, by model index; also reapplied when columns are shown/hidden. */
         private val PREFERRED_WIDTHS = intArrayOf(220, 110, 90, 70, 100, 80, 80, 160, 70, 120, 70)

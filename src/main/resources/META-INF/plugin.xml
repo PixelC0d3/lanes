@@ -48,6 +48,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.15</strong>:</p>
+        <ul>
+            <li>The Multiple Run Monitor now shows the new "Lanes" empty-state illustration instead
+                of a plain "No run configurations are running" line when nothing is being
+                monitored yet.</li>
+        </ul>
         <p><strong>2.0.14</strong>:</p>
         <ul>
             <li>Fix: running a group where a child configuration needed "Edit Configuration" first
