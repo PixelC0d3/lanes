@@ -5,6 +5,73 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [2.0.14] — Fix EDT threading crash when a child configuration needs editing first
+- **Fix (crash):** `MultiplerunRunnerState.checkRunConfiguration` calls
+  `RunDialog.editConfiguration`/`Messages.showYesNoDialog` (modal Swing dialogs, EDT-only) whenever
+  a child configuration can't run as-is - not registered/valid yet, or has "Edit configuration
+  before run" checked. `checkRunConfiguration` is reached from `runConfigurations()`, and the
+  one-by-one delay/wait chaining deliberately re-enters `runConfigurations()` from a background
+  pooled thread (`ApplicationManager.executeOnPooledThread`) so the wait doesn't freeze the IDE.
+  Combined, that meant the dialog call could happen off the EDT, throwing
+  `RuntimeExceptionWithAttachments: Access is allowed from Event Dispatch Thread (EDT) only` and
+  aborting the run instead of prompting the user to fix the configuration. This is pre-existing
+  code, unrelated to the Kotlin migration or the recent rename/branding work - it only manifests
+  for a configuration that genuinely can't run yet, so it went unnoticed until now. Fixed by
+  wrapping just the dialog logic in `ApplicationManager.invokeAndWait { ... }`, which blocks
+  whichever thread called it (background or EDT) until the dialog finishes on the UI thread.
+- 145/145 tests pass.
+
+## [2.0.13] — Fix two regressions found in manual testing of 2.0.12
+- **Fix (crash):** creating, applying, or running a Multiple Run configuration could throw
+  `NullPointerException: Parameter specified as non-null is null` from
+  `MultiplerunRunConfigurationEditor.resetEditorFrom`/`applyEditorTo`. Root cause: the 2.0.8
+  Kotlin migration declared these override parameters non-null based on the SDK's own `@NotNull`
+  annotation on `SettingsEditor<Settings>`, but `Settings` has a non-null upper bound - Kotlin
+  won't let the override accept a nullable parameter *and* won't let the class implement
+  `SettingsEditor<MultiplerunRunConfiguration?>` either (confirmed empirically, both rejected by
+  the compiler). The platform's composite `SettingsEditor` wrapper chain can still call these with
+  a raw null at the JVM level while a brand-new configuration entry is settling, bypassing
+  Kotlin's compile-time guarantee the same way a Java caller always could - which is exactly why
+  the *original*, decade-old Java implementation declared this parameter `@Nullable` and handled
+  it gracefully instead of trusting the type system. Restored that behavior: added
+  `-Xno-param-assertions` to the Kotlin compiler options (`build.gradle`) so Kotlin stops
+  auto-inserting `Intrinsics.checkNotNullParameter` on this parameter, and put back the original's
+  explicit null checks. Verified by disassembling the compiled class - the null-check bytecode now
+  matches the original Java exactly, no `Intrinsics` call.
+- **Fix (visual):** the Multiple Run configuration type icon rendered at 2.5x its intended size
+  everywhere it appeared (the "Add New Configuration" list, the run/debug configuration switcher) -
+  `MultiplerunIcons.Mark` (added in 2.0.12) accidentally reused `pluginIcon.svg`, which must
+  declare `width="40" height="40"` for the Settings > Plugins list; `Icon.getIconWidth()`/
+  `getIconHeight()` read that declared size, not the SVG's `viewBox`. Added a dedicated
+  `icons/mark.svg` (+ `mark_dark.svg`) declaring the correct 16x16 size, same artwork.
+- Not fixed, working as documented: the banner image in the Marketplace description (added in
+  2.0.12) shows broken when testing a local/unmerged build - it's loaded from a
+  `raw.githubusercontent.com` URL pointing at `mainline`, which only resolves once this branch is
+  actually merged there.
+
+## [2.0.12] — New visual identity ("Lanes")
+- New icon set replacing the generic platform (`AllIcons.*`) icons everywhere the plugin shows its
+  own branding or an action that already existed: the plugin icon, the Multiple Run configuration
+  type icon (now reused from `pluginIcon.svg` instead of `AllIcons.Actions.Rerun`), the Monitor
+  tool window icon, and the Refresh / Restart / Restart All / Stop / Stop Multiple Run / Show
+  Columns / Switch Environment / Memory Analysis actions, the docker-compose import button, and
+  the Processes/Logs tab icons. New `MultiplerunIcons.kt` holds the icon constants (same pattern as
+  the platform's own `AllIcons`), loaded via `IconLoader` from `src/main/resources/icons/`.
+- Deliberately **not** swapped: actions with no clear match in the new icon set (Force Kill, Kill
+  Process on Port, env profile/preset remove/save, log Clear/Scroll, the standalone-app and
+  fallback icons) - forcing a mismatched icon would be worse than keeping the platform default.
+- Moved the non-runtime brand assets (`BRAND_GUIDELINES.md`, `banner.png`/`.svg`, `logo.svg`,
+  `spinner.svg`, `empty-state.svg`, `preview.html`) out of `src/main/resources/META-INF/` into
+  `/brand` at the repo root, so they document the project without shipping inside the plugin
+  `.zip`. `spinner.svg` is SMIL-animated (`<animate>`) - IntelliJ's `IconLoader` rasterizes SVG to
+  a static frame, so it isn't usable as a real Swing `Icon`; it stays a docs/preview-only asset.
+- Docs: added the new logo to the top of the README and the wiki's `Home.md` (the wiki's first
+  embedded image), and linked `brand/BRAND_GUIDELINES.md` from the README for UI contributors.
+  Also fixed a stale claim in the wiki's `Home.md` ("existing configurations keep working") left
+  over from before the 2.0.11 id rename - same fix already applied to this file and `plugin.xml`
+  in 2.0.11, just missed in the wiki back then since it's a separate repository.
+- No functional change - actions, shortcuts and behavior are unchanged, only their icons.
+
 ## [2.0.11] — Internal: finish the Multirun → Multiplerun rename
 - Renamed every one of the fork's own internal identifiers from "Multirun" to "Multiplerun":
   class/file names (`MultirunRunConfiguration` → `MultiplerunRunConfiguration`, etc.), the

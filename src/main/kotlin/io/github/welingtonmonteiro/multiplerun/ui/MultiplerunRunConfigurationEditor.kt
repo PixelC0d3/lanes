@@ -25,6 +25,7 @@ import com.intellij.ui.table.TableView
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 import io.github.welingtonmonteiro.multiplerun.ComposeImporter
+import io.github.welingtonmonteiro.multiplerun.MultiplerunIcons
 import io.github.welingtonmonteiro.multiplerun.MultiplerunRunConfiguration
 import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper
 
@@ -96,8 +97,22 @@ class MultiplerunRunConfigurationEditor(private val project: Project) : Settings
     /** True while a preset is being applied or the combo repopulated, to ignore its own events. */
     private var applyingPreset = false
 
-    override fun resetEditorFrom(multirunRunConfiguration: MultiplerunRunConfiguration) {
-        this.configuration = multirunRunConfiguration
+    // SettingsEditor<Settings>'s Settings type parameter has a non-null upper bound, so this
+    // override cannot be declared with a nullable parameter (Kotlin rejects both a nullable
+    // parameter type here and a nullable SettingsEditor<MultiplerunRunConfiguration?> type
+    // argument on the class itself - only the exact non-null signature satisfies the override).
+    // The platform's composite SettingsEditor wrapper chain can still call this with a raw null
+    // at the JVM level regardless (bypassing Kotlin's compile-time guarantee, the same way a
+    // Java caller always could) while a brand-new "Add New Configuration" entry is still
+    // settling - the original, decade-old Java implementation took @Nullable here for that
+    // reason. -Xno-param-assertions (build.gradle) disables Kotlin's usual automatic
+    // Intrinsics.checkNotNullParameter for this parameter so the explicit check below can run
+    // instead of an immediate NPE.
+    @Suppress("SENSELESS_COMPARISON")
+    override fun resetEditorFrom(multiplerunRunConfiguration: MultiplerunRunConfiguration) {
+        if (multiplerunRunConfiguration != null) {
+            this.configuration = multiplerunRunConfiguration
+        }
 
         val configuration = this.configuration ?: return
 
@@ -137,10 +152,14 @@ class MultiplerunRunConfigurationEditor(private val project: Project) : Settings
         delayTime.setEnabled(startOneByOne.isSelected())
     }
 
-    override fun applyEditorTo(multirunRunConfiguration: MultiplerunRunConfiguration) {
-        multirunRunConfiguration.setEnvData(environmentVariables.getEnvData())
+    // See the comment on resetEditorFrom for why this parameter is declared non-null but still
+    // explicitly checked.
+    @Suppress("SENSELESS_COMPARISON")
+    override fun applyEditorTo(multiplerunRunConfiguration: MultiplerunRunConfiguration) {
+        if (multiplerunRunConfiguration == null) return
+        multiplerunRunConfiguration.setEnvData(environmentVariables.getEnvData())
         val activeEnvFile = envFileComboText()
-        multirunRunConfiguration.setEnvFilePath(activeEnvFile)
+        multiplerunRunConfiguration.setEnvFilePath(activeEnvFile)
         val envProfiles = ArrayList<String>()
         for (i in 0 until envFileCombo.getItemCount()) {
             envProfiles.add(envFileCombo.getItemAt(i))
@@ -149,23 +168,23 @@ class MultiplerunRunConfigurationEditor(private val project: Project) : Settings
             // a path typed by hand becomes a profile too
             envProfiles.add(activeEnvFile)
         }
-        multirunRunConfiguration.setEnvProfiles(envProfiles)
-        multirunRunConfiguration.setSaveOutputDir(saveOutputDir.getText())
-        multirunRunConfiguration.setMemoryLimits(memoryLimits)
-        multirunRunConfiguration.setDisabledApps(disabledApps)
-        multirunRunConfiguration.setReadyConditions(readyConditions)
-        multirunRunConfiguration.setAppEnvFiles(appEnvFiles)
-        multirunRunConfiguration.setPresets(presets)
-        multirunRunConfiguration.setReuseTabs(reuseTabs.isSelected())
-        multirunRunConfiguration.setReuseTabsWithFailure(reuseTabsWithFailure.isSelected())
-        multirunRunConfiguration.setStartOneByOne(startOneByOne.isSelected())
-        multirunRunConfiguration.setRestartRunning(restartRunning.isSelected())
-        multirunRunConfiguration.setMarkFailedProcess(markFailedProcess.isSelected())
-        multirunRunConfiguration.setHideSuccessProcess(hideSuccessProcess.isSelected())
-        multirunRunConfiguration.setRestartOnCrash(restartOnCrashBox.isSelected())
-        multirunRunConfiguration.setMemAlertThreshold(memThresholdSpinner.getValue() as Int)
-        multirunRunConfiguration.setMemLimitRestart(memLimitActionCombo.getSelectedIndex() == 1)
-        multirunRunConfiguration.setCpuAlertThreshold(cpuAlertSpinner.getValue() as Int)
+        multiplerunRunConfiguration.setEnvProfiles(envProfiles)
+        multiplerunRunConfiguration.setSaveOutputDir(saveOutputDir.getText())
+        multiplerunRunConfiguration.setMemoryLimits(memoryLimits)
+        multiplerunRunConfiguration.setDisabledApps(disabledApps)
+        multiplerunRunConfiguration.setReadyConditions(readyConditions)
+        multiplerunRunConfiguration.setAppEnvFiles(appEnvFiles)
+        multiplerunRunConfiguration.setPresets(presets)
+        multiplerunRunConfiguration.setReuseTabs(reuseTabs.isSelected())
+        multiplerunRunConfiguration.setReuseTabsWithFailure(reuseTabsWithFailure.isSelected())
+        multiplerunRunConfiguration.setStartOneByOne(startOneByOne.isSelected())
+        multiplerunRunConfiguration.setRestartRunning(restartRunning.isSelected())
+        multiplerunRunConfiguration.setMarkFailedProcess(markFailedProcess.isSelected())
+        multiplerunRunConfiguration.setHideSuccessProcess(hideSuccessProcess.isSelected())
+        multiplerunRunConfiguration.setRestartOnCrash(restartOnCrashBox.isSelected())
+        multiplerunRunConfiguration.setMemAlertThreshold(memThresholdSpinner.getValue() as Int)
+        multiplerunRunConfiguration.setMemLimitRestart(memLimitActionCombo.getSelectedIndex() == 1)
+        multiplerunRunConfiguration.setCpuAlertThreshold(cpuAlertSpinner.getValue() as Int)
         var delayTimeSeconds = 0.0
         val delayText = delayTime.getText()
         if (!delayText.isNullOrEmpty()) {
@@ -177,7 +196,7 @@ class MultiplerunRunConfigurationEditor(private val project: Project) : Settings
                 // well ignore if the value is not a number
             }
         }
-        multirunRunConfiguration.setDelayTime(delayTimeSeconds)
+        multiplerunRunConfiguration.setDelayTime(delayTimeSeconds)
 
         // NOTE: never stopEditing() here. This method also runs for dialog validation on every
         // user interaction, so closing the cell editor from it made the "Memory limit" and
@@ -229,7 +248,7 @@ class MultiplerunRunConfigurationEditor(private val project: Project) : Settings
         myDecorator.addExtraAction(object : DumbAwareAction(
             "Import from docker-compose.yml…",
             "Apply a docker-compose.yml to the run configurations whose name matches a service",
-            AllIcons.Actions.Download) {
+            MultiplerunIcons.Docker) {
             override fun actionPerformed(e: AnActionEvent) {
                 importFromCompose()
             }

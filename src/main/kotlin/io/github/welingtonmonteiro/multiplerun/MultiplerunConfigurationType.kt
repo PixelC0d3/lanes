@@ -3,7 +3,6 @@ package io.github.welingtonmonteiro.multiplerun
 import com.intellij.execution.configurations.ConfigurationType
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.configurations.SimpleConfigurationType
-import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NotNullLazyValue
 
@@ -13,7 +12,7 @@ class MultiplerunConfigurationType : SimpleConfigurationType(
     // installed together. Existing configurations saved under the old "Multirun" id will need to
     // be recreated.
     "Multiplerun", "Multiple Run", "Run multiple run configurations at once",
-    NotNullLazyValue.createValue { AllIcons.Actions.Rerun }
+    NotNullLazyValue.createValue { MultiplerunIcons.Mark }
 ), ConfigurationType {
 
     override fun createTemplateConfiguration(project: Project): RunConfiguration {

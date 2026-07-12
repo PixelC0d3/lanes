@@ -1,5 +1,4 @@
-Multiple Run
-============
+![Multiple Run](brand/logo.svg)
 
 > **Group, launch and control multiple Run Configurations from a single click — with the
 > environment, ordering and monitoring that a real multi-service workflow needs.**
@@ -334,7 +333,9 @@ The plugin version is managed from `build.gradle` (`version = '…'`) and inject
 
 GitHub repository: [WelingtonMonteiro/multiple_run](https://github.com/WelingtonMonteiro/multiple_run)
 
-Contributions, feature requests and bug reports are always welcome.
+Contributions, feature requests and bug reports are always welcome. Working on UI? See
+[brand/BRAND_GUIDELINES.md](brand/BRAND_GUIDELINES.md) for the color palette, iconography rules
+and voice/tone this project follows.
 
 ## ☕ Support This Project
 
