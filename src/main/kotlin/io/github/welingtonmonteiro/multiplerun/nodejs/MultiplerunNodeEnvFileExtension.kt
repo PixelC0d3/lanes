@@ -1,5 +1,7 @@
 package io.github.welingtonmonteiro.multiplerun.nodejs
 
+import com.intellij.execution.configuration.EnvironmentVariablesData
+import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.javascript.nodejs.execution.AbstractNodeTargetRunProfile
 import com.intellij.javascript.nodejs.execution.NodeTargetRun
@@ -10,6 +12,7 @@ import com.intellij.openapi.options.SettingsEditor
 import org.jdom.Element
 
 import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper
+import io.github.welingtonmonteiro.multiplerun.StandaloneEnvRegistry
 
 /**
  * Brings Multiple Run's `.env`-file loading to every Node-based run configuration
@@ -32,6 +35,10 @@ class MultiplerunNodeEnvFileExtension : AbstractNodeRunConfigurationExtension() 
     override fun isApplicableFor(configuration: AbstractNodeTargetRunProfile): Boolean = true
 
     override fun getEditorTitle(): String = "Env Files"
+
+    // Render the env-file field inline in the main "Configuration" tab (right with the other run
+    // settings) instead of as a separate tab - the user asked for it next to "Environment variables".
+    override fun shouldExtendMainEditor(): Boolean = true
 
     override fun <P : AbstractNodeTargetRunProfile> createEditor(configuration: P): SettingsEditor<P> =
         NodeEnvFileEditor()
@@ -56,23 +63,37 @@ class MultiplerunNodeEnvFileExtension : AbstractNodeRunConfigurationExtension() 
         private val environment: ExecutionEnvironment,
     ) : NodeRunConfigurationLaunchSession() {
 
+        @Volatile
+        private var loadedEnv: EnvironmentVariablesData = EnvironmentVariablesData.DEFAULT
+        @Volatile
+        private var activeFileName: String? = null
+        @Volatile
+        private var processHandler: ProcessHandler? = null
+
         override fun addNodeOptionsTo(targetRun: NodeTargetRun) {
             val active = NodeEnvFileSettings.of(configuration).active
-            if (active.isBlank()) {
-                return
+            if (active.isNotBlank()) {
+                // File variables are the base; whatever the configuration already resolved onto the
+                // run (its own "Environment variables" field, pass-parent, ...) wins on conflicts -
+                // same precedence Multiple Run groups use. See RunConfigurationHelper.withEnvFile.
+                targetRun.envData = RunConfigurationHelper.withEnvFile(targetRun.envData, active, environment.project)
+                activeFileName = RunConfigurationHelper.envFileDisplayName(active)
             }
-            // File variables are the base; whatever the configuration already resolved onto the run
-            // (its own "Environment variables" field, pass-parent, ...) wins on conflicts - same
-            // precedence Multiple Run groups use. See RunConfigurationHelper.withEnvFile.
-            val merged = RunConfigurationHelper.withEnvFile(targetRun.envData, active, environment.project)
-            targetRun.envData = merged
+            // capture the final env so the monitor can show what this standalone app loaded (even a
+            // Node app with no .env file, so its Env column offers the "view variables" detail)
+            loadedEnv = targetRun.envData
+        }
+
+        override fun onProcessCreated(processHandler: ProcessHandler) {
+            this.processHandler = processHandler
+            StandaloneEnvRegistry.register(processHandler, activeFileName, loadedEnv.envs, loadedEnv.isPassParentEnvs)
         }
 
         override fun getRunDebugActions(): List<AnAction> {
             if (NodeEnvFileSettings.of(configuration).profiles.size < 2) {
                 return emptyList()
             }
-            return listOf(SwitchNodeEnvAction(configuration, environment))
+            return listOf(SwitchNodeEnvAction(configuration, environment) { processHandler })
         }
     }
 }

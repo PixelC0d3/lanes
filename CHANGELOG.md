@@ -9,14 +9,22 @@ Uninstall the original plugin before installing this one.
 - **Feature:** the `.env`-file loading that used to exist only inside a Multiple Run group is now
   available on any Node-based run configuration (Node.js, npm/pnpm/yarn, Karma, Jest, Mocha —
   anything that is an `AbstractNodeTargetRunProfile`), so running such an app directly with the
-  IDE's own Play/Debug loads the file too. A new **"Env Files"** tab on the run configuration editor
-  lets you register one or more `.env` files as profiles and pick the active one. Precedence is the
-  same as a Multiple Run group: the file's variables are the base, the configuration's own
-  "Environment variables" field wins on conflicts, and running through Multiple Run still applies
-  the group override on top — all unchanged.
+  IDE's own Play/Debug loads the file too. An **"Environment file (profile)"** field is added to the
+  run configuration's **Configuration** tab (inline, with the other run settings) where you register
+  one or more `.env` files as profiles and pick the active one. Precedence is the same as a Multiple
+  Run group: the file's variables are the base, the configuration's own "Environment variables"
+  field wins on conflicts, and running through Multiple Run still applies the group override on top —
+  all unchanged.
 - **Feature:** when more than one `.env` profile is configured, a **switch button** (the Multiple
-  Run env icon) appears on the run toolbar of that app, next to Rerun/Stop — pick another profile
-  and it re-runs with it, so swapping environments is one click.
+  Run env icon) appears on the run toolbar of that app, next to Rerun/Stop. It opens a movable dialog
+  listing the profiles by file name (full path as tooltip), the active one marked "(active)" — the
+  same style as the monitor's Switch Environment dialog — and **restarts that same run** with the
+  chosen file (it does not start a second instance).
+- **Feature:** the Multiple Run Monitor's **Env column now covers standalone apps** too: an app
+  started with a plain Play/Debug shows the active `.env` file name when one is loaded, and its Env
+  cell is clickable to view the variables actually loaded into it — the same detail viewer grouped
+  apps already have. The standalone app keeps its own icon and stays ungrouped; only the Env column
+  is enriched.
 - This integration is an **optional module**: it is wired via `<depends optional="true">JavaScript`,
   so it only lights up in IDEs that have the JavaScript plugin (WebStorm, IntelliJ IDEA Ultimate,
   …). In IDEs without it (IDEA Community, PyCharm Community, …) the core plugin loads and works

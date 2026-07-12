@@ -88,6 +88,7 @@ import io.github.welingtonmonteiro.multiplerun.MultiplerunRunConfiguration
 import io.github.welingtonmonteiro.multiplerun.MultiplerunRunnerState
 import io.github.welingtonmonteiro.multiplerun.ProcessStatsSampler
 import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper
+import io.github.welingtonmonteiro.multiplerun.StandaloneEnvRegistry
 import io.github.welingtonmonteiro.multiplerun.StopRunningMultiplerunConfigurationsAction
 
 /**
@@ -429,6 +430,13 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
         val meta = row.meta
         if (meta != null && meta.loadedEnv.isNotEmpty()) {
             EnvVarsDialog(project, row.name, row.envFileName ?: "-", meta.includeSystemEnv, meta.loadedEnv).show()
+            return
+        }
+        // standalone app: the variables the Node env-file module loaded into it
+        val handler = row.handler ?: return
+        val standalone = StandaloneEnvRegistry.find(handler) ?: return
+        if (standalone.loadedEnv.isNotEmpty()) {
+            EnvVarsDialog(project, row.name, standalone.envFileName, standalone.includeSystemEnv, standalone.loadedEnv).show()
         }
     }
 
@@ -1202,7 +1210,9 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
             val icon: Icon = if (live != null) multiplerunIcon
                              else snapshot.icon ?: AllIcons.RunConfigurations.Application
             val multiplerunName = meta?.multiplerunName ?: "-"
-            val envFileName = meta?.envFileName ?: "-"
+            // grouped app: its Multiple Run env; standalone app: the env the plugin loaded into it
+            // (active .env file name, or "-" when it runs with only its own variables)
+            val envFileName = meta?.envFileName ?: StandaloneEnvRegistry.find(snapshot.handler)?.envFileName ?: "-"
             val memoryLimitMb = meta?.memoryLimitMb
 
             val treePorts = TreeSet<Int>()
@@ -1391,7 +1401,12 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
         /** True when the row carries a Multiple Run environment that can be shown in the Env viewer. */
         private fun hasLoadedEnv(row: Row): Boolean {
             val meta = row.meta
-            return meta != null && meta.loadedEnv.isNotEmpty()
+            if (meta != null && meta.loadedEnv.isNotEmpty()) {
+                return true
+            }
+            // standalone app (no group meta): env captured by the Node env-file module, if any
+            val handler = row.handler ?: return false
+            return StandaloneEnvRegistry.find(handler)?.loadedEnv?.isNotEmpty() == true
         }
 
         /** The distinct env profiles offered for switching: only groups with more than one qualify. */

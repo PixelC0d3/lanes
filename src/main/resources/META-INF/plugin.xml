@@ -51,11 +51,15 @@
         <p><strong>2.1.0</strong>:</p>
         <ul>
             <li>New: load a .env file on a plain Play/Debug, not only through Multiple Run. Node-based
-                run configurations (Node.js, npm, Karma, Jest, Mocha, ...) get an "Env Files" tab
-                where you register one or more .env files and pick the active one. Variables from
-                the configuration's own "Environment variables" field still win on conflicts.</li>
+                run configurations (Node.js, npm, Karma, Jest, Mocha, ...) get an "Environment file
+                (profile)" field on the Configuration tab where you register one or more .env files
+                and pick the active one. Variables from the configuration's own "Environment
+                variables" field still win on conflicts.</li>
             <li>New: when more than one .env profile is set, a switch button appears on that app's
-                run toolbar (next to Rerun/Stop) - pick another profile and it re-runs with it.</li>
+                run toolbar (next to Rerun/Stop) - it opens a movable dialog listing the files by
+                name (active one marked) and restarts that same run with the one you pick.</li>
+            <li>New: the Multiple Run Monitor's Env column now also shows the .env of standalone apps
+                (started with a plain Play/Debug) and lets you click to view the variables loaded.</li>
             <li>Only active in IDEs that have the JavaScript plugin (WebStorm, IntelliJ IDEA
                 Ultimate, ...); an optional module, so the core plugin is unchanged everywhere else,
                 and uninstalling removes the feature completely.</li>
