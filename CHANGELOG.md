@@ -5,6 +5,30 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [2.1.0] — Load .env files on a plain Play/Debug (Node-based run configurations)
+- **Feature:** the `.env`-file loading that used to exist only inside a Multiple Run group is now
+  available on any Node-based run configuration (Node.js, npm/pnpm/yarn, Karma, Jest, Mocha —
+  anything that is an `AbstractNodeTargetRunProfile`), so running such an app directly with the
+  IDE's own Play/Debug loads the file too. A new **"Env Files"** tab on the run configuration editor
+  lets you register one or more `.env` files as profiles and pick the active one. Precedence is the
+  same as a Multiple Run group: the file's variables are the base, the configuration's own
+  "Environment variables" field wins on conflicts, and running through Multiple Run still applies
+  the group override on top — all unchanged.
+- **Feature:** when more than one `.env` profile is configured, a **switch button** (the Multiple
+  Run env icon) appears on the run toolbar of that app, next to Rerun/Stop — pick another profile
+  and it re-runs with it, so swapping environments is one click.
+- This integration is an **optional module**: it is wired via `<depends optional="true">JavaScript`,
+  so it only lights up in IDEs that have the JavaScript plugin (WebStorm, IntelliJ IDEA Ultimate,
+  …). In IDEs without it (IDEA Community, PyCharm Community, …) the core plugin loads and works
+  exactly as before. Uninstalling the plugin removes the tab, the button and the launch hook
+  entirely; the small settings block left in a run configuration's XML is then simply ignored.
+- **Build:** the compile target moved from IntelliJ IDEA Community to **Ultimate 2023.3** (which
+  bundles the JavaScript + NodeJS plugins) so the Node run-config APIs are available at compile
+  time. This does not change which IDEs the plugin installs in — that is still driven by
+  since/untilBuild and the `<depends>` — and building Ultimate needs no license. The settings are
+  stored per configuration and survive editor `clone()` via copyable user data.
+- Settings-model tests added; full suite green.
+
 ## [2.0.15] — "Lanes" empty state for the Multiple Run Monitor
 - **Feature:** when no process is running, the Multiple Run Monitor now shows the "Lanes" brand
   illustration (dashed board + ghost lanes + an "add" affordance) with a bold title and a
