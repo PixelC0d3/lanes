@@ -3,7 +3,28 @@
 All notable changes to **Multiple Run** are documented here. Newest first.
 
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
-Uninstall the original plugin before installing this one (existing configurations keep working).
+Uninstall the original plugin before installing this one.
+
+## [2.0.11] — Internal: finish the Multirun → Multiplerun rename
+- Renamed every one of the fork's own internal identifiers from "Multirun" to "Multiplerun":
+  class/file names (`MultirunRunConfiguration` → `MultiplerunRunConfiguration`, etc.), the
+  `multirun.iml` module file, and every log message / code comment that referred to this plugin
+  ("Multirun" → "Multiple Run" in user-facing text, "multirun" → "multiplerun" in the few lowercase
+  runtime identifiers, e.g. `ProgramRunner.getRunnerId()`).
+- **Breaking for configurations saved before this release**: the persisted run configuration type
+  id changed from `"Multirun"` to `"Multiplerun"`. It had originally been kept as `"Multirun"` on
+  purpose, for compatibility with configurations saved by the original third-party Multirun plugin
+  - but since this fork has no real users yet, and keeping the same id risks a type-id collision if
+  both plugins are ever installed together, the id was changed now while there is nothing to break.
+  Run configurations saved with an older version of this plugin need to be recreated.
+- Docs: updated the README and the Marketplace description to say "Multiple Run" instead of
+  "Multirun" wherever the text refers to this plugin. Left every genuine reference to the original,
+  third-party Multirun plugin by Ruslan Khmeliuk untouched (credit line, historical change-notes
+  entries, the id-collision explanation above).
+- Added the `foojay-resolver-convention` Gradle plugin (`settings.gradle`) so the required Java 17
+  toolchain can be auto-downloaded when it isn't already installed locally.
+- Verified with a clean build: 145/145 tests pass, 0 failures; the packaged plugin jar has zero
+  classes left with a stray "Multirun"-named symbol.
 
 ## [2.0.10] — Docs: README revamp + support link
 - Reorganized the README's feature sections with short emoji labels for faster scanning, added a

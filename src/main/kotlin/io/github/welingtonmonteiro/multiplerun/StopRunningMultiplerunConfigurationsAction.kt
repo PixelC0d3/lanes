@@ -14,11 +14,11 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 
 /**
- * The action to stop the running multirun configurations.
+ * The action to stop the running Multiple Run configurations.
  *
  * @author Ruslan Khmelyuk
  */
-class StopRunningMultirunConfigurationsAction : AnAction() {
+class StopRunningMultiplerunConfigurationsAction : AnAction() {
 
     companion object {
         /**
@@ -28,10 +28,10 @@ class StopRunningMultirunConfigurationsAction : AnAction() {
          */
         const val ACTION_ID = "MultipleRun.StopRunning"
 
-        private val LOG = Logger.getInstance(StopRunningMultirunConfigurationsAction::class.java)
+        private val LOG = Logger.getInstance(StopRunningMultiplerunConfigurationsAction::class.java)
     }
 
-    /** Processes started by Multirun, grouped by project and by the Multirun configuration that started them. */
+    /** Processes started by Multiple Run, grouped by project and by the configuration that started them. */
     private val processes = ConcurrentHashMap<Project, ConcurrentHashMap<String, MutableList<ProcessHandler>>>()
     private val stopStartingConfigurations = AtomicBoolean(false)
     private val startingCounter = AtomicInteger(0)
@@ -89,9 +89,9 @@ class StopRunningMultirunConfigurationsAction : AnAction() {
     }
 
     /**
-     * Stops the still-running processes started earlier by the given Multirun configuration
+     * Stops the still-running processes started earlier by the given Multiple Run configuration
      * and returns them, so the caller can wait for their termination. Used by the restart
-     * behavior; does not raise the stop flag, so a starting Multirun is not interrupted.
+     * behavior; does not raise the stop flag, so a starting Multiple Run is not interrupted.
      */
     fun stopProcessesOf(project: Project, configurationName: String): List<ProcessHandler> {
         val byConfiguration = processes[project] ?: return emptyList()
@@ -146,7 +146,7 @@ class StopRunningMultirunConfigurationsAction : AnAction() {
 
     fun canContinueStartingConfigurations(): Boolean = !stopStartingConfigurations.get()
 
-    fun isStopMultirunTriggered(): Boolean = stopStartingConfigurations.get()
+    fun isStopMultiplerunTriggered(): Boolean = stopStartingConfigurations.get()
 
     // TODO - move to some component
 

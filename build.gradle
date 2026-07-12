@@ -8,7 +8,7 @@ plugins {
 }
 
 group = 'io.github.welingtonmonteiro'
-version = '2.0.10'
+version = '2.0.11'
 
 repositories {
     mavenCentral()

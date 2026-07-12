@@ -234,15 +234,15 @@ class RunConfigurationHelperTest {
 
     @Test
     fun delayAcceptsBothDecimalSeparators() {
-        assertEquals(-1.0, MultirunRunConfiguration.parseDelay("-1,0"), 0.0001)
-        assertEquals(-1.0, MultirunRunConfiguration.parseDelay("-1.0"), 0.0001)
-        assertEquals(0.5, MultirunRunConfiguration.parseDelay("0,5"), 0.0001)
-        assertEquals(0.5, MultirunRunConfiguration.parseDelay("0.5"), 0.0001)
+        assertEquals(-1.0, MultiplerunRunConfiguration.parseDelay("-1,0"), 0.0001)
+        assertEquals(-1.0, MultiplerunRunConfiguration.parseDelay("-1.0"), 0.0001)
+        assertEquals(0.5, MultiplerunRunConfiguration.parseDelay("0,5"), 0.0001)
+        assertEquals(0.5, MultiplerunRunConfiguration.parseDelay("0.5"), 0.0001)
     }
 
     @Test(expected = NumberFormatException::class)
     fun delayRejectsNonNumericInput() {
-        MultirunRunConfiguration.parseDelay("abc")
+        MultiplerunRunConfiguration.parseDelay("abc")
     }
 
     // --- environment profiles (env file dropdown) ------------------------------------------
@@ -253,9 +253,9 @@ class RunConfigurationHelperTest {
         val element = Element("configuration")
         // a null entry is intentional here: writeEnvProfiles must tolerate it like a Java caller would
         val profilesWithNull = listOf("/envs/.local.env", "../eparts-tools/.ede.env", "", null) as List<String>
-        MultirunRunConfiguration.writeEnvProfiles(element, profilesWithNull)
+        MultiplerunRunConfiguration.writeEnvProfiles(element, profilesWithNull)
 
-        val read = MultirunRunConfiguration.readEnvProfiles(element)
+        val read = MultiplerunRunConfiguration.readEnvProfiles(element)
 
         assertEquals("blank entries must be dropped on write",
                      listOf("/envs/.local.env", "../eparts-tools/.ede.env"), read)
@@ -264,9 +264,9 @@ class RunConfigurationHelperTest {
     @Test
     fun envProfilesReadSkipsDuplicatesAndBlanks() {
         val element = Element("configuration")
-        MultirunRunConfiguration.writeEnvProfiles(element, listOf("/a/.env", "/a/.env", "  "))
+        MultiplerunRunConfiguration.writeEnvProfiles(element, listOf("/a/.env", "/a/.env", "  "))
 
-        assertEquals(listOf("/a/.env"), MultirunRunConfiguration.readEnvProfiles(element))
+        assertEquals(listOf("/a/.env"), MultiplerunRunConfiguration.readEnvProfiles(element))
     }
 
     // --- parseReadyCondition (docker-compose-like readiness gate) ---------------------------

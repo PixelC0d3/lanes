@@ -42,7 +42,7 @@ import com.intellij.ui.content.Content
 /**
  * @author Ruslan Khmelyuk
  */
-class MultirunRunnerState(
+class MultiplerunRunnerState(
     private val runConfigurations: List<RunConfiguration>,
     private val startOneByOne: Boolean,
     private val delayTime: Double,
@@ -78,23 +78,23 @@ class MultirunRunnerState(
     /** Per-app env file overriding the group environment for that app, keyed by app name. */
     private val appEnvFiles: Map<String, String> = appEnvFiles ?: emptyMap()
 
-    private val stopRunningMultirunConfiguration: StopRunningMultirunConfigurationsAction =
+    private val stopRunningMultiplerunConfiguration: StopRunningMultiplerunConfigurationsAction =
         ActionManager.getInstance()
-            .getAction(StopRunningMultirunConfigurationsAction.ACTION_ID) as StopRunningMultirunConfigurationsAction
+            .getAction(StopRunningMultiplerunConfigurationsAction.ACTION_ID) as StopRunningMultiplerunConfigurationsAction
 
     /** envData with the env file applied under it; recomputed on every run so file edits are picked up. */
     @Volatile
     private var effectiveEnvData: EnvironmentVariablesData = this.envData
 
     override fun execute(executor: Executor, programRunner: ProgramRunner<*>): ExecutionResult? {
-        stopRunningMultirunConfiguration.beginStartingConfigurations()
+        stopRunningMultiplerunConfiguration.beginStartingConfigurations()
         ApplicationManager.getApplication().executeOnPooledThread {
             // read the env file fresh on every run (file IO, so off the EDT)
             effectiveEnvData = RunConfigurationHelper.withEnvFile(envData, envFilePath, project)
             if (restartRunning) {
-                // like the built-in Compound configuration: stop what this Multirun started
+                // like the built-in Compound configuration: stop what this Multiple Run started
                 // before and only then start again, so ports/resources are released
-                waitForTermination(stopRunningMultirunConfiguration.stopProcessesOf(project, configurationName))
+                waitForTermination(stopRunningMultiplerunConfiguration.stopProcessesOf(project, configurationName))
             }
             runConfigurations(executor, runConfigurations, 0)
         }
@@ -104,11 +104,11 @@ class MultirunRunnerState(
 
     private fun runConfigurations(executor: Executor, runConfigurations: List<RunConfiguration>, index: Int) {
         if (index >= runConfigurations.size) {
-            stopRunningMultirunConfiguration.doneStaringConfigurations()
+            stopRunningMultiplerunConfiguration.doneStaringConfigurations()
             return
         }
-        if (!stopRunningMultirunConfiguration.canContinueStartingConfigurations()) {
-            stopRunningMultirunConfiguration.doneStaringConfigurations()
+        if (!stopRunningMultiplerunConfiguration.canContinueStartingConfigurations()) {
+            stopRunningMultiplerunConfiguration.doneStaringConfigurations()
             // don't start more configurations if user stopped the plugin work.
             return
         }
@@ -123,7 +123,7 @@ class MultirunRunnerState(
 
         var started = false
         try {
-            // apply the Multirun environment variables on top of the child configuration; works on a clone,
+            // apply the Multiple Run environment variables on top of the child configuration; works on a clone,
             // so the user's configuration is never permanently modified
             var childEnvData = effectiveEnvData
             val memoryLimitMb = memoryLimits[runConfiguration.getName()]
@@ -169,7 +169,7 @@ class MultirunRunnerState(
 
             // pass the callback to runner.execute(env, callback) instead of the internal
             // ExecutionEnvironment.setCallback - same effect, public API
-            val multirunCallback = object : ProgramRunner.Callback {
+            val multiplerunCallback = object : ProgramRunner.Callback {
                 private val processTerminated = AtomicBoolean(false)
                 private val firstStart = AtomicBoolean(true)
 
@@ -196,9 +196,9 @@ class MultirunRunnerState(
                             override fun startNotified(processEvent: ProcessEvent) {
                                 val content = descriptor.getAttachedContent() ?: return
 
-                                val canContinue = stopRunningMultirunConfiguration.canContinueStartingConfigurations()
+                                val canContinue = stopRunningMultiplerunConfiguration.canContinueStartingConfigurations()
                                 if (!canContinue) {
-                                    // Multirun was stopped - destroy processes that are still starting up
+                                    // Multiple Run was stopped - destroy processes that are still starting up
                                     processHandler.destroyProcess()
                                 }
 
@@ -241,11 +241,11 @@ class MultirunRunnerState(
                             override fun processTerminated(processEvent: ProcessEvent) {
                                 onTermination(processEvent)
                                 processTerminated.set(true)
-                                stopRunningMultirunConfiguration.removeProcess(project, processEvent.getProcessHandler())
+                                stopRunningMultiplerunConfiguration.removeProcess(project, processEvent.getProcessHandler())
 
                                 // docker "restart: on-failure": intentional stops (0/130/137/143) never restart
                                 if (RunConfigurationHelper.isCrashExit(processEvent.getExitCode())
-                                    && !stopRunningMultirunConfiguration.isStopMultirunTriggered()) {
+                                    && !stopRunningMultiplerunConfiguration.isStopMultiplerunTriggered()) {
                                     if (restartOnCrash && crashRestarts.incrementAndGet() <= MAX_CRASH_RESTARTS) {
                                         // relaunch automatically, at most MAX_CRASH_RESTARTS times
                                         val attempt = crashRestarts.get()
@@ -303,8 +303,8 @@ class MultirunRunnerState(
 
                                 // All Content (tab) mutations must run on the EDT.
                                 ApplicationManager.getApplication().invokeLater {
-                                    if (pinTab && !stopRunningMultirunConfiguration.isStopMultirunTriggered()) {
-                                        // ... do not pin if multirun stopped by "Stop Multirun" action.
+                                    if (pinTab && !stopRunningMultiplerunConfiguration.isStopMultiplerunTriggered()) {
+                                        // ... do not pin if Multiple Run was stopped by the "Stop Multiple Run" action.
                                         content.setPinned(true)
                                     }
 
@@ -318,10 +318,10 @@ class MultirunRunnerState(
                             }
                         })
                     }
-                    stopRunningMultirunConfiguration.addProcess(project, configurationName, processHandler)
+                    stopRunningMultiplerunConfiguration.addProcess(project, configurationName, processHandler)
                     if (processHandler != null) {
                         // feed the "Multiple Run Monitor" tool window with live processes
-                        MultirunProcessRegistry.register(project, configurationName,
+                        MultiplerunProcessRegistry.register(project, configurationName,
                                                          runConfiguration.getName(), processHandler,
                                                          memoryLimitMb, environmentRef.get(),
                                                          RunConfigurationHelper.envFileDisplayName(effectiveEnvFilePath),
@@ -426,7 +426,7 @@ class MultirunRunnerState(
                             }
                         }
                     } else {
-                        stopRunningMultirunConfiguration.doneStaringConfigurations()
+                        stopRunningMultiplerunConfiguration.doneStaringConfigurations()
                     }
                 }
             }
@@ -435,7 +435,7 @@ class MultirunRunnerState(
             // the deprecated ProgramRunner.execute(environment, callback)
             val executionEnvironment = ExecutionEnvironmentBuilder(project, executor)
                 .runnerAndSettings(runner, configuration)
-                .build(multirunCallback)
+                .build(multiplerunCallback)
             environmentRef.set(executionEnvironment)
             ApplicationManager.getApplication().invokeLater {
                 try {

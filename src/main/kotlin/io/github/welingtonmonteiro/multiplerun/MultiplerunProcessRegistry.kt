@@ -17,11 +17,11 @@ import com.intellij.openapi.project.Project
  * "Multiple Run Monitor" tool window can list them with live memory statistics.
  * Entries are removed automatically when the process terminates.
  */
-class MultirunProcessRegistry private constructor() {
+class MultiplerunProcessRegistry private constructor() {
 
-    /** One running application started by a Multirun configuration. */
+    /** One running application started by a Multiple Run configuration. */
     class Entry internal constructor(
-        @JvmField val multirunName: String,
+        @JvmField val multiplerunName: String,
         @JvmField val appName: String,
         @JvmField val handler: ProcessHandler,
         /** Configured memory cap in MB, or null when the application has no limit. */
@@ -68,22 +68,22 @@ class MultirunProcessRegistry private constructor() {
         private val ENTRIES = ConcurrentHashMap<Project, MutableList<Entry>>()
 
         /**
-         * Last multirun launch metadata per app name. Unlike ENTRIES this survives process
-         * termination, so an app restarted individually (outside the multirun umbrella) still
+         * Last Multiple Run launch metadata per app name. Unlike ENTRIES this survives process
+         * termination, so an app restarted individually (outside the Multiple Run umbrella) still
          * shows its group, env profile and memory limit in the monitor.
          */
         private val LAST_BY_NAME = ConcurrentHashMap<Project, ConcurrentHashMap<String, Entry>>()
 
         @JvmStatic
         fun register(
-            project: Project, multirunName: String, appName: String,
+            project: Project, multiplerunName: String, appName: String,
             handler: ProcessHandler, memoryLimitMb: Int?,
             environment: ExecutionEnvironment?, envFileName: String?,
             loadedEnv: Map<String, String>?, includeSystemEnv: Boolean,
             readyCondition: String?, memAlertThreshold: Int, memLimitRestart: Boolean,
             cpuAlertThreshold: Int,
         ) {
-            val entry = Entry(multirunName, appName, handler, memoryLimitMb, environment,
+            val entry = Entry(multiplerunName, appName, handler, memoryLimitMb, environment,
                               envFileName, loadedEnv, includeSystemEnv, readyCondition,
                               memAlertThreshold, memLimitRestart, cpuAlertThreshold)
             ENTRIES.computeIfAbsent(project) { CopyOnWriteArrayList() }.add(entry)

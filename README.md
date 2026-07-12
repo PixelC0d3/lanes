@@ -21,10 +21,10 @@ few options, and run everything at once — as a group, in parallel or one-by-on
 ## ✨ Features
 
 ### 📦 Grouping
-- Group any number of run configurations into a single **Multirun** configuration and start
+- Group any number of run configurations into a single **Multiple Run** configuration and start
   them with one click.
-- **Nesting / composite configurations**: a Multirun configuration can contain other Multirun
-  configurations, so you can build a "master" configuration that starts several groups at once.
+- **Nesting / composite configurations**: a Multiple Run configuration can contain other Multiple
+  Run configurations, so you can build a "master" configuration that starts several groups at once.
 - **Loop protection**: the editor and runner detect and prevent cycles (A contains B, B contains
   A), so you can nest freely without breaking anything.
 
@@ -61,11 +61,11 @@ The delay field is only enabled when *Start configurations one by one* is checke
 is parsed using the current locale (so `0,5` works on locales that use a comma as the decimal separator).
 
 ### 🌱 Environment variables override
-- Define environment variables directly on the Multirun configuration — they are applied to
+- Define environment variables directly on the Multiple Run configuration — they are applied to
   **every** configuration in the list, overriding the child's own variables with the same name.
 - Uses the standard IDE dialog (add variables one by one, paste, and toggle
   *Include system environment variables*).
-- Overrides propagate through nested Multirun configurations too.
+- Overrides propagate through nested Multiple Run configurations too.
 - **Environment file with profiles**: the *Environment file* field is an editable dropdown.
   Point it to a `.env` file (browse button or type the path — relative paths are resolved against
   the project root) and the file becomes a **profile** that stays in the dropdown; switch between
@@ -252,11 +252,11 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   degrades into GC thrashing). One action per process; a restart re-arms it.
 
 ### 🔁 Restarting and stopping
-- **Restart on rerun** (enabled by default) — running a Multirun that is already running first stops
-  the processes it started before, waits for them to terminate, and then starts everything again —
-  just like the built-in Compound configuration. No need to stop the services manually before
-  rebuilding/rerunning. Only the processes of the restarted Multirun are stopped; other running
-  Multirun groups are untouched. Can be disabled per configuration with the
+- **Restart on rerun** (enabled by default) — running a Multiple Run that is already running first
+  stops the processes it started before, waits for them to terminate, and then starts everything
+  again — just like the built-in Compound configuration. No need to stop the services manually
+  before rebuilding/rerunning. Only the processes of the restarted Multiple Run are stopped; other
+  running Multiple Run groups are untouched. Can be disabled per configuration with the
   *Restart running configurations before starting* option.
 - **Stop Multiple Run** action stops all running configurations started by the plugin (and cancels
   any that are still queued to start).
@@ -283,11 +283,11 @@ Compatible with builds since `233` (**2023.3** and newer).
 ## Installation
 
 ### From the JetBrains Marketplace
-`Settings/Preferences → Plugins → Marketplace`, search for **Multirun**, install and restart.
+`Settings/Preferences → Plugins → Marketplace`, search for **Multiple Run**, install and restart.
 
 ### From disk (a locally built `.zip`)
 `Settings/Preferences → Plugins → ⚙ (gear icon) → Install Plugin from Disk…`, select the
-`multirun-<version>.zip` file (see *Building from source* below), then restart the IDE.
+`multiple_run-<version>.zip` file (see *Building from source* below), then restart the IDE.
 
 ## Usage
 
@@ -295,9 +295,9 @@ Compatible with builds since `233` (**2023.3** and newer).
 2. Click **+** and add a new **Multiple Run** configuration.
 3. Use the list toolbar to add the run configurations you want to launch.
 4. Pick the options you need (parallel vs one-by-one, delay, tab handling, marking failures, …).
-5. Apply and run the Multirun configuration like any other configuration.
+5. Apply and run the Multiple Run configuration like any other configuration.
 
-Tip: **Multirun + Before Launch tasks** unlocks even more scenarios — for example, chaining setup
+Tip: **Multiple Run + Before Launch tasks** unlocks even more scenarios — for example, chaining setup
 tasks before a group of applications or tests.
 
 ## Building from source
