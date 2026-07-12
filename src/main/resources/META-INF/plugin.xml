@@ -48,6 +48,21 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.13</strong>:</p>
+        <ul>
+            <li>Fix: creating a new Multiple Run configuration (or applying/running one) could throw
+                a NullPointerException and leave the editor unusable. The 2.0.8 Kotlin migration
+                declared the editor's <code>resetEditorFrom</code>/<code>applyEditorTo</code>
+                parameter as non-null, but the platform can still call them with a null
+                configuration while a brand-new entry is settling - the original Java
+                implementation took a <code>@Nullable</code> parameter for exactly that reason and
+                is now restored (with an explicit null check instead of relying on the type
+                system).</li>
+            <li>Fix: the Multiple Run configuration type icon (and every other spot that reused it)
+                rendered at 2.5x its intended size - it was accidentally sharing the plugin icon
+                file, which must declare a 40x40 size for the Settings > Plugins list. Now uses a
+                dedicated 16x16 icon with the same artwork.</li>
+        </ul>
         <p><strong>2.0.12</strong>:</p>
         <ul>
             <li>New visual identity: the "Lanes" mark (parallel process lanes + live status dots)

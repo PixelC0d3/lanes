@@ -9,7 +9,11 @@ import javax.swing.Icon
  * pluginIcon.svg/pluginIcon_dark.svg, no per-icon dark variant needed here.
  */
 object MultiplerunIcons {
-    @JvmField val Mark: Icon = IconLoader.getIcon("/META-INF/pluginIcon.svg", MultiplerunIcons::class.java)
+    // A dedicated 16x16-declared file, NOT pluginIcon.svg: that one is required to declare
+    // width="40" height="40" (the Settings > Plugins list size), and Icon.getIconWidth()/
+    // getIconHeight() read that declared size, not the viewBox - reusing it here rendered every
+    // 16px UI slot (ConfigurationType icon, New Configuration list, ...) at 2.5x size.
+    @JvmField val Mark: Icon = IconLoader.getIcon("/icons/mark.svg", MultiplerunIcons::class.java)
     @JvmField val Refresh: Icon = IconLoader.getIcon("/icons/refresh.svg", MultiplerunIcons::class.java)
     @JvmField val Restart: Icon = IconLoader.getIcon("/icons/restart.svg", MultiplerunIcons::class.java)
     @JvmField val RestartAll: Icon = IconLoader.getIcon("/icons/restart-all.svg", MultiplerunIcons::class.java)

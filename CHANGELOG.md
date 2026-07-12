@@ -5,6 +5,34 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [2.0.13] — Fix two regressions found in manual testing of 2.0.12
+- **Fix (crash):** creating, applying, or running a Multiple Run configuration could throw
+  `NullPointerException: Parameter specified as non-null is null` from
+  `MultiplerunRunConfigurationEditor.resetEditorFrom`/`applyEditorTo`. Root cause: the 2.0.8
+  Kotlin migration declared these override parameters non-null based on the SDK's own `@NotNull`
+  annotation on `SettingsEditor<Settings>`, but `Settings` has a non-null upper bound - Kotlin
+  won't let the override accept a nullable parameter *and* won't let the class implement
+  `SettingsEditor<MultiplerunRunConfiguration?>` either (confirmed empirically, both rejected by
+  the compiler). The platform's composite `SettingsEditor` wrapper chain can still call these with
+  a raw null at the JVM level while a brand-new configuration entry is settling, bypassing
+  Kotlin's compile-time guarantee the same way a Java caller always could - which is exactly why
+  the *original*, decade-old Java implementation declared this parameter `@Nullable` and handled
+  it gracefully instead of trusting the type system. Restored that behavior: added
+  `-Xno-param-assertions` to the Kotlin compiler options (`build.gradle`) so Kotlin stops
+  auto-inserting `Intrinsics.checkNotNullParameter` on this parameter, and put back the original's
+  explicit null checks. Verified by disassembling the compiled class - the null-check bytecode now
+  matches the original Java exactly, no `Intrinsics` call.
+- **Fix (visual):** the Multiple Run configuration type icon rendered at 2.5x its intended size
+  everywhere it appeared (the "Add New Configuration" list, the run/debug configuration switcher) -
+  `MultiplerunIcons.Mark` (added in 2.0.12) accidentally reused `pluginIcon.svg`, which must
+  declare `width="40" height="40"` for the Settings > Plugins list; `Icon.getIconWidth()`/
+  `getIconHeight()` read that declared size, not the SVG's `viewBox`. Added a dedicated
+  `icons/mark.svg` (+ `mark_dark.svg`) declaring the correct 16x16 size, same artwork.
+- Not fixed, working as documented: the banner image in the Marketplace description (added in
+  2.0.12) shows broken when testing a local/unmerged build - it's loaded from a
+  `raw.githubusercontent.com` URL pointing at `mainline`, which only resolves once this branch is
+  actually merged there.
+
 ## [2.0.12] — New visual identity ("Lanes")
 - New icon set replacing the generic platform (`AllIcons.*`) icons everywhere the plugin shows its
   own branding or an action that already existed: the plugin icon, the Multiple Run configuration

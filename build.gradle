@@ -8,7 +8,7 @@ plugins {
 }
 
 group = 'io.github.welingtonmonteiro'
-version = '2.0.12'
+version = '2.0.13'
 
 repositories {
     mavenCentral()
@@ -40,6 +40,16 @@ java {
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+        // This codebase is a 1:1 behavioral port of a decade-old Java plugin that never relied on
+        // (or was ever checked against) strict null-safety - in particular
+        // SettingsEditor.resetEditorFrom/applyEditorTo, whose Settings type parameter has a
+        // non-null upper bound so Kotlin won't let the override accept a nullable parameter, even
+        // though the platform can still call it with a raw null (the original Java override took
+        // @Nullable and handled it gracefully). Without this flag, Kotlin's automatic
+        // Intrinsics.checkNotNullParameter on that non-null-declared parameter throws before our
+        // own null-check ever runs. See MultiplerunRunConfigurationEditor.resetEditorFrom/
+        // applyEditorTo for the actual handling.
+        freeCompilerArgs.add("-Xno-param-assertions")
     }
 }
 
