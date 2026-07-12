@@ -21,8 +21,10 @@ Uninstall the original plugin before installing this one.
   "Multirun" wherever the text refers to this plugin. Left every genuine reference to the original,
   third-party Multirun plugin by Ruslan Khmeliuk untouched (credit line, historical change-notes
   entries, the id-collision explanation above).
-- Not yet build/test-verified in this environment (no local JDK 17 toolchain available) - please
-  run `./gradlew test buildPlugin` before merging.
+- Added the `foojay-resolver-convention` Gradle plugin (`settings.gradle`) so the required Java 17
+  toolchain can be auto-downloaded when it isn't already installed locally.
+- Verified with a clean build: 145/145 tests pass, 0 failures; the packaged plugin jar has zero
+  classes left with a stray "Multirun"-named symbol.
 
 ## [2.0.10] — Docs: README revamp + support link
 - Reorganized the README's feature sections with short emoji labels for faster scanning, added a
