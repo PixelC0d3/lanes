@@ -5,6 +5,37 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [2.1.4] — Fix "configured" icon never showing on the tree or the toolbar widget
+- **Fix:** the 2.1.3 "configured" icon never showed up in the "Edit Configurations" tree's leaf
+  nodes or the toolbar Play/Debug widget, for any configuration, old or new - only the Multiple Run
+  Monitor was correct (it reads `MultiplerunIcons.Configured` directly in our own code).
+- **Real root cause** (found by disassembling the real installed WebStorm build, and by checking how
+  the original upstream [Multirun](https://github.com/rkhmelyuk/multirun) structured its
+  `ConfigurationType`): `MultiplerunConfigurationType` extended `SimpleConfigurationType`, which acts
+  as both the type *and* its own factory. `SimpleConfigurationType.getIcon(RunConfiguration)` is
+  **`final`** and unconditionally returns the type-level icon, discarding the configuration argument.
+  Both the tree's non-edited leaf nodes and the toolbar widget resolve their icon through
+  `ProgramRunnerUtil.getConfigurationIcon() -> getRawIcon() ->
+  settings.getFactory().getIcon(settings.getConfiguration())` - with a `SimpleConfigurationType`,
+  that call could never reach `MultiplerunRunConfiguration.getIcon()` no matter what it returned. The
+  first attempt at this fix (clearing the platform's icon cache on project open) didn't help because
+  the cache was recomputing correctly the whole time - just always from the same wrong, unreachable
+  place.
+- Fixed by switching to a plain `ConfigurationFactory` (added to a `ConfigurationTypeBase`, the same
+  shape the original Java plugin always used) with its own `getIcon(RunConfiguration)` override that
+  delegates back to `configuration.getIcon()`. Existing saved configurations are unaffected: writing
+  a `factoryName` attribute was already skipped entirely for `SimpleConfigurationType`-based types, so
+  none of them have one persisted, and the platform treats a missing `factoryName` as an automatic
+  match for a type's only factory regardless of its id.
+- Kept the `postStartupActivity` (`MultiplerunConfiguredIconRefreshActivity`) that clears the cached
+  icon entry for every saved Multiple Run configuration on project open, so the fixed icon appears
+  immediately rather than waiting for the platform's own periodic cache revalidation.
+- 152 tests pass. This part (the platform's configuration-type/factory wiring and its in-memory icon
+  cache) has no headless test coverage, same gap as icon loading in general - verify visually: reopen
+  "Edit Configurations" and confirm every saved Multiple Run instance (not just newly added ones)
+  shows the configured icon, and select one on the toolbar Play/Debug widget to confirm it matches
+  there too.
+
 ## [2.1.3] — "Configured" icon for every Multiple Run instance
 - **Feature:** a Multiple Run configuration now shows a distinct **"configured"** icon (lanes wrapped
   by a restart/orchestration arrow) instead of the plain Lanes mark, everywhere the platform renders
