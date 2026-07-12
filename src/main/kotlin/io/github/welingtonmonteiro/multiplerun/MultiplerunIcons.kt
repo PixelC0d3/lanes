@@ -26,4 +26,9 @@ object MultiplerunIcons {
     @JvmField val Logs: Icon = IconLoader.getIcon("/icons/logs.svg", MultiplerunIcons::class.java)
     @JvmField val Process: Icon = IconLoader.getIcon("/icons/process.svg", MultiplerunIcons::class.java)
     @JvmField val MemoryLeak: Icon = IconLoader.getIcon("/icons/memory-leak.svg", MultiplerunIcons::class.java)
+
+    // Trimmed down from brand/empty-state.svg: the two <text> lines and the CSS <style>/@media
+    // block were dropped (real JBLabels handle the text and theme colors on the Swing side; see
+    // MultiplerunMonitorPanel's empty-state panel), leaving just the illustration.
+    @JvmField val EmptyState: Icon = IconLoader.getIcon("/icons/empty-state.svg", MultiplerunIcons::class.java)
 }

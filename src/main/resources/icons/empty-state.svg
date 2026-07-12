@@ -1,0 +1,15 @@
+<svg width="160" height="100" viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dashed board -->
+  <rect x="60" y="24" width="200" height="140" rx="16" fill="none" stroke="#C9CCD6" stroke-width="2" stroke-dasharray="7 7"/>
+
+  <!-- Ghost lanes (the mark, waiting to come alive) -->
+  <rect x="88" y="56" width="90" height="14" rx="7" fill="#D6D9E0"/>
+  <circle cx="200" cy="63" r="7" fill="#E3E5EB"/>
+  <rect x="88" y="86" width="132" height="14" rx="7" fill="#D6D9E0"/>
+  <rect x="88" y="116" width="64" height="14" rx="7" fill="#E3E5EB"/>
+  <circle cx="174" cy="123" r="7" fill="#D6D9E0"/>
+
+  <!-- Add action -->
+  <circle cx="248" cy="152" r="24" fill="#3574F0"/>
+  <path d="M248 142v20M238 152h20" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+</svg>
