@@ -25,6 +25,7 @@ import com.intellij.ui.table.TableView
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 import io.github.welingtonmonteiro.multiplerun.ComposeImporter
+import io.github.welingtonmonteiro.multiplerun.MultiplerunIcons
 import io.github.welingtonmonteiro.multiplerun.MultiplerunRunConfiguration
 import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper
 
@@ -229,7 +230,7 @@ class MultiplerunRunConfigurationEditor(private val project: Project) : Settings
         myDecorator.addExtraAction(object : DumbAwareAction(
             "Import from docker-compose.yml…",
             "Apply a docker-compose.yml to the run configurations whose name matches a service",
-            AllIcons.Actions.Download) {
+            MultiplerunIcons.Docker) {
             override fun actionPerformed(e: AnActionEvent) {
                 importFromCompose()
             }

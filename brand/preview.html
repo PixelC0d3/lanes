@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Multiple Run — Brand Preview</title>
+<style>
+  :root {
+    --bg:#FFFFFF; --panel:#F7F8FA; --border:#D6D9E0; --t1:#1E1F22; --t2:#6C707E;
+    --icon:#6C707E; --mr-bg:#F7F8FA;
+  }
+  [data-theme=dark] {
+    --bg:#1E1F22; --panel:#26282C; --border:#3B3E45; --t1:#ECEDF0; --t2:#9DA0A8;
+    --icon:#CED0D6; --mr-bg:#26282C;
+  }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--t1);
+    font-family:Inter,'JetBrains Sans',-apple-system,'Segoe UI',sans-serif; transition:background .2s,color .2s }
+  code { font-family:'JetBrains Mono',ui-monospace,Consolas,monospace }
+  .wrap { max-width:1180px; margin:0 auto; padding:40px 28px 80px }
+  header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px }
+  h1 { font-size:26px; letter-spacing:-.5px; margin:0 }
+  h1 .r { color:#3574F0 }
+  [data-theme=dark] h1 .r { color:#548AF7 }
+  .toggle { border:1px solid var(--border); background:var(--panel); color:var(--t1);
+    border-radius:999px; padding:8px 18px; cursor:pointer; font-size:13px; font-weight:600 }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:2px; color:var(--t2); margin:48px 0 16px }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:24px }
+  .row { display:flex; gap:24px; flex-wrap:wrap; align-items:center }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px }
+  .cell { display:flex; align-items:center; gap:10px; background:var(--bg); border:1px solid var(--border);
+    border-radius:8px; padding:9px 12px; color:var(--icon) }
+  .cell code { font-size:11px; color:var(--t2) }
+  .cell .ic svg { display:block }
+  .swatches { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:10px }
+  .sw { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--t2) }
+  .sw .chip { width:34px; height:34px; border-radius:8px; border:1px solid var(--border) }
+  .sw code { font-size:11px; color:var(--t1) }
+  .banner svg { width:100%; height:auto; border-radius:14px; border:1px solid var(--border) }
+  .iconbox { display:flex; gap:28px; align-items:center; flex-wrap:wrap }
+  .iconbox figure { margin:0; text-align:center }
+  .iconbox figcaption { font-size:11px; color:var(--t2); margin-top:8px }
+  .sizerow svg { vertical-align:middle }
+  footer { margin-top:56px; font-size:12px; color:var(--t2) }
+</style></head>
+<body data-theme="dark">
+<div class="wrap">
+  <header>
+    <h1>Multiple <span class="r">Run</span> — Visual Identity</h1>
+    <button class="toggle" onclick="document.body.dataset.theme=document.body.dataset.theme==='dark'?'light':'dark'">Toggle light / dark</button>
+  </header>
+  <p style="color:var(--t2);margin:0">Signature: <strong style="color:var(--t1)">"Lanes"</strong> — parallel processes with live status signals. Grid 16×16 · stroke 1.5 · flat · JetBrains design language.</p>
+
+  <h2>Plugin icon</h2>
+  <div class="card iconbox">
+    <figure><span style="display:inline-block;background:#FFFFFF;border:1px solid var(--border);border-radius:12px;padding:16px"><svg width="40" height="40" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Multiple Run · "Lanes" mark: parallel processes + live status -->
+  <rect x="2" y="2" width="8" height="3" rx="1.5" fill="#3574F0"/>
+  <circle cx="12.5" cy="3.5" r="1.5" fill="#4FC3F7"/>
+  <rect x="2" y="6.5" width="12" height="3" rx="1.5" fill="#3574F0"/>
+  <rect x="2" y="11" width="6" height="3" rx="1.5" fill="#4FC3F7"/>
+  <circle cx="10.5" cy="12.5" r="1.5" fill="#3574F0"/>
+</svg>
+</span><figcaption>pluginIcon.svg (light)</figcaption></figure>
+    <figure><span style="display:inline-block;background:#1E1F22;border:1px solid var(--border);border-radius:12px;padding:16px"><svg width="40" height="40" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Multiple Run · dark theme variant -->
+  <rect x="2" y="2" width="8" height="3" rx="1.5" fill="#548AF7"/>
+  <circle cx="12.5" cy="3.5" r="1.5" fill="#6CD1FF"/>
+  <rect x="2" y="6.5" width="12" height="3" rx="1.5" fill="#548AF7"/>
+  <rect x="2" y="11" width="6" height="3" rx="1.5" fill="#6CD1FF"/>
+  <circle cx="10.5" cy="12.5" r="1.5" fill="#548AF7"/>
+</svg>
+</span><figcaption>pluginIcon_dark.svg (dark)</figcaption></figure>
+    <figure class="sizerow">
+      <span style="display:inline-flex;gap:14px;align-items:flex-end;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px">
+        <svg width="16" height="16" viewBox="0 0 16 16"><use href="#mark"/></svg>
+        <svg width="20" height="20" viewBox="0 0 16 16"><use href="#mark"/></svg>
+        <svg width="24" height="24" viewBox="0 0 16 16"><use href="#mark"/></svg>
+        <svg width="32" height="32" viewBox="0 0 16 16"><use href="#mark"/></svg>
+        <svg width="40" height="40" viewBox="0 0 16 16"><use href="#mark"/></svg>
+      </span>
+      <figcaption>16 / 20 / 24 / 32 / 40 px</figcaption>
+    </figure>
+    <figure><span style="display:inline-block;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px"><svg width="48" height="48" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Loading">
+  <!-- Multiple Run spinner: the lanes come alive -->
+  <rect x="2" y="2" height="3" rx="1.5" fill="#3574F0" width="8">
+    <animate attributeName="width" values="4;11;4" dur="1.2s" repeatCount="indefinite" begin="0s"
+             calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"/>
+  </rect>
+  <rect x="2" y="6.5" height="3" rx="1.5" fill="#3574F0" width="12">
+    <animate attributeName="width" values="5;12;5" dur="1.2s" repeatCount="indefinite" begin="0.15s"
+             calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"/>
+  </rect>
+  <rect x="2" y="11" height="3" rx="1.5" fill="#4FC3F7" width="6">
+    <animate attributeName="width" values="3;9;3" dur="1.2s" repeatCount="indefinite" begin="0.3s"
+             calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"/>
+  </rect>
+  <circle cy="8" r="1.5" fill="#4FC3F7" cx="14">
+    <animate attributeName="opacity" values="1;0.25;1" dur="1.2s" repeatCount="indefinite" begin="0.15s"/>
+    <animate attributeName="cx" values="8;14;8" dur="1.2s" repeatCount="indefinite" begin="0.15s"
+             calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"/>
+  </circle>
+</svg>
+</span><figcaption>spinner.svg (animated)</figcaption></figure>
+  </div>
+  <svg width="0" height="0" style="position:absolute"><defs><g id="mark">
+    <rect x="2" y="2" width="8" height="3" rx="1.5" fill="#3574F0"/><circle cx="12.5" cy="3.5" r="1.5" fill="#4FC3F7"/>
+    <rect x="2" y="6.5" width="12" height="3" rx="1.5" fill="#3574F0"/>
+    <rect x="2" y="11" width="6" height="3" rx="1.5" fill="#4FC3F7"/><circle cx="10.5" cy="12.5" r="1.5" fill="#3574F0"/>
+  </g></defs></svg>
+
+  <h2>Brand logo</h2>
+  <div class="card row"><svg width="340" height="64" viewBox="0 0 340 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Multiple Run">
+  <style>
+    .word { font-family: 'Inter', 'JetBrains Sans', -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 30px; letter-spacing: -0.5px; }
+    .w1 { font-weight: 700; fill: #1E1F22; }
+    .w2 { font-weight: 700; fill: #3574F0; }
+    .sub { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; letter-spacing: 2.5px; fill: #6C707E; }
+    @media (prefers-color-scheme: dark) {
+      .w1 { fill: #ECEDF0; }
+      .w2 { fill: #548AF7; }
+      .sub { fill: #9DA0A8; }
+    }
+  </style>
+
+  <!-- Mark -->
+  <g transform="translate(8,12) scale(2.5)">
+    <rect x="2" y="2" width="8" height="3" rx="1.5" fill="#3574F0"/>
+    <circle cx="12.5" cy="3.5" r="1.5" fill="#4FC3F7"/>
+    <rect x="2" y="6.5" width="12" height="3" rx="1.5" fill="#3574F0"/>
+    <rect x="2" y="11" width="6" height="3" rx="1.5" fill="#4FC3F7"/>
+    <circle cx="10.5" cy="12.5" r="1.5" fill="#3574F0"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="62" y="38" class="word"><tspan class="w1">Multiple</tspan><tspan class="w2" dx="7">Run</tspan></text>
+  <text x="63" y="54" class="sub">RUN · MONITOR · AUTOMATE</text>
+</svg>
+</div>
+
+  <h2>Marketplace banner · 1280×640</h2>
+  <div class="banner"><svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" font-family="Inter, 'JetBrains Sans', -apple-system, 'Segoe UI', sans-serif">
+  <defs>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="1.5" cy="1.5" r="1.5" fill="#2B2D31"/>
+    </pattern>
+    <clipPath id="frame"><rect width="1280" height="640"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+  <rect width="1280" height="640" fill="#17181C"/>
+  <rect width="1280" height="640" fill="url(#dots)"/>
+
+  <!-- ============ LEFT: identity ============ -->
+  <!-- Mark -->
+  <g transform="translate(96,120) scale(4.5)">
+    <rect x="2" y="2" width="8" height="3" rx="1.5" fill="#3574F0"/>
+    <circle cx="12.5" cy="3.5" r="1.5" fill="#4FC3F7"/>
+    <rect x="2" y="6.5" width="12" height="3" rx="1.5" fill="#3574F0"/>
+    <rect x="2" y="11" width="6" height="3" rx="1.5" fill="#4FC3F7"/>
+    <circle cx="10.5" cy="12.5" r="1.5" fill="#3574F0"/>
+  </g>
+
+  <text x="96" y="272" font-size="64" font-weight="700" letter-spacing="-1.5" fill="#ECEDF0">Multiple <tspan fill="#548AF7">Run</tspan></text>
+
+  <text x="98" y="322" font-size="24" font-weight="400" fill="#B4B8BF" letter-spacing="0.2">Run, Monitor &amp; Automate Your Development Apps</text>
+
+  <!-- Feature chips -->
+  <g font-family="'JetBrains Mono', ui-monospace, Consolas, monospace" font-size="14" letter-spacing="1">
+    <rect x="98"  y="360" width="132" height="34" rx="17" stroke="#33373E" fill="#1D1F24"/>
+    <circle cx="120" cy="377" r="4" fill="#5FB865"/>
+    <text x="134" y="382" fill="#B4B8BF">RUNNING</text>
+
+    <rect x="242" y="360" width="98" height="34" rx="17" stroke="#33373E" fill="#1D1F24"/>
+    <text x="262" y="382" fill="#B4B8BF">CPU</text>
+    <text x="300" y="382" fill="#4FC3F7">2%</text>
+
+    <rect x="352" y="360" width="140" height="34" rx="17" stroke="#33373E" fill="#1D1F24"/>
+    <text x="372" y="382" fill="#B4B8BF">MEM</text>
+    <text x="420" y="382" fill="#7B61FF">412MB</text>
+
+    <rect x="504" y="360" width="120" height="34" rx="17" stroke="#33373E" fill="#1D1F24"/>
+    <circle cx="526" cy="377" r="4" fill="#5FB865"/>
+    <text x="540" y="382" fill="#B4B8BF">HEALTH</text>
+  </g>
+
+  <text x="98" y="452" font-family="'JetBrains Mono', ui-monospace, Consolas, monospace" font-size="15" fill="#6C707E">$ run --all --watch --auto-restart</text>
+
+  <!-- JetBrains-plugin hint line -->
+  <text x="98" y="560" font-size="16" fill="#6C707E" letter-spacing="0.4">Advanced application manager for JetBrains IDEs · Windows · Linux · macOS</text>
+
+  <!-- ============ RIGHT: orchestration board illustration ============ -->
+  <!-- Card 1 : api-gateway -->
+  <g transform="translate(724,88)">
+    <rect width="440" height="128" rx="14" fill="#1D1F24" stroke="#33373E" stroke-width="1.5"/>
+    <circle cx="30" cy="32" r="6" fill="#5FB865"/>
+    <text x="48" y="38" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="17" fill="#ECEDF0">api-gateway</text>
+    <text x="48" y="60" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6C707E">:8080 · pid 4123 · up 2h 14m</text>
+    <!-- sparkline -->
+    <polyline points="30,104 66,96 102,100 138,84 174,92 210,72 246,80 282,64 318,74 354,58 390,66 412,52"
+              stroke="#4FC3F7" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- memory bar -->
+    <rect x="300" y="26" width="112" height="8" rx="4" fill="#2B2D31"/>
+    <rect x="300" y="26" width="68" height="8" rx="4" fill="#7B61FF"/>
+    <text x="300" y="52" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="11" fill="#6C707E">MEM 61%</text>
+  </g>
+
+  <!-- Card 2 : worker-queue (staggered, echoes the lanes motif) -->
+  <g transform="translate(764,244)">
+    <rect width="440" height="128" rx="14" fill="#1D1F24" stroke="#33373E" stroke-width="1.5"/>
+    <circle cx="30" cy="32" r="6" fill="#5FB865"/>
+    <text x="48" y="38" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="17" fill="#ECEDF0">worker-queue</text>
+    <text x="48" y="60" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6C707E">docker · redis:7 · healthy</text>
+    <polyline points="30,92 66,98 102,88 138,96 174,86 210,94 246,82 282,92 318,80 354,90 390,78 412,86"
+              stroke="#3574F0" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="300" y="26" width="112" height="8" rx="4" fill="#2B2D31"/>
+    <rect x="300" y="26" width="38" height="8" rx="4" fill="#7B61FF"/>
+    <text x="300" y="52" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="11" fill="#6C707E">MEM 34%</text>
+  </g>
+
+  <!-- Card 3 : web-frontend (restarting) -->
+  <g transform="translate(704,400)">
+    <rect width="440" height="128" rx="14" fill="#1D1F24" stroke="#33373E" stroke-width="1.5"/>
+    <circle cx="30" cy="32" r="6" fill="#E8A33D"/>
+    <text x="48" y="38" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="17" fill="#ECEDF0">web-frontend</text>
+    <text x="48" y="60" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6C707E">auto-restart · rule: mem &gt; 85%</text>
+    <polyline points="30,72 66,66 102,58 138,50 174,44 210,40 246,38 262,38"
+              stroke="#DB5C5C" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="284,100 320,96 356,98 392,92 412,94"
+              stroke="#4FC3F7" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- restart glyph -->
+    <g transform="translate(258,58) scale(1.4)" stroke="#E8A33D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M14 8a6 6 0 1 1-6-6c1.68 0 3.29.67 4.5 1.83L14 5.33"/>
+      <path d="M14 2v3.33h-3.33"/>
+    </g>
+    <rect x="300" y="26" width="112" height="8" rx="4" fill="#2B2D31"/>
+    <rect x="300" y="26" width="98" height="8" rx="4" fill="#DB5C5C"/>
+    <text x="300" y="52" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="11" fill="#6C707E">MEM 87%</text>
+  </g>
+
+  <!-- Connector rail: orchestration line linking the cards -->
+  <path d="M700 152 H676 a12 12 0 0 0 -12 12 V296 a12 12 0 0 0 12 12 h64 M676 308 v144 a12 12 0 0 0 12 12 h12"
+        stroke="#33373E" stroke-width="2" fill="none"/>
+  <circle cx="700" cy="152" r="5" fill="#3574F0"/>
+  <circle cx="740" cy="308" r="5" fill="#3574F0"/>
+  <circle cx="700" cy="464" r="5" fill="#3574F0"/>
+  </g>
+</svg>
+</div>
+
+  <h2>Toolbar icons · 44 · 16×16 · stroke 1.5</h2>
+  <div class="grid"><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.75" y="2.75" width="10.5" height="10.5" rx="2" stroke="currentColor" fill="none"/><path d="M8 5.5v5M5.5 8h5" stroke="#3574F0" fill="none"/></svg>
+</span><code>add-app</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6" stroke="currentColor" fill="none" stroke-dasharray="2.6 2.1"/><path d="M9 3.5 5.4 8.8h2.4L7 12.5l3.6-5.3H8.2z" stroke="#3574F0" fill="none"/></svg>
+</span><code>automation</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" fill="none"/><path d="M3 10.5v-6a2 2 0 0 1 2-2h6" stroke="currentColor" fill="none"/></svg>
+</span><code>clone-app</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3.5 8 6.5l3.5-3" stroke="currentColor" fill="none"/><path d="M4.5 12.5 8 9.5l3.5 3" stroke="currentColor" fill="none"/></svg>
+</span><code>collapse</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="3" height="10" rx="0.8" stroke="currentColor" fill="none"/><rect x="6.5" y="3" width="3" height="10" rx="0.8" stroke="#3574F0" fill="none"/><rect x="10.5" y="3" width="3" height="10" rx="0.8" stroke="currentColor" fill="none"/></svg>
+</span><code>column-chooser</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4l4.5 4L3 12" stroke="#3574F0" fill="none"/><path d="M9.5 12.5H13" stroke="currentColor" fill="none"/></svg>
+</span><code>command</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="10" rx="1.5" stroke="currentColor" fill="none"/><path d="M8 3v10" stroke="currentColor" fill="none"/><path d="M4.6 10V7.6M6.1 10V5.8" stroke="#3574F0" fill="none"/><path d="M9.7 9.4l1.4-1.9 1.4 1.1" stroke="#4FC3F7" fill="none"/></svg>
+</span><code>compare-sessions</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="7" height="7" rx="1" stroke="currentColor" fill="none"/><rect x="7" y="7" width="2" height="2" rx="0" stroke="#3574F0" fill="none"/><path d="M6 2v2.5M10 2v2.5M6 11.5V14M10 11.5V14M2 6h2.5M2 10h2.5M11.5 6H14M11.5 10H14" stroke="currentColor" fill="none"/></svg>
+</span><code>cpu</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="1.4" stroke="none" fill="#3574F0"/><path d="M11.18 4.82a4.5 4.5 0 0 1 0 6.36" stroke="#3574F0" fill="none"/><path d="M4.82 11.18a4.5 4.5 0 0 1 0-6.36" stroke="#3574F0" fill="none"/><path d="M13.3 2.7a7.5 7.5 0 0 1 0 10.6" stroke="currentColor" fill="none"/><path d="M2.7 13.3a7.5 7.5 0 0 1 0-10.6" stroke="currentColor" fill="none"/></svg>
+</span><code>discovery</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8 13.5 4.9v6.2L8 14.2 2.5 11.1V4.9z" stroke="currentColor" fill="none"/><path d="M2.5 4.9 8 8l5.5-3.1M8 8v6.2" stroke="currentColor" fill="none"/></svg>
+</span><code>docker</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11.1 2.9a1.63 1.63 0 0 1 2.3 2.3l-7.5 7.5-3.3.9.9-3.3z" stroke="currentColor" fill="none"/></svg>
+</span><code>edit-app</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5c-1.4 0-1.9.7-1.9 1.9v1.5c0 .9-.45 1.45-1.4 1.8v.6c.95.35 1.4.9 1.4 1.8v1.5c0 1.2.5 1.9 1.9 1.9" stroke="currentColor" fill="none"/><path d="M10 2.5c1.4 0 1.9.7 1.9 1.9v1.5c0 .9.45 1.45 1.4 1.8v.6c-.95.35-1.4.9-1.4 1.8v1.5c0 1.2-.5 1.9-1.9 1.9" stroke="currentColor" fill="none"/><circle cx="8" cy="8" r="1.2" stroke="none" fill="#3574F0"/></svg>
+</span><code>env-variables</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.5v11" stroke="currentColor" fill="none"/><circle cx="4" cy="4" r="1.3" stroke="currentColor" fill="var(--mr-bg, #fff)"/><circle cx="4" cy="8" r="1.3" stroke="#3574F0" fill="#3574F0"/><circle cx="4" cy="12" r="1.3" stroke="currentColor" fill="var(--mr-bg, #fff)"/><path d="M8 4h5M8 8h5M8 12h3.5" stroke="currentColor" fill="none"/></svg>
+</span><code>events</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5 8 3.5l3.5 3" stroke="currentColor" fill="none"/><path d="M4.5 9.5 8 12.5l3.5-3" stroke="currentColor" fill="none"/></svg>
+</span><code>expand</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="9" height="9" rx="1" stroke="currentColor" fill="none"/><path d="M2.5 5.5h9M5.5 5.5v6" stroke="currentColor" fill="none"/><path d="M12.75 9.5V14M10.75 12.2l2 2 2-2" stroke="#3574F0" fill="none"/></svg>
+</span><code>export-csv</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 2.5H4.9a1.2 1.2 0 0 0-1.2 1.2v8.6a1.2 1.2 0 0 0 1.2 1.2h2.6" stroke="currentColor" fill="none"/><path d="M8.7 2.5v2.9h2.9" stroke="currentColor" fill="none"/><path d="M11.6 5.4V7" stroke="currentColor" fill="none"/><path d="M11.75 9.5V14M9.75 12.2l2 2 2-2" stroke="#3574F0" fill="none"/></svg>
+</span><code>export-report</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6l1.7 3.45 3.8.55-2.75 2.68.65 3.78L8 11.28l-3.4 1.78.65-3.78L2.5 6.6l3.8-.55z" stroke="currentColor" fill="none"/></svg>
+</span><code>favorite</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11L9.3 8.7v4l-2.6-1.7V8.7z" stroke="currentColor" fill="none"/></svg>
+</span><code>filter</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 9.33c.99-.97 2-2.13 2-3.67A3.66 3.66 0 0 0 11 2c-1.17 0-2 .33-3 1.33C7 2.33 6.17 2 5 2a3.66 3.66 0 0 0-3.67 3.66c0 1.54 1.01 2.7 2 3.67L8 14z" stroke="currentColor" fill="none"/><path d="M4.6 8h1.9l1-1.8 1.5 3 1-1.2h1.4" stroke="#3574F0" fill="none"/></svg>
+</span><code>health-check</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a6 6 0 1 0 6-6c-1.68 0-3.29.67-4.5 1.83L2 5.33" stroke="currentColor" fill="none"/><path d="M2 2v3.33h3.33" stroke="currentColor" fill="none"/><path d="M8 4.7V8l2.6 1.3" stroke="#3574F0" fill="none"/></svg>
+</span><code>history</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5H4.8a1.3 1.3 0 0 0-1.3 1.3v8.4a1.3 1.3 0 0 0 1.3 1.3h6.4a1.3 1.3 0 0 0 1.3-1.3V5.5z" stroke="currentColor" fill="none"/><path d="M9.5 2.5v3h3" stroke="currentColor" fill="none"/><path d="M5.8 8.2h4.4M5.8 10.7h3" stroke="currentColor" fill="none"/></svg>
+</span><code>logs</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2.5" width="10" height="6" rx="1" stroke="currentColor" fill="none"/><path d="M5.25 5.5h1.5M9.25 5.5h1.5" stroke="currentColor" fill="none"/><path d="M8 9.8c-1.35 1.7-2 2.7-2 3.6a2 2 0 0 0 4 0c0-.9-.65-1.9-2-3.6z" stroke="#4FC3F7" fill="none"/></svg>
+</span><code>memory-leak</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="11" height="7.5" rx="1" stroke="currentColor" fill="none"/><path d="M4.75 11.5V14M8 11.5V14M11.25 11.5V14" stroke="currentColor" fill="none"/><path d="M5 7.75h2M9 7.75h2" stroke="#3574F0" fill="none"/></svg>
+</span><code>memory</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 11h-9c1-1 1.5-1.9 1.5-4.2C5 4.2 6.3 2.5 8 2.5s3 1.7 3 4.3c0 2.3.5 3.2 1.5 4.2z" stroke="currentColor" fill="none"/><path d="M6.8 13.2a1.3 1.3 0 0 0 2.4 0" stroke="currentColor" fill="none"/></svg>
+</span><code>notification</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="5" height="5" rx="1" stroke="currentColor" fill="none"/><rect x="8.5" y="2.5" width="5" height="5" rx="1" stroke="currentColor" fill="none"/><rect x="2.5" y="8.5" width="5" height="5" rx="1" stroke="currentColor" fill="none"/><path d="M9 12.5l1.6-1.9 1.3 1 1.6-2.2" stroke="#3574F0" fill="none"/></svg>
+</span><code>open-dashboard</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="2" height="9" rx="1" stroke="none" fill="currentColor"/><rect x="9" y="3.5" width="2" height="9" rx="1" stroke="none" fill="currentColor"/></svg>
+</span><code>pause-monitoring</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5l4 4-2.2.7-1.8 1.8-.7 2.2-3.5-3.5 2.2-.7 1.8-1.8z" stroke="currentColor" fill="none"/><path d="M7.05 8.95 3 13" stroke="currentColor" fill="none"/></svg>
+</span><code>pin</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke="currentColor" fill="none"/><path d="M4.5 8h1.8l1.2-2.4 1.6 4.4 1.2-2h1.2" stroke="#3574F0" fill="none"/></svg>
+</span><code>process</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a6 6 0 0 1 6-6c1.68 0 3.29.67 4.5 1.83L14 5.33" stroke="currentColor" fill="none"/><path d="M14 2v3.33h-3.33" stroke="currentColor" fill="none"/><path d="M14 8a6 6 0 0 1-6 6c-1.68 0-3.29-.67-4.5-1.83L2 10.67" stroke="currentColor" fill="none"/><path d="M2 14v-3.33h3.33" stroke="currentColor" fill="none"/></svg>
+</span><code>refresh</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.75" y="2.75" width="10.5" height="10.5" rx="2" stroke="currentColor" fill="none"/><path d="M5.5 8h5" stroke="#DB5C5C" fill="none"/></svg>
+</span><code>remove-app</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8a6 6 0 1 1-6-6c1.68 0 3.29.67 4.5 1.83L14 5.33" stroke="#3574F0" fill="none"/><path d="M14 2v3.33h-3.33" stroke="#3574F0" fill="none"/><path d="M5.9 6.6 7.6 8 5.9 9.4" stroke="#3574F0" fill="none"/><path d="M8.6 6.6 10.3 8 8.6 9.4" stroke="#3574F0" fill="none"/></svg>
+</span><code>restart-all</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8a6 6 0 1 1-6-6c1.68 0 3.29.67 4.5 1.83L14 5.33" stroke="#3574F0" fill="none"/><path d="M14 2v3.33h-3.33" stroke="#3574F0" fill="none"/></svg>
+</span><code>restart</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4v8" stroke="#3574F0" fill="none"/><path d="M6.8 4 12.5 8l-5.7 4Z" stroke="#3574F0" fill="none"/></svg>
+</span><code>resume-monitoring</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 4.3l1 1L5.6 3.4" stroke="#3574F0" fill="none"/><path d="M8 4.3h5.2" stroke="currentColor" fill="none"/><path d="M2.8 8.8l1 1 1.8-1.9" stroke="#3574F0" fill="none"/><path d="M8 8.8h5.2" stroke="currentColor" fill="none"/><rect x="3" y="12.1" width="2.4" height="2.4" rx="0.6" stroke="currentColor" fill="none"/><path d="M8 13.3h5.2" stroke="currentColor" fill="none"/></svg>
+</span><code>rules</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3.5 8.5 8 4 12.5" stroke="#3574F0" fill="none"/><path d="M9 3.5 13.5 8 9 12.5" stroke="#3574F0" fill="none"/></svg>
+</span><code>run-all</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4.5" stroke="currentColor" fill="none"/><path d="M10.3 10.3 13.5 13.5" stroke="currentColor" fill="none"/></svg>
+</span><code>search</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="4" stroke="currentColor" fill="none"/><circle cx="8" cy="8" r="1.6" stroke="currentColor" fill="none"/><path d="M8 4V1.8M8 14.2V12M12 8h2.2M1.8 8H4M10.83 5.17l1.55-1.55M3.62 12.38l1.55-1.55M10.83 10.83l1.55 1.55M3.62 3.62l1.55 1.55" stroke="currentColor" fill="none"/></svg>
+</span><code>settings</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 3.6 12.8 8 5.8 12.4Z" stroke="#3574F0" fill="none"/></svg>
+</span><code>start</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.5" stroke="currentColor" fill="none"/><circle cx="8" cy="8" r="2" stroke="none" fill="#3574F0"/></svg>
+</span><code>status</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h5.5A1.5 1.5 0 0 1 13 4.5V10" stroke="#DB5C5C" fill="none"/><rect x="3" y="5.5" width="7.5" height="7.5" rx="1.5" stroke="#DB5C5C" fill="none"/></svg>
+</span><code>stop-all</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.75" y="4.75" width="6.5" height="6.5" rx="1.2" stroke="#DB5C5C" fill="none"/></svg>
+</span><code>stop</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.1V3.7a1.2 1.2 0 0 1 1.2-1.2h3.4a1.6 1.6 0 0 1 1.13.47l4.94 4.94a1.6 1.6 0 0 1 0 2.26l-3.4 3.4a1.6 1.6 0 0 1-2.26 0L2.97 8.98A1.6 1.6 0 0 1 2.5 7.1z" stroke="currentColor" fill="none"/><circle cx="5.6" cy="5.6" r="1.1" stroke="none" fill="#3574F0"/></svg>
+</span><code>tag</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.2" width="4.2" height="3.4" rx="0.9" stroke="currentColor" fill="none"/><rect x="9.3" y="5.2" width="4.2" height="3.4" rx="0.9" stroke="currentColor" fill="none"/><rect x="9.3" y="10.4" width="4.2" height="3.4" rx="0.9" stroke="currentColor" fill="none"/><path d="M4.6 5.6v6.5h4.7M4.6 6.9h4.7" stroke="currentColor" fill="none"/></svg>
+</span><code>tree-view</code></div><div class="cell"><span class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4.2A1.2 1.2 0 0 1 3.7 3h2.7l1.6 1.8h4.3a1.2 1.2 0 0 1 1.2 1.2v6a1.2 1.2 0 0 1-1.2 1.2H3.7a1.2 1.2 0 0 1-1.2-1.2z" stroke="currentColor" fill="none"/></svg>
+</span><code>working-directory</code></div></div>
+
+  <h2>Empty state</h2>
+  <div class="card row" style="justify-content:center"><svg width="320" height="260" viewBox="0 0 320 260" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="No applications are being monitored">
+  <style>
+    .frame  { stroke: #C9CCD6; }
+    .ghost  { fill: #D6D9E0; }
+    .ghost2 { fill: #E3E5EB; }
+    .txt    { font-family: Inter, 'JetBrains Sans', -apple-system, 'Segoe UI', sans-serif; fill: #494B52; }
+    .sub    { font-family: Inter, 'JetBrains Sans', -apple-system, 'Segoe UI', sans-serif; fill: #8C8F98; }
+    @media (prefers-color-scheme: dark) {
+      .frame  { stroke: #3B3E45; }
+      .ghost  { fill: #3B3E45; }
+      .ghost2 { fill: #2E3136; }
+      .txt    { fill: #D3D5DB; }
+      .sub    { fill: #85888F; }
+    }
+  </style>
+
+  <!-- Dashed board -->
+  <rect x="60" y="24" width="200" height="140" rx="16" fill="none" class="frame" stroke-width="2" stroke-dasharray="7 7"/>
+
+  <!-- Ghost lanes (the mark, waiting to come alive) -->
+  <rect x="88" y="56" width="90" height="14" rx="7" class="ghost"/>
+  <circle cx="200" cy="63" r="7" class="ghost2"/>
+  <rect x="88" y="86" width="132" height="14" rx="7" class="ghost"/>
+  <rect x="88" y="116" width="64" height="14" rx="7" class="ghost2"/>
+  <circle cx="174" cy="123" r="7" class="ghost"/>
+
+  <!-- Add action -->
+  <circle cx="248" cy="152" r="24" fill="#3574F0"/>
+  <path d="M248 142v20M238 152h20" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+
+  <text x="160" y="212" text-anchor="middle" class="txt" font-size="16" font-weight="600">No applications are being monitored</text>
+  <text x="160" y="236" text-anchor="middle" class="sub" font-size="13">Add an application or discover running processes to get started</text>
+</svg>
+</div>
+
+  <h2>Color palette</h2>
+  <div class="card swatches"><div class="sw"><div class="chip" style="background:#3574F0"></div><code>#3574F0</code><span>Primary</span></div><div class="sw"><div class="chip" style="background:#548AF7"></div><code>#548AF7</code><span>Primary · dark</span></div><div class="sw"><div class="chip" style="background:#4FC3F7"></div><code>#4FC3F7</code><span>Telemetry</span></div><div class="sw"><div class="chip" style="background:#6CD1FF"></div><code>#6CD1FF</code><span>Telemetry · dark</span></div><div class="sw"><div class="chip" style="background:#7B61FF"></div><code>#7B61FF</code><span>Accent / Memory</span></div><div class="sw"><div class="chip" style="background:#5FB865"></div><code>#5FB865</code><span>Success</span></div><div class="sw"><div class="chip" style="background:#E8A33D"></div><code>#E8A33D</code><span>Warning</span></div><div class="sw"><div class="chip" style="background:#DB5C5C"></div><code>#DB5C5C</code><span>Danger</span></div><div class="sw"><div class="chip" style="background:#1E1F22"></div><code>#1E1F22</code><span>Bg dark</span></div><div class="sw"><div class="chip" style="background:#26282C"></div><code>#26282C</code><span>Panel dark</span></div><div class="sw"><div class="chip" style="background:#3B3E45"></div><code>#3B3E45</code><span>Border dark</span></div><div class="sw"><div class="chip" style="background:#ECEDF0"></div><code>#ECEDF0</code><span>Text dark</span></div></div>
+
+  <footer>Multiple Run · full token tables, spacing and voice rules in <code>BRAND_GUIDELINES.md</code></footer>
+</div>
+</body></html>

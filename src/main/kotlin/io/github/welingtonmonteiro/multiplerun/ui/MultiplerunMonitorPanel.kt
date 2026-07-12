@@ -74,6 +74,7 @@ import com.intellij.util.ui.ListTableModel
 
 import io.github.welingtonmonteiro.multiplerun.MemoryHistory
 import io.github.welingtonmonteiro.multiplerun.MultiplerunConfigurationType
+import io.github.welingtonmonteiro.multiplerun.MultiplerunIcons
 import io.github.welingtonmonteiro.multiplerun.MultiplerunProcessRegistry
 import io.github.welingtonmonteiro.multiplerun.MultiplerunRunConfiguration
 import io.github.welingtonmonteiro.multiplerun.MultiplerunRunnerState
@@ -220,7 +221,7 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
         rowActions.add(restartUnhealthy)
 
         val toolbarGroup = DefaultActionGroup()
-        toolbarGroup.add(object : DumbAwareAction("Refresh", "Refresh the process list now", AllIcons.Actions.Refresh) {
+        toolbarGroup.add(object : DumbAwareAction("Refresh", "Refresh the process list now", MultiplerunIcons.Refresh) {
             override fun actionPerformed(e: AnActionEvent) {
                 refresh()
             }
@@ -665,7 +666,7 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
     /** Restarts every selected application; everything else keeps running. */
     private inner class RestartSelectedAction : DumbAwareAction(
         "Restart", "Stop the selected application(s) and start them again (everything else keeps running)",
-        AllIcons.Actions.Restart) {
+        MultiplerunIcons.Restart) {
 
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
@@ -693,7 +694,7 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
 
     /** Graceful stop of every selected application - same as the red stop button of its tab. */
     private inner class StopSelectedAction : DumbAwareAction(
-        "Stop", "Request the selected application(s) to terminate", AllIcons.Actions.Suspend) {
+        "Stop", "Request the selected application(s) to terminate", MultiplerunIcons.Stop) {
 
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
@@ -776,7 +777,7 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
     }
 
     /** Lets the user choose which columns are visible through a checkbox popup. */
-    private inner class ShowColumnsAction : DumbAwareAction("Show Columns", "Choose which columns are visible", AllIcons.Actions.Show) {
+    private inner class ShowColumnsAction : DumbAwareAction("Show Columns", "Choose which columns are visible", MultiplerunIcons.ColumnChooser) {
 
         override fun actionPerformed(e: AnActionEvent) {
             val list = CheckBoxList<String>()
@@ -812,7 +813,7 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
     /** Opens the memory chart/analysis of the selected application straight on the Analysis tab. */
     private inner class MemoryAnalysisAction : DumbAwareAction(
         "Memory Analysis", "Open the memory chart and leak analysis of the selected application",
-        AllIcons.Toolwindows.ToolWindowProfiler) {
+        MultiplerunIcons.MemoryLeak) {
 
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
@@ -860,7 +861,7 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
      * **count of running applications** as a badge next to a restart icon, so a single click
      * relaunches the whole set instead of restarting apps one by one; disabled when nothing runs.
      */
-    private inner class RestartAllWithCountAction : DumbAwareAction("Restart All", "Restart every running application", AllIcons.Actions.Restart), CustomComponentAction {
+    private inner class RestartAllWithCountAction : DumbAwareAction("Restart All", "Restart every running application", MultiplerunIcons.RestartAll), CustomComponentAction {
 
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
@@ -894,7 +895,7 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
      * **count of running processes** next to a stop icon (WebStorm-style), so it is not confused
      * with the per-row stop; it is disabled when nothing the plugin started is running.
      */
-    private inner class StopAllWithCountAction : DumbAwareAction("Stop Multiple Run", "Stop every process started by Multiple Run", AllIcons.Actions.Suspend), CustomComponentAction {
+    private inner class StopAllWithCountAction : DumbAwareAction("Stop Multiple Run", "Stop every process started by Multiple Run", MultiplerunIcons.StopAll), CustomComponentAction {
 
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
@@ -937,7 +938,7 @@ class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPa
      */
     private inner class BatchEnvSwitchAction : DumbAwareAction(
         "Switch Environment", "Switch the environment of all running apps and restart them",
-        AllIcons.FileTypes.Properties), CustomComponentAction {
+        MultiplerunIcons.EnvVariables), CustomComponentAction {
 
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 

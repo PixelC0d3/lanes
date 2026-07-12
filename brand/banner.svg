@@ -1,0 +1,107 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" font-family="Inter, 'JetBrains Sans', -apple-system, 'Segoe UI', sans-serif">
+  <defs>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="1.5" cy="1.5" r="1.5" fill="#2B2D31"/>
+    </pattern>
+    <clipPath id="frame"><rect width="1280" height="640"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+  <rect width="1280" height="640" fill="#17181C"/>
+  <rect width="1280" height="640" fill="url(#dots)"/>
+
+  <!-- ============ LEFT: identity ============ -->
+  <!-- Mark -->
+  <g transform="translate(96,120) scale(4.5)">
+    <rect x="2" y="2" width="8" height="3" rx="1.5" fill="#3574F0"/>
+    <circle cx="12.5" cy="3.5" r="1.5" fill="#4FC3F7"/>
+    <rect x="2" y="6.5" width="12" height="3" rx="1.5" fill="#3574F0"/>
+    <rect x="2" y="11" width="6" height="3" rx="1.5" fill="#4FC3F7"/>
+    <circle cx="10.5" cy="12.5" r="1.5" fill="#3574F0"/>
+  </g>
+
+  <text x="96" y="272" font-size="64" font-weight="700" letter-spacing="-1.5" fill="#ECEDF0">Multiple <tspan fill="#548AF7">Run</tspan></text>
+
+  <text x="98" y="322" font-size="24" font-weight="400" fill="#B4B8BF" letter-spacing="0.2">Run, Monitor &amp; Automate Your Development Apps</text>
+
+  <!-- Feature chips -->
+  <g font-family="'JetBrains Mono', ui-monospace, Consolas, monospace" font-size="14" letter-spacing="1">
+    <rect x="98"  y="360" width="132" height="34" rx="17" stroke="#33373E" fill="#1D1F24"/>
+    <circle cx="120" cy="377" r="4" fill="#5FB865"/>
+    <text x="134" y="382" fill="#B4B8BF">RUNNING</text>
+
+    <rect x="242" y="360" width="98" height="34" rx="17" stroke="#33373E" fill="#1D1F24"/>
+    <text x="262" y="382" fill="#B4B8BF">CPU</text>
+    <text x="300" y="382" fill="#4FC3F7">2%</text>
+
+    <rect x="352" y="360" width="140" height="34" rx="17" stroke="#33373E" fill="#1D1F24"/>
+    <text x="372" y="382" fill="#B4B8BF">MEM</text>
+    <text x="420" y="382" fill="#7B61FF">412MB</text>
+
+    <rect x="504" y="360" width="120" height="34" rx="17" stroke="#33373E" fill="#1D1F24"/>
+    <circle cx="526" cy="377" r="4" fill="#5FB865"/>
+    <text x="540" y="382" fill="#B4B8BF">HEALTH</text>
+  </g>
+
+  <text x="98" y="452" font-family="'JetBrains Mono', ui-monospace, Consolas, monospace" font-size="15" fill="#6C707E">$ run --all --watch --auto-restart</text>
+
+  <!-- JetBrains-plugin hint line -->
+  <text x="98" y="560" font-size="16" fill="#6C707E" letter-spacing="0.4">Advanced application manager for JetBrains IDEs · Windows · Linux · macOS</text>
+
+  <!-- ============ RIGHT: orchestration board illustration ============ -->
+  <!-- Card 1 : api-gateway -->
+  <g transform="translate(724,88)">
+    <rect width="440" height="128" rx="14" fill="#1D1F24" stroke="#33373E" stroke-width="1.5"/>
+    <circle cx="30" cy="32" r="6" fill="#5FB865"/>
+    <text x="48" y="38" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="17" fill="#ECEDF0">api-gateway</text>
+    <text x="48" y="60" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6C707E">:8080 · pid 4123 · up 2h 14m</text>
+    <!-- sparkline -->
+    <polyline points="30,104 66,96 102,100 138,84 174,92 210,72 246,80 282,64 318,74 354,58 390,66 412,52"
+              stroke="#4FC3F7" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- memory bar -->
+    <rect x="300" y="26" width="112" height="8" rx="4" fill="#2B2D31"/>
+    <rect x="300" y="26" width="68" height="8" rx="4" fill="#7B61FF"/>
+    <text x="300" y="52" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="11" fill="#6C707E">MEM 61%</text>
+  </g>
+
+  <!-- Card 2 : worker-queue (staggered, echoes the lanes motif) -->
+  <g transform="translate(764,244)">
+    <rect width="440" height="128" rx="14" fill="#1D1F24" stroke="#33373E" stroke-width="1.5"/>
+    <circle cx="30" cy="32" r="6" fill="#5FB865"/>
+    <text x="48" y="38" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="17" fill="#ECEDF0">worker-queue</text>
+    <text x="48" y="60" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6C707E">docker · redis:7 · healthy</text>
+    <polyline points="30,92 66,98 102,88 138,96 174,86 210,94 246,82 282,92 318,80 354,90 390,78 412,86"
+              stroke="#3574F0" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="300" y="26" width="112" height="8" rx="4" fill="#2B2D31"/>
+    <rect x="300" y="26" width="38" height="8" rx="4" fill="#7B61FF"/>
+    <text x="300" y="52" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="11" fill="#6C707E">MEM 34%</text>
+  </g>
+
+  <!-- Card 3 : web-frontend (restarting) -->
+  <g transform="translate(704,400)">
+    <rect width="440" height="128" rx="14" fill="#1D1F24" stroke="#33373E" stroke-width="1.5"/>
+    <circle cx="30" cy="32" r="6" fill="#E8A33D"/>
+    <text x="48" y="38" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="17" fill="#ECEDF0">web-frontend</text>
+    <text x="48" y="60" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6C707E">auto-restart · rule: mem &gt; 85%</text>
+    <polyline points="30,72 66,66 102,58 138,50 174,44 210,40 246,38 262,38"
+              stroke="#DB5C5C" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="284,100 320,96 356,98 392,92 412,94"
+              stroke="#4FC3F7" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- restart glyph -->
+    <g transform="translate(258,58) scale(1.4)" stroke="#E8A33D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M14 8a6 6 0 1 1-6-6c1.68 0 3.29.67 4.5 1.83L14 5.33"/>
+      <path d="M14 2v3.33h-3.33"/>
+    </g>
+    <rect x="300" y="26" width="112" height="8" rx="4" fill="#2B2D31"/>
+    <rect x="300" y="26" width="98" height="8" rx="4" fill="#DB5C5C"/>
+    <text x="300" y="52" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="11" fill="#6C707E">MEM 87%</text>
+  </g>
+
+  <!-- Connector rail: orchestration line linking the cards -->
+  <path d="M700 152 H676 a12 12 0 0 0 -12 12 V296 a12 12 0 0 0 12 12 h64 M676 308 v144 a12 12 0 0 0 12 12 h12"
+        stroke="#33373E" stroke-width="2" fill="none"/>
+  <circle cx="700" cy="152" r="5" fill="#3574F0"/>
+  <circle cx="740" cy="308" r="5" fill="#3574F0"/>
+  <circle cx="700" cy="464" r="5" fill="#3574F0"/>
+  </g>
+</svg>

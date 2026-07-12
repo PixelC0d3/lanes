@@ -5,6 +5,29 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [2.0.12] — New visual identity ("Lanes")
+- New icon set replacing the generic platform (`AllIcons.*`) icons everywhere the plugin shows its
+  own branding or an action that already existed: the plugin icon, the Multiple Run configuration
+  type icon (now reused from `pluginIcon.svg` instead of `AllIcons.Actions.Rerun`), the Monitor
+  tool window icon, and the Refresh / Restart / Restart All / Stop / Stop Multiple Run / Show
+  Columns / Switch Environment / Memory Analysis actions, the docker-compose import button, and
+  the Processes/Logs tab icons. New `MultiplerunIcons.kt` holds the icon constants (same pattern as
+  the platform's own `AllIcons`), loaded via `IconLoader` from `src/main/resources/icons/`.
+- Deliberately **not** swapped: actions with no clear match in the new icon set (Force Kill, Kill
+  Process on Port, env profile/preset remove/save, log Clear/Scroll, the standalone-app and
+  fallback icons) - forcing a mismatched icon would be worse than keeping the platform default.
+- Moved the non-runtime brand assets (`BRAND_GUIDELINES.md`, `banner.png`/`.svg`, `logo.svg`,
+  `spinner.svg`, `empty-state.svg`, `preview.html`) out of `src/main/resources/META-INF/` into
+  `/brand` at the repo root, so they document the project without shipping inside the plugin
+  `.zip`. `spinner.svg` is SMIL-animated (`<animate>`) - IntelliJ's `IconLoader` rasterizes SVG to
+  a static frame, so it isn't usable as a real Swing `Icon`; it stays a docs/preview-only asset.
+- Docs: added the new logo to the top of the README and the wiki's `Home.md` (the wiki's first
+  embedded image), and linked `brand/BRAND_GUIDELINES.md` from the README for UI contributors.
+  Also fixed a stale claim in the wiki's `Home.md` ("existing configurations keep working") left
+  over from before the 2.0.11 id rename - same fix already applied to this file and `plugin.xml`
+  in 2.0.11, just missed in the wiki back then since it's a separate repository.
+- No functional change - actions, shortcuts and behavior are unchanged, only their icons.
+
 ## [2.0.11] — Internal: finish the Multirun → Multiplerun rename
 - Renamed every one of the fork's own internal identifiers from "Multirun" to "Multiplerun":
   class/file names (`MultirunRunConfiguration` → `MultiplerunRunConfiguration`, etc.), the
