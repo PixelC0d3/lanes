@@ -5,6 +5,20 @@ All notable changes to **Multiple Run** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [2.1.1] — Monitor count badge, proper display name, search-friendly description
+- **Feature:** the **Multiple Run Monitor tool window now shows a badge** with the number of running
+  applications on its stripe button — it grows as apps start, shrinks as they stop and disappears
+  when nothing is running, so the count is visible without opening the monitor. Driven by process
+  start/stop events (`ExecutionListener` via a `postStartupActivity`), so it stays correct even while
+  the tool window is closed.
+- **Fix:** the plugin's **display name** in the Marketplace, the installed-plugins list and plugin
+  search was showing the artifact id `multiple_run` (with the underscore) instead of **Multiple
+  Run** — the Gradle `pluginConfiguration.name` was set to the artifact id and overrode the proper
+  name.
+- **Docs:** the Marketplace description now leads with a keyword-rich summary (run configurations,
+  microservices, monitor memory/CPU/ports/health, .env, docker-compose) for better search, and the
+  banner width is capped so it no longer renders oversized in the IDE's install panel.
+
 ## [2.1.0] — Load .env files on a plain Play/Debug (Node-based run configurations)
 - **Feature:** the `.env`-file loading that used to exist only inside a Multiple Run group is now
   available on any Node-based run configuration (Node.js, npm/pnpm/yarn, Karma, Jest, Mocha —
