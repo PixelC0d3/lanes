@@ -56,6 +56,16 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.1.4</strong>:</p>
+        <ul>
+            <li>Fix: the 2.1.3 "configured" icon never actually showed up in the "Edit Configurations"
+                tree or the toolbar Play/Debug widget. Root cause: the configuration type doubled as
+                its own factory through a platform class whose per-configuration icon method is
+                final and always returns the generic type icon, so those two surfaces could never see
+                a configuration's own icon no matter what it returned. Fixed by giving the type its
+                own factory with a proper icon override; existing saved configurations are
+                unaffected.</li>
+        </ul>
         <p><strong>2.1.3</strong>:</p>
         <ul>
             <li>New: every saved Multiple Run configuration shows a distinct "configured" icon
@@ -825,5 +835,7 @@
         <notificationGroup id="Multiple Run" displayType="BALLOON"/>
         <!-- keeps the running-apps count badge on the monitor tool window in sync with process start/stop -->
         <postStartupActivity implementation="io.github.welingtonmonteiro.multiplerun.ui.MultiplerunMonitorBadgeActivity"/>
+        <!-- clears any stale cached icon so every saved Multiple Run instance shows the "configured" icon -->
+        <postStartupActivity implementation="io.github.welingtonmonteiro.multiplerun.MultiplerunConfiguredIconRefreshActivity"/>
     </extensions>
 </idea-plugin>
