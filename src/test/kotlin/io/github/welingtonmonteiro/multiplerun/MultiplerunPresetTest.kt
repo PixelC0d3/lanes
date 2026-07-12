@@ -7,18 +7,18 @@ import org.junit.Test
 
 import org.jdom.Element
 
-class MultirunPresetTest {
+class MultiplerunPresetTest {
 
     @Test
     fun writeThenReadRoundTrip() {
-        val presets = LinkedHashMap<String, MultirunRunConfiguration.Preset>()
+        val presets = LinkedHashMap<String, MultiplerunRunConfiguration.Preset>()
         val disabled = linkedSetOf("web", "worker")
-        presets["backend only"] = MultirunRunConfiguration.Preset("backend only", disabled, "/proj/.env.dev")
-        presets["full stack"] = MultirunRunConfiguration.Preset("full stack", LinkedHashSet(), "")
+        presets["backend only"] = MultiplerunRunConfiguration.Preset("backend only", disabled, "/proj/.env.dev")
+        presets["full stack"] = MultiplerunRunConfiguration.Preset("full stack", LinkedHashSet(), "")
 
         val root = Element("configuration")
-        MultirunRunConfiguration.writePresets(root, presets)
-        val read = MultirunRunConfiguration.readPresets(root)
+        MultiplerunRunConfiguration.writePresets(root, presets)
+        val read = MultiplerunRunConfiguration.readPresets(root)
 
         assertEquals(2, read.size)
         val backend = read["backend only"]
@@ -37,7 +37,7 @@ class MultirunPresetTest {
     @Test
     fun presetConstructorDefensivelyCopiesAndNormalizes() {
         val disabled = linkedSetOf("a")
-        val preset = MultirunRunConfiguration.Preset("x", disabled, null)
+        val preset = MultiplerunRunConfiguration.Preset("x", disabled, null)
         disabled.add("b")
         // the preset keeps its own copy, unaffected by later mutation of the source set
         assertEquals(1, preset.disabledApps.size)
@@ -49,6 +49,6 @@ class MultirunPresetTest {
     fun readIgnoresPresetsWithoutAName() {
         val root = Element("configuration")
         root.addContent(Element("preset")) // no name attribute
-        assertTrue(MultirunRunConfiguration.readPresets(root).isEmpty())
+        assertTrue(MultiplerunRunConfiguration.readPresets(root).isEmpty())
     }
 }

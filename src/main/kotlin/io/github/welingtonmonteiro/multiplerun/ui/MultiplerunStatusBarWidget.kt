@@ -13,7 +13,7 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.Consumer
 import com.intellij.util.concurrency.AppExecutorUtil
 
-import io.github.welingtonmonteiro.multiplerun.MultirunProcessRegistry
+import io.github.welingtonmonteiro.multiplerun.MultiplerunProcessRegistry
 import io.github.welingtonmonteiro.multiplerun.ProcessStatsSampler
 import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper
 
@@ -23,7 +23,7 @@ import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper
  * down). Clicking it opens the Multiple Run Monitor. It refreshes on a background timer and hides
  * itself (empty text) when nothing this plugin started is running.
  */
-class MultirunStatusBarWidget(private val project: Project) : StatusBarWidget, StatusBarWidget.TextPresentation {
+class MultiplerunStatusBarWidget(private val project: Project) : StatusBarWidget, StatusBarWidget.TextPresentation {
 
     private var statusBar: StatusBar? = null
     private var updater: ScheduledFuture<*>? = null
@@ -58,7 +58,7 @@ class MultirunStatusBarWidget(private val project: Project) : StatusBarWidget, S
     override fun getClickConsumer(): Consumer<MouseEvent> {
         return Consumer { _ ->
             val toolWindow = ToolWindowManager.getInstance(project)
-                .getToolWindow(MultirunMonitorToolWindowFactory.TOOL_WINDOW_ID)
+                .getToolWindow(MultiplerunMonitorToolWindowFactory.TOOL_WINDOW_ID)
             toolWindow?.activate(null)
         }
     }
@@ -69,18 +69,18 @@ class MultirunStatusBarWidget(private val project: Project) : StatusBarWidget, S
         if (project.isDisposed()) {
             return
         }
-        val entries = MultirunProcessRegistry.getEntries(project)
+        val entries = MultiplerunProcessRegistry.getEntries(project)
 
         val allPids = LinkedHashSet<Long>()
         for (entry in entries) {
-            allPids.addAll(ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(entry.handler)))
+            allPids.addAll(ProcessStatsSampler.processTreePids(MultiplerunProcessRegistry.pidOf(entry.handler)))
         }
         val statsByPid = ProcessStatsSampler.samplePids(allPids)
 
         var totalRssKb = 0L
         var unhealthy = 0
         for (entry in entries) {
-            val treePids = ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(entry.handler))
+            val treePids = ProcessStatsSampler.processTreePids(MultiplerunProcessRegistry.pidOf(entry.handler))
             val stats = ProcessStatsSampler.aggregate(statsByPid, treePids)
             if (stats != null) {
                 totalRssKb += stats.rssKb

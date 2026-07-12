@@ -7,7 +7,7 @@ import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
 
 /** Registers the "Multiple Run Monitor" tool window (bottom stripe of the IDE). */
-class MultirunMonitorToolWindowFactory : ToolWindowFactory, DumbAware {
+class MultiplerunMonitorToolWindowFactory : ToolWindowFactory, DumbAware {
 
     companion object {
         const val TOOL_WINDOW_ID = "Multiple Run Monitor"
@@ -16,7 +16,7 @@ class MultirunMonitorToolWindowFactory : ToolWindowFactory, DumbAware {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val contentFactory = ContentFactory.getInstance()
 
-        val monitorPanel = MultirunMonitorPanel(project)
+        val monitorPanel = MultiplerunMonitorPanel(project)
         val processes = contentFactory.createContent(monitorPanel, "Processes", false)
         processes.setDisposer(monitorPanel)
         toolWindow.getContentManager().addContent(processes)

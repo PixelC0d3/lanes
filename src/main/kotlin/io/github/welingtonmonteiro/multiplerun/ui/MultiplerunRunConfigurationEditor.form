@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="io.github.welingtonmonteiro.multiplerun.ui.MultirunRunConfigurationEditor">
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="io.github.welingtonmonteiro.multiplerun.ui.MultiplerunRunConfigurationEditor">
   <grid id="27dc6" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
     <margin top="0" left="0" bottom="0" right="0"/>
     <constraints>
@@ -78,7 +78,7 @@
             <properties>
               <selected value="true"/>
               <text value="Restart running configurations before starting"/>
-              <toolTipText value="When this Multirun is started while its configurations are still running, stop them first and then start again - like the built-in Compound configuration. Uncheck to always start new instances without stopping anything."/>
+              <toolTipText value="When this Multiple Run is started while its configurations are still running, stop them first and then start again - like the built-in Compound configuration. Uncheck to always start new instances without stopping anything."/>
               <verticalAlignment value="0"/>
               <verticalTextPosition value="0"/>
             </properties>

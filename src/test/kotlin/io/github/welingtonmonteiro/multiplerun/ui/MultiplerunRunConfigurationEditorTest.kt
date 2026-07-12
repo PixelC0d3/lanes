@@ -3,12 +3,12 @@ package io.github.welingtonmonteiro.multiplerun.ui
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class MultirunRunConfigurationEditorTest {
+class MultiplerunRunConfigurationEditorTest {
 
     @Test
     fun addEnvProfilesAppendsNewPathsPreservingOrder() {
         assertEquals(listOf("/p/com.env", "/p/def.env", "/p/qa.env"),
-                     MultirunRunConfigurationEditor.addEnvProfiles(
+                     MultiplerunRunConfigurationEditor.addEnvProfiles(
                          listOf("/p/com.env"),
                          listOf("/p/def.env", "/p/qa.env")))
     }
@@ -16,7 +16,7 @@ class MultirunRunConfigurationEditorTest {
     @Test
     fun addEnvProfilesSkipsDuplicatesAndBlanks() {
         assertEquals(listOf("/p/com.env", "/p/def.env"),
-                     MultirunRunConfigurationEditor.addEnvProfiles(
+                     MultiplerunRunConfigurationEditor.addEnvProfiles(
                          listOf("/p/com.env", "/p/def.env"),
                          listOf("/p/com.env", "", "/p/def.env")))
     }
@@ -24,7 +24,7 @@ class MultirunRunConfigurationEditorTest {
     @Test
     fun addEnvProfilesFromAnEmptyListKeepsEveryPicked() {
         assertEquals(listOf("/p/a.env", "/p/b.env"),
-                     MultirunRunConfigurationEditor.addEnvProfiles(
+                     MultiplerunRunConfigurationEditor.addEnvProfiles(
                          emptyList(), listOf("/p/a.env", "/p/b.env")))
     }
 }

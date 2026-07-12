@@ -23,9 +23,9 @@ import com.intellij.execution.runners.ProgramRunner
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.openapi.project.Project
 
-import io.github.welingtonmonteiro.multiplerun.ui.MultirunRunConfigurationEditor
+import io.github.welingtonmonteiro.multiplerun.ui.MultiplerunRunConfigurationEditor
 
-class MultirunRunConfiguration(project: Project, factory: ConfigurationFactory, name: String) :
+class MultiplerunRunConfiguration(project: Project, factory: ConfigurationFactory, name: String) :
     RunConfigurationBase<RunConfigurationOptions>(project, factory, name), RunnerSettings {
 
     private var delayTime: Double = 0.0
@@ -92,7 +92,7 @@ class MultirunRunConfiguration(project: Project, factory: ConfigurationFactory, 
         for (runConfiguration in runConfigurations) {
             for (configuration in allConfigurations) {
                 if (configuration.getName() == runConfiguration.name && typeMatches(configuration, runConfiguration)) {
-                    if (configuration is MultirunRunConfiguration) {
+                    if (configuration is MultiplerunRunConfiguration) {
                         if (configuration == this) {
                             // exclude itself
                             break
@@ -280,7 +280,7 @@ class MultirunRunConfiguration(project: Project, factory: ConfigurationFactory, 
     }
 
     override fun getConfigurationEditor(): SettingsEditor<out RunConfiguration> {
-        return MultirunRunConfigurationEditor(getProject())
+        return MultiplerunRunConfigurationEditor(getProject())
     }
 
     override fun readExternal(element: Element) {
@@ -463,7 +463,7 @@ class MultirunRunConfiguration(project: Project, factory: ConfigurationFactory, 
                 enabled.add(each)
             }
         }
-        return MultirunRunnerState(enabled, startOneByOne, delayTime,
+        return MultiplerunRunnerState(enabled, startOneByOne, delayTime,
                                    reuseTabs, reuseTabsWithFailure,
                                    markFailedProcess, hideSuccessProcess, envData, envFilePath,
                                    saveOutputDir, getMemoryLimits(), getReadyConditions(),
@@ -480,8 +480,8 @@ class MultirunRunConfiguration(project: Project, factory: ConfigurationFactory, 
      * Monitor to relaunch a single application - e.g. after switching its environment - while
      * keeping it tracked, grouped and shown with its live environment exactly like a normal launch.
      */
-    fun createStateForApps(apps: List<RunConfiguration>): MultirunRunnerState {
-        return MultirunRunnerState(apps, false, delayTime,
+    fun createStateForApps(apps: List<RunConfiguration>): MultiplerunRunnerState {
+        return MultiplerunRunnerState(apps, false, delayTime,
                                    reuseTabs, reuseTabsWithFailure,
                                    markFailedProcess, hideSuccessProcess, envData, envFilePath,
                                    saveOutputDir, getMemoryLimits(), getReadyConditions(),
@@ -554,8 +554,9 @@ class MultirunRunConfiguration(project: Project, factory: ConfigurationFactory, 
             // entries saved by older versions reference the type by its display name, which is
             // not unique, may change between releases and is translated by language packs;
             // they are migrated to the type id on the next save. The id comparison also covers
-            // display names that were later rebranded (e.g. "Multirun" -> "Multiple Run", where
-            // the id is still "Multirun").
+            // display names that were later rebranded (e.g. "Multirun" -> "Multiple Run") even
+            // though the type id itself changed too (from "Multirun" to "Multiplerun") once the
+            // plugin had no real users yet to break.
             return configuration.getType().getDisplayName() == saved.type
                 || configuration.getType().getId() == saved.type
         }

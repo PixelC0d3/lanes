@@ -46,7 +46,7 @@ class RunConfigurationHelper private constructor() {
 
         /** This to avoid problems with one multirun configuration A contains multirun configuration B, which itself contains A. */
         @JvmStatic
-        fun containsLoopies(configuration: MultirunRunConfiguration, target: MultirunRunConfiguration): Boolean {
+        fun containsLoopies(configuration: MultiplerunRunConfiguration, target: MultiplerunRunConfiguration): Boolean {
             if (configuration == target) {
                 return true
             }
@@ -54,7 +54,7 @@ class RunConfigurationHelper private constructor() {
                 if (each == target) {
                     return true
                 }
-                if (each is MultirunRunConfiguration && containsLoopies(each, target)) {
+                if (each is MultiplerunRunConfiguration && containsLoopies(each, target)) {
                     return true
                 }
             }
@@ -221,7 +221,7 @@ class RunConfigurationHelper private constructor() {
             return try {
                 val fileVars = parseEnvFile(file)
                 // info level on purpose: key names only (never values), to diagnose injection issues from idea.log
-                LOG.info("Multirun env file '$file' loaded, keys=${fileVars.keys}")
+                LOG.info("Multiple Run env file '$file' loaded, keys=${fileVars.keys}")
                 if (fileVars.isEmpty()) {
                     return envData
                 }
@@ -229,7 +229,7 @@ class RunConfigurationHelper private constructor() {
                 merged.putAll(envData.getEnvs())
                 EnvironmentVariablesData.create(merged, envData.isPassParentEnvs())
             } catch (e: IOException) {
-                LOG.warn("Multirun: cannot read env file '$file', continuing without it", e)
+                LOG.warn("Multiple Run: cannot read env file '$file', continuing without it", e)
                 envData
             }
         }
@@ -249,7 +249,7 @@ class RunConfigurationHelper private constructor() {
             return try {
                 val fileVars = parseEnvFile(file)
                 // info level on purpose: key names only (never values), to diagnose injection from idea.log
-                LOG.info("Multirun per-app env file '$file' loaded, keys=${fileVars.keys}")
+                LOG.info("Multiple Run per-app env file '$file' loaded, keys=${fileVars.keys}")
                 if (fileVars.isEmpty()) {
                     return envData
                 }
@@ -257,7 +257,7 @@ class RunConfigurationHelper private constructor() {
                 merged.putAll(fileVars) // the per-app file wins over the group environment
                 EnvironmentVariablesData.create(merged, envData.isPassParentEnvs())
             } catch (e: IOException) {
-                LOG.warn("Multirun: cannot read per-app env file '$file', continuing without it", e)
+                LOG.warn("Multiple Run: cannot read per-app env file '$file', continuing without it", e)
                 envData
             }
         }
@@ -278,7 +278,7 @@ class RunConfigurationHelper private constructor() {
         @JvmStatic
         fun applySaveOutput(configuration: RunConfiguration, directory: String, configurationName: String): Boolean {
             if (configuration !is RunConfigurationBase<*>) {
-                LOG.warn("Multirun save console for '$configurationName': configuration type does not support output files, skipping")
+                LOG.warn("Multiple Run save console for '$configurationName': configuration type does not support output files, skipping")
                 return false
             }
             configuration.setSaveOutputToFile(true)
@@ -295,8 +295,8 @@ class RunConfigurationHelper private constructor() {
         }
 
         /**
-         * Returns a copy of the configuration with the Multirun environment variables applied on top of its own
-         * (Multirun values win on conflicts). The original configuration is never modified. When the override is
+         * Returns a copy of the configuration with the Multiple Run environment variables applied on top of its own
+         * (Multiple Run values win on conflicts). The original configuration is never modified. When the override is
          * not active, or the configuration type does not expose environment variables, the original instance is
          * returned unchanged.
          */
@@ -304,17 +304,17 @@ class RunConfigurationHelper private constructor() {
         fun withEnvironmentOverride(configuration: RunConfiguration, override: EnvironmentVariablesData): RunConfiguration {
             // info-level logs below carry key names only (never values); they exist to diagnose,
             // straight from idea.log, which injection strategy each child configuration took
-            val logPrefix = "Multirun env override for '${configuration.getName()}' (${configuration.javaClass.simpleName}): "
+            val logPrefix = "Multiple Run env override for '${configuration.getName()}' (${configuration.javaClass.simpleName}): "
             if (!isEnvOverrideActive(override)) {
                 LOG.info(logPrefix + "inactive, running unchanged")
                 return configuration
             }
 
-            if (configuration is MultirunRunConfiguration) {
-                // propagate to nested Multirun configurations; their own runner state applies it to their children
-                val clone = configuration.clone() as MultirunRunConfiguration
+            if (configuration is MultiplerunRunConfiguration) {
+                // propagate to nested Multiple Run configurations; their own runner state applies it to their children
+                val clone = configuration.clone() as MultiplerunRunConfiguration
                 clone.setEnvData(mergeEnvData(clone.getEnvData(), override))
-                LOG.info(logPrefix + "propagated to nested Multirun, keys=" + clone.getEnvData().getEnvs().keys)
+                LOG.info(logPrefix + "propagated to nested Multiple Run, keys=" + clone.getEnvData().getEnvs().keys)
                 return clone
             }
 

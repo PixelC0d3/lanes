@@ -14,10 +14,10 @@ import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.options.SettingsEditor
 import com.intellij.profiler.DefaultProfilerExecutorGroup
 
-import io.github.welingtonmonteiro.multiplerun.ui.MultirunRunConfigurationEditor
+import io.github.welingtonmonteiro.multiplerun.ui.MultiplerunRunConfigurationEditor
 
 /**
- * Runner for Multirun configurations.
+ * Runner for Multiple Run configurations.
  *
  * Extends [GenericProgramRunner] so the platform performs the `startRunProfile` call itself: the
  * plugin no longer touches the internal `ExecutionManager.startRunProfile` API (flagged by the
@@ -26,9 +26,9 @@ import io.github.welingtonmonteiro.multiplerun.ui.MultirunRunConfigurationEditor
  *
  * @author Ruslan Khmelyuk
  */
-class MultirunRunner : GenericProgramRunner<MultirunRunConfiguration>() {
+class MultiplerunRunner : GenericProgramRunner<MultiplerunRunConfiguration>() {
 
-    override fun getRunnerId(): String = "multirun"
+    override fun getRunnerId(): String = "multiplerun"
 
     override fun doExecute(state: RunProfileState, environment: ExecutionEnvironment): RunContentDescriptor? {
         return executeState(state, environment, this)
@@ -37,19 +37,19 @@ class MultirunRunner : GenericProgramRunner<MultirunRunConfiguration>() {
     override fun getSettingsEditor(
         executor: Executor,
         configuration: RunConfiguration,
-    ): SettingsEditor<MultirunRunConfiguration>? {
-        return MultirunRunConfigurationEditor(configuration.getProject())
+    ): SettingsEditor<MultiplerunRunConfiguration>? {
+        return MultiplerunRunConfigurationEditor(configuration.getProject())
     }
 
     override fun canRun(executorId: String, runProfile: RunProfile): Boolean {
-        return runProfile is MultirunRunConfiguration && isSupportedExecutor(executorId)
+        return runProfile is MultiplerunRunConfiguration && isSupportedExecutor(executorId)
     }
 
     companion object {
         const val JREBEL_EXECUTOR_ID = "JRebel Executor"
         const val JREBEL_DEBUG_ID = "JRebel Debug"
 
-        /** True for the executors a Multirun group can be launched with (case-insensitive). */
+        /** True for the executors a Multiple Run group can be launched with (case-insensitive). */
         @JvmStatic
         fun isSupportedExecutor(executorId: String?): Boolean {
             return DefaultRunExecutor.EXECUTOR_ID.equals(executorId, ignoreCase = true)

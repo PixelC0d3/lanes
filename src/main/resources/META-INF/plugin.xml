@@ -1,8 +1,9 @@
 <idea-plugin url="https://github.com/WelingtonMonteiro/multiple_run">
     <!-- Unique Marketplace id of this fork (the original Multirun owns com.khmelyuk.multirun).
-         The run configuration type id ("Multirun") is intentionally kept, so run configurations
-         saved with the original plugin keep working - which also means the original Multirun
-         plugin must be uninstalled before installing this one. -->
+         The run configuration type id is "Multiplerun" (changed from "Multirun" before this fork
+         had any real users), so it can never collide with the original plugin's own type id if
+         both are ever installed side by side; the original Multirun plugin should still be
+         uninstalled before installing this one. -->
     <id>io.github.welingtonmonteiro.multiplerun</id>
     <name>Multiple Run</name>
     <!-- version is injected from build.gradle (project.version) by patchPluginXml -->
@@ -12,12 +13,11 @@
         <![CDATA[
         <p>Fork of the <a href="https://github.com/rkhmelyuk/multirun">Multirun</a> plugin by Ruslan Khmeliuk, with
         additional features such as an environment variables override applied to all grouped configurations.
-        It replaces the original plugin (uninstall Multirun before installing this one); existing Multirun
-        run configurations keep working.</p>
+        It replaces the original plugin (uninstall Multirun before installing this one).</p>
 
         <p>Run multiple run configurations at once: group multiple run configurations and start them in a single click.
-        Not only application and test run configurations can be grouped, but other Multirun configurations can be organized
-        into single run configuration.</p>
+        Not only application and test run configurations can be grouped, but other Multiple Run configurations can be
+        organized into single run configuration.</p>
 
         <p>Use cases:</p>
         <ul>
@@ -34,7 +34,7 @@
             <li>Ready to use</li>
         </ol>
 
-        <p>Multirun + Before Launch Tasks gives even more functionality: read more at <a href="https://goo.gl/KwHvx">https://goo.gl/KwHvx</a></p>
+        <p>Multiple Run + Before Launch Tasks gives even more functionality: read more at <a href="https://goo.gl/KwHvx">https://goo.gl/KwHvx</a></p>
 
         <p>If this plugin saves you time, consider <a href="https://buymeacoffee.com/welingtonmonteiro">buying me a coffee</a> ☕</p>
 
@@ -43,6 +43,21 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.0.11</strong>:</p>
+        <ul>
+            <li>Internal: finished renaming the fork's own internal identifiers from "Multirun" to
+                "Multiplerun" - class/file names, log messages and comments now say "Multiplerun"
+                (code) / "Multiple Run" (user-facing text) consistently.</li>
+            <li><strong>Breaking for run configurations saved before this release</strong>: the run
+                configuration type id itself changed from <code>"Multirun"</code> to
+                <code>"Multiplerun"</code>, so it can never collide with the original third-party
+                Multirun plugin's own type id if both are ever installed together. This plugin has
+                no real users yet, so the trade-off (existing saved configurations need to be
+                recreated) was made now, while it is still free.</li>
+            <li>Docs: updated the README and Marketplace description to say "Multiple Run" instead
+                of "Multirun" wherever they refer to this plugin - the historical credit line to the
+                original Multirun plugin by Ruslan Khmeliuk is unchanged.</li>
+        </ul>
         <p><strong>2.0.10</strong>:</p>
         <ul>
             <li>Docs: revamped the README (feature sections now scannable at a glance, a screenshot
@@ -53,7 +68,7 @@
         <ul>
             <li>Internal (Kotlin migration, the rest of the codebase): converted the remaining 14
                 JUnit test classes from Java to Kotlin. Moved
-                <code>MultirunRunConfigurationEditor.form</code> next to its Kotlin class under
+                <code>MultiplerunRunConfigurationEditor.form</code> next to its Kotlin class under
                 <code>src/main/kotlin</code> (confirmed the GUI-Designer form instrumentation still
                 works from there). The entire codebase - <code>src/main</code> and
                 <code>src/test</code> - is now Kotlin; there is no Java source left in the project.
@@ -62,7 +77,7 @@
         <p><strong>2.0.8</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration complete): converted the last remaining Java class,
-                <code>MultirunRunConfigurationEditor</code> (the run configuration editor UI), to
+                <code>MultiplerunRunConfigurationEditor</code> (the run configuration editor UI), to
                 Kotlin. It still binds to its existing GUI-Designer <code>.form</code> file - the
                 form-to-bytecode weaving works the same for a Kotlin class as it did for Java, so
                 the editor's layout and behavior are unchanged. <code>src/main/java</code> now
@@ -72,12 +87,12 @@
         <p><strong>2.0.7</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration, five classes - the last batch before the GUI-form-bound
-                editor): converted <code>MultirunRunner</code> (the launcher extending
+                editor): converted <code>MultiplerunRunner</code> (the launcher extending
                 <code>GenericProgramRunner</code>), <code>AggregatedLogPanel</code> (the docker-compose-
-                logs-style aggregated Logs tab), <code>MultirunRunnerState</code> (the launch pipeline:
+                logs-style aggregated Logs tab), <code>MultiplerunRunnerState</code> (the launch pipeline:
                 one-by-one chaining, readiness gates, crash-restart, tab/content handling),
-                <code>MultirunRunConfiguration</code> (persistence: readExternal/writeExternal,
-                presets, env profiles) and <code>MultirunMonitorPanel</code> (the monitor tool window:
+                <code>MultiplerunRunConfiguration</code> (persistence: readExternal/writeExternal,
+                presets, env profiles) and <code>MultiplerunMonitorPanel</code> (the monitor tool window:
                 table model, columns, batch actions, env switching) from Java to Kotlin. Public
                 surfaces and behavior are unchanged - every getter/setter keeps its exact Java name.
                 Only the GUI-form-bound run-config editor stays Java (its <code>.form</code> is tied to
@@ -87,8 +102,8 @@
         <p><strong>2.0.6</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration, five classes): converted <code>EnvVarsDialog</code> (the
-                read-only loaded-variables viewer), <code>MultirunProcessRegistry</code> (the
-                per-project registry of running apps the monitor lists), <code>MultirunStatusBarWidget</code>,
+                read-only loaded-variables viewer), <code>MultiplerunProcessRegistry</code> (the
+                per-project registry of running apps the monitor lists), <code>MultiplerunStatusBarWidget</code>,
                 <code>MemoryLimitWatcher</code> (the background memory/health/CPU alert watcher) and
                 <code>MemoryChartDialog</code> (the full-session memory chart + leak analysis + CSV
                 export) from Java to Kotlin. Public surfaces and behavior are unchanged. No functional change.</li>
@@ -96,9 +111,9 @@
         <p><strong>2.0.5</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration, five classes): converted the IDE-glue registration
-                classes - <code>MultirunConfigurationType</code>, <code>ShowMultirunMonitorAction</code>,
-                <code>MultirunMonitorToolWindowFactory</code>, <code>MultirunStatusBarWidgetFactory</code>
-                and <code>StopRunningMultirunConfigurationsAction</code> (the stop-all action and the
+                classes - <code>MultiplerunConfigurationType</code>, <code>ShowMultiplerunMonitorAction</code>,
+                <code>MultiplerunMonitorToolWindowFactory</code>, <code>MultiplerunStatusBarWidgetFactory</code>
+                and <code>StopRunningMultiplerunConfigurationsAction</code> (the stop-all action and the
                 per-project process registry it keeps) - from Java to Kotlin. Same class names/ids, so
                 the plugin.xml registrations and every caller are untouched. No functional change.</li>
         </ul>
@@ -677,30 +692,30 @@
     <depends>com.intellij.modules.lang</depends>
 
     <actions>
-        <!-- id must stay in sync with StopRunningMultirunConfigurationsAction.ACTION_ID;
+        <!-- id must stay in sync with StopRunningMultiplerunConfigurationsAction.ACTION_ID;
              namespaced to avoid colliding with the original Multirun plugin's action id -->
-        <action id="MultipleRun.StopRunning" class="io.github.welingtonmonteiro.multiplerun.StopRunningMultirunConfigurationsAction"
+        <action id="MultipleRun.StopRunning" class="io.github.welingtonmonteiro.multiplerun.StopRunningMultiplerunConfigurationsAction"
                 text="Stop Multiple Run" description="Stop running Multiple Run configurations" icon="AllIcons.Actions.Suspend">
             <add-to-group group-id="RunMenu" relative-to-action="Stop" anchor="after"/>
             <keyboard-shortcut keymap="$default" first-keystroke="shift alt K"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="control alt K"/>
         </action>
-        <action id="MultipleRun.ShowMonitor" class="io.github.welingtonmonteiro.multiplerun.ShowMultirunMonitorAction"
+        <action id="MultipleRun.ShowMonitor" class="io.github.welingtonmonteiro.multiplerun.ShowMultiplerunMonitorAction"
                 text="Multiple Run Monitor" description="Show memory and CPU usage of the applications started by Multiple Run">
             <add-to-group group-id="RunMenu" relative-to-action="MultipleRun.StopRunning" anchor="after"/>
         </action>
     </actions>
 
     <extensions defaultExtensionNs="com.intellij">
-        <configurationType implementation="io.github.welingtonmonteiro.multiplerun.MultirunConfigurationType"/>
-        <programRunner implementation="io.github.welingtonmonteiro.multiplerun.MultirunRunner"/>
+        <configurationType implementation="io.github.welingtonmonteiro.multiplerun.MultiplerunConfigurationType"/>
+        <programRunner implementation="io.github.welingtonmonteiro.multiplerun.MultiplerunRunner"/>
         <!-- docker-stats-like monitor for the processes started by the plugin -->
         <toolWindow id="Multiple Run Monitor" anchor="bottom" canCloseContents="false"
                     icon="AllIcons.Toolwindows.ToolWindowRun"
-                    factoryClass="io.github.welingtonmonteiro.multiplerun.ui.MultirunMonitorToolWindowFactory"/>
+                    factoryClass="io.github.welingtonmonteiro.multiplerun.ui.MultiplerunMonitorToolWindowFactory"/>
         <!-- status bar widget: running apps, total memory and unhealthy count (click opens the monitor) -->
         <statusBarWidgetFactory id="MultipleRun.Monitor.Widget"
-                                implementation="io.github.welingtonmonteiro.multiplerun.ui.MultirunStatusBarWidgetFactory"
+                                implementation="io.github.welingtonmonteiro.multiplerun.ui.MultiplerunStatusBarWidgetFactory"
                                 order="last"/>
         <!-- balloon warnings raised by the memory limit watcher -->
         <notificationGroup id="Multiple Run" displayType="BALLOON"/>

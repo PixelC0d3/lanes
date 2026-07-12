@@ -7,14 +7,16 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.NotNullLazyValue
 
-class MultirunConfigurationType : SimpleConfigurationType(
-    // the type id stays "Multirun" on purpose: it is persisted in every saved run
-    // configuration, so changing it would orphan them; only the display name is rebranded
-    "Multirun", "Multiple Run", "Run multiple run configurations at once",
+class MultiplerunConfigurationType : SimpleConfigurationType(
+    // Type id changed from "Multirun" to "Multiplerun" (this fork had no real users yet), so it
+    // can never collide with the original Multirun plugin's own type id if both are ever
+    // installed together. Existing configurations saved under the old "Multirun" id will need to
+    // be recreated.
+    "Multiplerun", "Multiple Run", "Run multiple run configurations at once",
     NotNullLazyValue.createValue { AllIcons.Actions.Rerun }
 ), ConfigurationType {
 
     override fun createTemplateConfiguration(project: Project): RunConfiguration {
-        return MultirunRunConfiguration(project, this, "Multiple Run")
+        return MultiplerunRunConfiguration(project, this, "Multiple Run")
     }
 }

@@ -91,7 +91,7 @@ class MemoryLimitWatcher private constructor() {
 
         private fun checkAll() {
             try {
-                val snapshot = MultirunProcessRegistry.snapshot()
+                val snapshot = MultiplerunProcessRegistry.snapshot()
                 for ((project, entries) in snapshot) {
                     if (!project.isDisposed()) {
                         check(project, entries)
@@ -120,12 +120,12 @@ class MemoryLimitWatcher private constructor() {
          * checks. Cross-platform (uses the same sampler as the monitor). The alert re-arms when the app
          * drops back under the threshold. The first tick only records the baseline.
          */
-        private fun checkCpu(snapshot: Map<Project, List<MultirunProcessRegistry.Entry>>) {
+        private fun checkCpu(snapshot: Map<Project, List<MultiplerunProcessRegistry.Entry>>) {
             val now = System.nanoTime()
             val elapsedSeconds = if (prevCpuNanos == 0L) -1.0 else (now - prevCpuNanos) / 1_000_000_000.0
 
-            val treeByEntry = LinkedHashMap<MultirunProcessRegistry.Entry, Set<Long>>()
-            val projectByEntry = HashMap<MultirunProcessRegistry.Entry, Project>()
+            val treeByEntry = LinkedHashMap<MultiplerunProcessRegistry.Entry, Set<Long>>()
+            val projectByEntry = HashMap<MultiplerunProcessRegistry.Entry, Project>()
             val allPids = LinkedHashSet<Long>()
             for ((project, entries) in snapshot) {
                 if (project.isDisposed()) {
@@ -135,7 +135,7 @@ class MemoryLimitWatcher private constructor() {
                     if (entry.cpuAlertThreshold <= 0 || entry.handler.isProcessTerminated()) {
                         continue
                     }
-                    val treePids = ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(entry.handler))
+                    val treePids = ProcessStatsSampler.processTreePids(MultiplerunProcessRegistry.pidOf(entry.handler))
                     treeByEntry[entry] = treePids
                     projectByEntry[entry] = project
                     allPids.addAll(treePids)
@@ -196,7 +196,7 @@ class MemoryLimitWatcher private constructor() {
          * [UNHEALTHY_STREAK] consecutive checks, once, with a Restart action. The alert re-arms
          * when the app recovers, so a later outage is reported again.
          */
-        private fun checkHealth(project: Project, entries: List<MultirunProcessRegistry.Entry>) {
+        private fun checkHealth(project: Project, entries: List<MultiplerunProcessRegistry.Entry>) {
             for (entry in entries) {
                 if (entry.handler.isProcessTerminated()) {
                     downStreaks.remove(entry.handler)
@@ -233,16 +233,16 @@ class MemoryLimitWatcher private constructor() {
             }
         }
 
-        private fun check(project: Project, entries: List<MultirunProcessRegistry.Entry>) {
+        private fun check(project: Project, entries: List<MultiplerunProcessRegistry.Entry>) {
             // only applications with a configured limit are worth a ps call
-            val treeByEntry = LinkedHashMap<MultirunProcessRegistry.Entry, Set<Long>>()
+            val treeByEntry = LinkedHashMap<MultiplerunProcessRegistry.Entry, Set<Long>>()
             val allPids = LinkedHashSet<Long>()
             for (entry in entries) {
                 val limit = entry.memoryLimitMb
                 if (limit == null || limit <= 0 || entry.handler.isProcessTerminated()) {
                     continue
                 }
-                val treePids = ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(entry.handler))
+                val treePids = ProcessStatsSampler.processTreePids(MultiplerunProcessRegistry.pidOf(entry.handler))
                 treeByEntry[entry] = treePids
                 allPids.addAll(treePids)
             }

@@ -25,7 +25,7 @@ import com.intellij.ui.table.TableView
 import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 import io.github.welingtonmonteiro.multiplerun.ComposeImporter
-import io.github.welingtonmonteiro.multiplerun.MultirunRunConfiguration
+import io.github.welingtonmonteiro.multiplerun.MultiplerunRunConfiguration
 import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper
 
 import java.awt.BorderLayout
@@ -54,9 +54,9 @@ import javax.swing.table.TableCellRenderer
  * @author Ruslan Khmelyuk
  */
 @Suppress("UNCHECKED_CAST")
-class MultirunRunConfigurationEditor(private val project: Project) : SettingsEditor<MultirunRunConfiguration>() {
+class MultiplerunRunConfigurationEditor(private val project: Project) : SettingsEditor<MultiplerunRunConfiguration>() {
 
-    // Bound by MultirunRunConfigurationEditor.form (GUI Designer) - names/types must match the
+    // Bound by MultiplerunRunConfigurationEditor.form (GUI Designer) - names/types must match the
     // form's `binding` attributes exactly; the instrumentation weaves $$$setupUI$$$ into <init>.
     private lateinit var myMainPanel: JPanel
     private lateinit var collectionsPanel: JPanel
@@ -81,7 +81,7 @@ class MultirunRunConfigurationEditor(private val project: Project) : SettingsEdi
     private lateinit var memLimitActionCombo: JComboBox<String>
     /** Sustained CPU % that triggers an alert (0 = off). */
     private lateinit var cpuAlertSpinner: JSpinner
-    private var configuration: MultirunRunConfiguration? = null
+    private var configuration: MultiplerunRunConfiguration? = null
     /** Per-child memory (heap) cap in MB, edited inline in the "Memory limit" table column. */
     private var memoryLimits: MutableMap<String, Int> = LinkedHashMap()
     /** Apps unchecked in the list: kept in the configuration but not launched. */
@@ -92,11 +92,11 @@ class MultirunRunConfigurationEditor(private val project: Project) : SettingsEdi
     private var appEnvFiles: MutableMap<String, String> = LinkedHashMap()
     /** Named execution presets (On/Off + env profile), chosen from the "Preset" dropdown. */
     private lateinit var presetCombo: JComboBox<String>
-    private var presets: MutableMap<String, MultirunRunConfiguration.Preset> = LinkedHashMap()
+    private var presets: MutableMap<String, MultiplerunRunConfiguration.Preset> = LinkedHashMap()
     /** True while a preset is being applied or the combo repopulated, to ignore its own events. */
     private var applyingPreset = false
 
-    override fun resetEditorFrom(multirunRunConfiguration: MultirunRunConfiguration) {
+    override fun resetEditorFrom(multirunRunConfiguration: MultiplerunRunConfiguration) {
         this.configuration = multirunRunConfiguration
 
         val configuration = this.configuration ?: return
@@ -137,7 +137,7 @@ class MultirunRunConfigurationEditor(private val project: Project) : SettingsEdi
         delayTime.setEnabled(startOneByOne.isSelected())
     }
 
-    override fun applyEditorTo(multirunRunConfiguration: MultirunRunConfiguration) {
+    override fun applyEditorTo(multirunRunConfiguration: MultiplerunRunConfiguration) {
         multirunRunConfiguration.setEnvData(environmentVariables.getEnvData())
         val activeEnvFile = envFileComboText()
         multirunRunConfiguration.setEnvFilePath(activeEnvFile)
@@ -172,7 +172,7 @@ class MultirunRunConfigurationEditor(private val project: Project) : SettingsEdi
             try {
                 // Accepts both '.' and ',' so it matches the locale-formatted value shown by
                 // resetEditorFrom (e.g. "0,0" in pt-BR/German) as well as hand-typed "0.5".
-                delayTimeSeconds = MultirunRunConfiguration.parseDelay(delayText)
+                delayTimeSeconds = MultiplerunRunConfiguration.parseDelay(delayText)
             } catch (e: NumberFormatException) {
                 // well ignore if the value is not a number
             }
@@ -239,7 +239,7 @@ class MultirunRunConfigurationEditor(private val project: Project) : SettingsEdi
 
         startOneByOne.addActionListener { delayTime.setEnabled(startOneByOne.isSelected()) }
 
-        // Environment variables applied to every configuration in the list (Multirun values win on conflicts).
+        // Environment variables applied to every configuration in the list (Multiple Run values win on conflicts).
         // The component provides the same editing dialog used by the platform run configurations.
         environmentVariables = EnvironmentVariablesComponent()
         environmentVariables.setLabelLocation(BorderLayout.WEST)
@@ -393,7 +393,7 @@ class MultirunRunConfigurationEditor(private val project: Project) : SettingsEdi
             if (name == null || name.trim().isEmpty()) {
                 return@addActionListener
             }
-            presets[name.trim()] = MultirunRunConfiguration.Preset(
+            presets[name.trim()] = MultiplerunRunConfiguration.Preset(
                 name.trim(), LinkedHashSet(disabledApps), envFileComboText())
             val model = presetCombo.getModel() as DefaultComboBoxModel<String>
             if (model.getIndexOf(name.trim()) < 0) {
@@ -723,7 +723,7 @@ class MultirunRunConfigurationEditor(private val project: Project) : SettingsEdi
                 // skip already added
                 continue
             }
-            if (candidate is MultirunRunConfiguration) {
+            if (candidate is MultiplerunRunConfiguration) {
                 // exclude configurations that may cause loopies
                 if (RunConfigurationHelper.containsLoopies(candidate, cfg)) {
                     continue

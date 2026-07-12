@@ -73,13 +73,13 @@ import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.ListTableModel
 
 import io.github.welingtonmonteiro.multiplerun.MemoryHistory
-import io.github.welingtonmonteiro.multiplerun.MultirunConfigurationType
-import io.github.welingtonmonteiro.multiplerun.MultirunProcessRegistry
-import io.github.welingtonmonteiro.multiplerun.MultirunRunConfiguration
-import io.github.welingtonmonteiro.multiplerun.MultirunRunnerState
+import io.github.welingtonmonteiro.multiplerun.MultiplerunConfigurationType
+import io.github.welingtonmonteiro.multiplerun.MultiplerunProcessRegistry
+import io.github.welingtonmonteiro.multiplerun.MultiplerunRunConfiguration
+import io.github.welingtonmonteiro.multiplerun.MultiplerunRunnerState
 import io.github.welingtonmonteiro.multiplerun.ProcessStatsSampler
 import io.github.welingtonmonteiro.multiplerun.RunConfigurationHelper
-import io.github.welingtonmonteiro.multiplerun.StopRunningMultirunConfigurationsAction
+import io.github.welingtonmonteiro.multiplerun.StopRunningMultiplerunConfigurationsAction
 
 /**
  * The "Multiple Run Monitor" tool window content: a docker-stats-like table with EVERY process
@@ -90,7 +90,7 @@ import io.github.welingtonmonteiro.multiplerun.StopRunningMultirunConfigurations
  * restarted, stopped or force-killed, and any process squatting a TCP port can be killed
  * through the "Kill Process on Port" action. Columns are resizable by dragging their headers.
  */
-class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel(false, true), Disposable {
+class MultiplerunMonitorPanel(private val project: Project) : SimpleToolWindowPanel(false, true), Disposable {
 
     /** Column header names the user chose to hide (empty = everything visible). */
     private val hiddenColumns: MutableSet<String> = LinkedHashSet()
@@ -107,12 +107,12 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
     class Row(
         @JvmField val name: String,
         @JvmField val icon: Icon?,
-        @JvmField val multirunName: String?,
+        @JvmField val multiplerunName: String?,
         @JvmField val envFileName: String?,
         @JvmField val handler: ProcessHandler?,
         @JvmField val descriptor: RunContentDescriptor?,
-        /** Multirun metadata (limit/condition/...) or null for plain standalone runs. */
-        @JvmField val meta: MultirunProcessRegistry.Entry?,
+        /** Multiple Run metadata (limit/condition/...) or null for plain standalone runs. */
+        @JvmField val meta: MultiplerunProcessRegistry.Entry?,
         @JvmField val pid: String,
         @JvmField val ports: String,
         @JvmField val uptime: String,
@@ -131,7 +131,7 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
     private val table: TableView<Row>
     private val timer: Timer
     private val sampling = AtomicBoolean()
-    private val multirunIcon: Icon
+    private val multiplerunIcon: Icon
 
     /** CPU time per pid at the previous sample - the baseline for the docker-style CPU %. */
     private var prevCpuSecondsByPid: Map<Long, Double> = emptyMap()
@@ -147,8 +147,8 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
     private val statusRenderer = StatusCellRenderer()
 
     init {
-        multirunIcon = try {
-            ConfigurationTypeUtil.findConfigurationType(MultirunConfigurationType::class.java).getIcon()
+        multiplerunIcon = try {
+            ConfigurationTypeUtil.findConfigurationType(MultiplerunConfigurationType::class.java).getIcon()
         } catch (t: Throwable) {
             AllIcons.RunConfigurations.Compound
         }
@@ -164,14 +164,14 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
                             hasFocus: Boolean, rowIndex: Int, column: Int,
                         ): Component {
                             super.getTableCellRendererComponent(table, value, isSelected, hasFocus, rowIndex, column)
-                            // multirun icon for grouped apps, the app's own icon for standalone runs
+                            // Multiple Run icon for grouped apps, the app's own icon for standalone runs
                             setIcon(row.icon)
                             return this
                         }
                     }
                 }
             },
-            column("Multiple Run") { it.multirunName },
+            column("Multiple Run") { it.multiplerunName },
             object : ColumnInfo<Row, String>("Env") {
                 override fun valueOf(row: Row): String? = row.envFileName
 
@@ -360,7 +360,7 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
         } else {
             synchronized(stored) { ArrayList(stored) }
         }
-        MemoryChartDialog(project, row.name, copy, MultirunProcessRegistry.pidOf(row.handler!!), analysisFirst).show()
+        MemoryChartDialog(project, row.name, copy, MultiplerunProcessRegistry.pidOf(row.handler!!), analysisFirst).show()
     }
 
     /**
@@ -419,12 +419,12 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
     }
 
     /** The Multiple Run group configuration with this name, or null when it no longer exists. */
-    private fun findGroupConfig(groupName: String?): MultirunRunConfiguration? {
+    private fun findGroupConfig(groupName: String?): MultiplerunRunConfiguration? {
         if (groupName == null) {
             return null
         }
         for (cfg in RunManager.getInstance(project).allConfigurationsList) {
-            if (cfg is MultirunRunConfiguration && groupName == cfg.getName()) {
+            if (cfg is MultiplerunRunConfiguration && groupName == cfg.getName()) {
                 return cfg
             }
         }
@@ -435,7 +435,7 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
     private fun runningRowsOfGroup(groupName: String?): List<Row> {
         val result = ArrayList<Row>()
         for (row in model.getItems()) {
-            if (groupName != null && groupName == row.multirunName
+            if (groupName != null && groupName == row.multiplerunName
                 && row.handler != null && !row.handler.isProcessTerminated()) {
                 result.add(row)
             }
@@ -452,10 +452,10 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
      * its executor (Run/Debug/...) and staying tracked in the monitor.
      */
     private fun switchAppEnv(row: Row, envProfile: String) {
-        val group = findGroupConfig(row.multirunName)
+        val group = findGroupConfig(row.multiplerunName)
         if (group == null) {
             Messages.showErrorDialog(project,
-                "The Multiple Run group '${row.multirunName}' no longer exists.", "Switch Environment")
+                "The Multiple Run group '${row.multiplerunName}' no longer exists.", "Switch Environment")
             return
         }
         val answer = Messages.showYesNoDialog(
@@ -490,7 +490,7 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
      * environment, re-registers the app in the monitor and honors the group's settings), under the
      * given executor. Used by both the per-row env switch and the batch Switch Environment button.
      */
-    private fun relaunchApp(group: MultirunRunConfiguration, appName: String, executor: Executor, oldHandler: ProcessHandler?) {
+    private fun relaunchApp(group: MultiplerunRunConfiguration, appName: String, executor: Executor, oldHandler: ProcessHandler?) {
         var base: RunConfiguration? = null
         for (child in group.getRunConfigurations()) {
             if (appName == child.getName()) {
@@ -508,7 +508,7 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
         if (oldHandler != null && !oldHandler.isProcessTerminated()) {
             oldHandler.destroyProcess()
         }
-        val state: MultirunRunnerState = group.createStateForApps(listOf(target))
+        val state: MultiplerunRunnerState = group.createStateForApps(listOf(target))
         ApplicationManager.getApplication().executeOnPooledThread {
             // let the old process release its port(s) before the new one starts
             if (oldHandler != null) {
@@ -743,7 +743,7 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
             ApplicationManager.getApplication().executeOnPooledThread {
                 for (handler in handlers) {
                     // resolve the tree fresh - children may have been spawned after the last refresh
-                    val treePids = ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(handler))
+                    val treePids = ProcessStatsSampler.processTreePids(MultiplerunProcessRegistry.pidOf(handler))
                     for (pid in treePids) {
                         ProcessHandle.of(pid).ifPresent { it.destroyForcibly() }
                     }
@@ -834,7 +834,7 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
      * longer in the plugin's own tracking map) still counts. A row belongs to Multiple Run when it
      * carries group metadata (meta != null); plain standalone runs never started by the plugin don't.
      */
-    private fun runningMultirunCount(): Int {
+    private fun runningMultiplerunCount(): Int {
         var count = 0
         for (row in model.getItems()) {
             if (row.meta != null && row.handler != null && !row.handler.isProcessTerminated()) {
@@ -899,7 +899,7 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
         override fun update(e: AnActionEvent) {
-            val count = runningMultirunCount()
+            val count = runningMultiplerunCount()
             val p = e.getPresentation()
             p.setText(if (count > 0) count.toString() else "")
             p.setEnabled(count > 0)
@@ -914,8 +914,8 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
 
         override fun actionPerformed(e: AnActionEvent) {
             // raise the stop flag and stop everything still tracked by the plugin...
-            val action = ActionManager.getInstance().getAction(StopRunningMultirunConfigurationsAction.ACTION_ID)
-            if (action is StopRunningMultirunConfigurationsAction) {
+            val action = ActionManager.getInstance().getAction(StopRunningMultiplerunConfigurationsAction.ACTION_ID)
+            if (action is StopRunningMultiplerunConfigurationsAction) {
                 action.stopAll(project)
             }
             // ...plus every Multiple Run row that is no longer tracked (e.g. restarted individually,
@@ -986,8 +986,8 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
     private fun activeGroupEnvPaths(): Set<String> {
         val groupNames = LinkedHashSet<String>()
         for (row in model.getItems()) {
-            if (row.envProfiles.size > 1 && row.multirunName != null && "-" != row.multirunName) {
-                groupNames.add(row.multirunName)
+            if (row.envProfiles.size > 1 && row.multiplerunName != null && "-" != row.multiplerunName) {
+                groupNames.add(row.multiplerunName)
             }
         }
         val paths = LinkedHashSet<String>()
@@ -1059,12 +1059,12 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
                 snapshots.add(ProcessSnapshot(descriptor.getDisplayName(), descriptor.getIcon(), handler, descriptor))
             }
         }
-        val entries = MultirunProcessRegistry.getEntries(project)
+        val entries = MultiplerunProcessRegistry.getEntries(project)
         // the env profiles configured on each Multiple Run group - read on the EDT (RunManager),
         // so the Env column can offer them as a dropdown and the batch env switch can list them
         val envProfilesByGroup = HashMap<String, List<String>>()
         for (cfg in RunManager.getInstance(project).allConfigurationsList) {
-            if (cfg is MultirunRunConfiguration) {
+            if (cfg is MultiplerunRunConfiguration) {
                 envProfilesByGroup[cfg.getName()] = ArrayList(cfg.getEnvProfiles())
             }
         }
@@ -1118,12 +1118,12 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
      * docker-stats-style delta between two refreshes - not the lifetime average.
      */
     private fun buildRows(
-        snapshots: List<ProcessSnapshot>, entries: List<MultirunProcessRegistry.Entry>,
+        snapshots: List<ProcessSnapshot>, entries: List<MultiplerunProcessRegistry.Entry>,
         envProfilesByGroup: Map<String, List<String>>,
     ): List<Row> {
         val hostTotalKb = ProcessStatsSampler.hostTotalMemoryKb()
 
-        val liveByHandler = HashMap<ProcessHandler, MultirunProcessRegistry.Entry>()
+        val liveByHandler = HashMap<ProcessHandler, MultiplerunProcessRegistry.Entry>()
         for (entry in entries) {
             liveByHandler[entry.handler] = entry
         }
@@ -1132,7 +1132,7 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
         val treeBySnapshot = LinkedHashMap<ProcessSnapshot, Set<Long>>()
         val allPids = LinkedHashSet<Long>()
         for (snapshot in snapshots) {
-            val treePids = ProcessStatsSampler.processTreePids(MultirunProcessRegistry.pidOf(snapshot.handler))
+            val treePids = ProcessStatsSampler.processTreePids(MultiplerunProcessRegistry.pidOf(snapshot.handler))
             treeBySnapshot[snapshot] = treePids
             allPids.addAll(treePids)
         }
@@ -1149,15 +1149,15 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
             val rootPid = if (treePids.isEmpty()) -1L else treePids.iterator().next()
             val stats = ProcessStatsSampler.aggregate(statsByPid, treePids)
 
-            // grouped app? live registry entry first; otherwise last-known multirun metadata by name,
-            // so an app restarted individually keeps showing its group, env profile and limit
+            // grouped app? live registry entry first; otherwise last-known Multiple Run metadata by
+            // name, so an app restarted individually keeps showing its group, env profile and limit
             val live = liveByHandler[snapshot.handler]
-            val meta = live ?: MultirunProcessRegistry.findMetadataByName(project, snapshot.name)
+            val meta = live ?: MultiplerunProcessRegistry.findMetadataByName(project, snapshot.name)
 
             val name = live?.appName ?: snapshot.name
-            val icon: Icon = if (live != null) multirunIcon
+            val icon: Icon = if (live != null) multiplerunIcon
                              else snapshot.icon ?: AllIcons.RunConfigurations.Application
-            val multirunName = meta?.multirunName ?: "-"
+            val multiplerunName = meta?.multiplerunName ?: "-"
             val envFileName = meta?.envFileName ?: "-"
             val memoryLimitMb = meta?.memoryLimitMb
 
@@ -1215,9 +1215,9 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
                 }
             }
 
-            val envProfiles = if (meta != null) envProfilesByGroup[meta.multirunName] ?: emptyList() else emptyList()
+            val envProfiles = if (meta != null) envProfilesByGroup[meta.multiplerunName] ?: emptyList() else emptyList()
 
-            rows.add(Row(name, icon, multirunName, envFileName, snapshot.handler, snapshot.descriptor, meta,
+            rows.add(Row(name, icon, multiplerunName, envFileName, snapshot.handler, snapshot.descriptor, meta,
                         if (rootPid > 0) rootPid.toString() else "n/a",
                         portsText, uptimeText, statusText, memUsage, memPercent, cpuPercent, memTrend,
                         envProfiles))
@@ -1363,9 +1363,9 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
         fun groupsWithProfile(rows: List<Row>, profile: String): Set<String> {
             val groups = LinkedHashSet<String>()
             for (row in rows) {
-                if (row.multirunName != null && "-" != row.multirunName
+                if (row.multiplerunName != null && "-" != row.multiplerunName
                     && row.envProfiles.size > 1 && row.envProfiles.contains(profile)) {
-                    groups.add(row.multirunName)
+                    groups.add(row.multiplerunName)
                 }
             }
             return groups
@@ -1417,7 +1417,7 @@ class MultirunMonitorPanel(private val project: Project) : SimpleToolWindowPanel
          * re-checked on every refresh refines that into "healthy" or "down". Log conditions cannot be
          * re-evaluated after startup, so those apps simply stay "running".
          */
-        private fun healthStatus(meta: MultirunProcessRegistry.Entry?): String {
+        private fun healthStatus(meta: MultiplerunProcessRegistry.Entry?): String {
             if (meta == null) {
                 return statusLabel(RunConfigurationHelper.ReadyCondition.Type.NONE, false)
             }
