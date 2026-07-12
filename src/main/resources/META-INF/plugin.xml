@@ -56,6 +56,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>2.1.2</strong>:</p>
+        <ul>
+            <li>Fix: starting any run configuration could throw a ClassCastException from the New
+                UI's tool window stripe button, caused by the 2.1.1 running-apps badge icon. Fixed by
+                rebuilding the badge with the platform's own icon-composition mechanism.</li>
+        </ul>
         <p><strong>2.1.1</strong>:</p>
         <ul>
             <li>New: the Multiple Run Monitor tool window shows a badge with the number of running

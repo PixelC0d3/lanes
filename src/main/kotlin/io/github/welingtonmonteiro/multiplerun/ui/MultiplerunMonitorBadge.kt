@@ -17,7 +17,7 @@ import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.JBColor
-import com.intellij.util.ui.JBUI
+import com.intellij.ui.LayeredIcon
 
 import io.github.welingtonmonteiro.multiplerun.MultiplerunIcons
 
@@ -41,9 +41,7 @@ object MultiplerunMonitorBadge {
             val toolWindow = ToolWindowManager.getInstance(project)
                 .getToolWindow(MultiplerunMonitorToolWindowFactory.TOOL_WINDOW_ID) ?: return@invokeLater
             val count = runningCount(project)
-            toolWindow.setIcon(
-                if (count <= 0) MultiplerunIcons.OpenDashboard
-                else CountBadgeIcon(MultiplerunIcons.OpenDashboard, count))
+            toolWindow.setIcon(if (count <= 0) MultiplerunIcons.OpenDashboard else countBadgeIcon(count))
         }
     }
 
@@ -59,24 +57,38 @@ object MultiplerunMonitorBadge {
         return count
     }
 
-    /** The base tool-window icon with a small count bubble painted in the bottom-right corner. */
-    private class CountBadgeIcon(private val base: Icon, private val count: Int) : Icon {
-        override fun getIconWidth(): Int = base.iconWidth
-        override fun getIconHeight(): Int = base.iconHeight
+    /**
+     * The tool-window icon with a small count bubble layered over its bottom-right corner. Built
+     * with [LayeredIcon] rather than a hand-rolled [Icon]: the New UI stripe button hard-casts a
+     * tool window's icon to `ScalableIcon` (`SquareStripeButton.updatePresentation`) - a plain
+     * `Icon` throws `ClassCastException` there. `LayeredIcon` already implements it (it extends
+     * `JBCachingScalableIcon`), the same mechanism the platform itself uses to compose badges/
+     * overlays onto icons everywhere else, so it behaves correctly across the icon-handling
+     * machinery in general, not just this one call site.
+     */
+    private fun countBadgeIcon(count: Int): Icon {
+        val base = MultiplerunIcons.OpenDashboard
+        val layered = LayeredIcon(2)
+        layered.setIcon(base, 0)
+        layered.setIcon(CountBubbleIcon(base.iconWidth, base.iconHeight, count), 1)
+        return layered
+    }
+
+    /** Paints just the count bubble; sized to the base icon so it overlays at the same origin. */
+    private class CountBubbleIcon(private val width: Int, private val height: Int, private val count: Int) : Icon {
+        override fun getIconWidth(): Int = width
+        override fun getIconHeight(): Int = height
 
         override fun paintIcon(c: Component?, g: Graphics, x: Int, y: Int) {
-            base.paintIcon(c, g, x, y)
-
             val g2 = g.create() as Graphics2D
             try {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
                 g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
 
                 val text = if (count > 9) "9+" else count.toString()
-                val size = iconWidth
-                val diameter = Math.round(size * 0.68f)
-                val bx = x + size - diameter
-                val by = y + size - diameter
+                val diameter = Math.round(width * 0.68f)
+                val bx = x + width - diameter
+                val by = y + height - diameter
 
                 g2.color = BADGE_BG
                 g2.fillOval(bx, by, diameter, diameter)
