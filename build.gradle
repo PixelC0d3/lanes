@@ -8,7 +8,7 @@ plugins {
 }
 
 group = 'io.github.welingtonmonteiro'
-version = '2.0.15'
+version = '2.1.0'
 
 repositories {
     mavenCentral()
@@ -21,10 +21,21 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
 
     intellijPlatform {
-        // target platform (was: intellij { version = '2023.3' })
-        intellijIdeaCommunity('2023.3')
+        // target platform: IntelliJ IDEA Ultimate (was Community until 2.0.15). Ultimate bundles the
+        // JavaScript + NodeJS plugins, which we need on the COMPILE classpath for the optional Node
+        // env-file module (see below). Compiling against Ultimate does not restrict where the plugin
+        // installs - compatibility is still driven by since/untilBuild + the <depends> in plugin.xml,
+        // and the Node integration is an OPTIONAL dependency, so the core still loads in IDEs without
+        // JavaScript (IDEA CE, PyCharm CE, ...). Building Ultimate needs no license.
+        intellijIdeaUltimate('2023.3')
         // bundled plugin that provides com.intellij.profiler.DefaultProfilerExecutorGroup
         bundledPlugin('com.jetbrains.performancePlugin.async')
+        // JavaScript plugin (id 'JavaScript'): provides the EP 'JavaScript.nodeRunConfigurationExtension'
+        // plus AbstractNodeRunConfigurationExtension / AbstractNodeTargetRunProfile / NodeTargetRun,
+        // used ONLY by the optional module in src/main/resources/META-INF/multiplerun-nodejs.xml. It is
+        // loaded at runtime only when the host IDE actually has the JavaScript plugin (WebStorm, IDEA
+        // Ultimate, ...); elsewhere the optional module is skipped and this code is never classloaded.
+        bundledPlugin('JavaScript')
         // JetBrains Plugin Verifier + zip signer
         pluginVerifier()
         zipSigner()

@@ -1,0 +1,15 @@
+<!--
+  Optional module, wired from plugin.xml via <depends optional="true" config-file="multiplerun-nodejs.xml">JavaScript</depends>.
+  It is loaded ONLY when the host IDE has the JavaScript plugin (WebStorm, IntelliJ IDEA Ultimate, ...).
+
+  Contributes a Multiple Run "Env Files" section to every Node-based run configuration
+  (AbstractNodeTargetRunProfile: Node.js, npm/pnpm/yarn, Karma, Jest, Mocha, ...), so running such an
+  app directly with the IDE's own Play/Debug can load one or more .env files - the same capability a
+  Multiple Run group already offers its children. See MultiplerunNodeEnvFileExtension.
+-->
+<idea-plugin>
+    <extensions defaultExtensionNs="JavaScript">
+        <nodeRunConfigurationExtension
+                implementation="io.github.welingtonmonteiro.multiplerun.nodejs.MultiplerunNodeEnvFileExtension"/>
+    </extensions>
+</idea-plugin>
