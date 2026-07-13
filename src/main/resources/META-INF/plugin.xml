@@ -1,10 +1,10 @@
-<idea-plugin url="https://github.com/WelingtonMonteiro/lanes">
+<idea-plugin url="https://github.com/PixelC0d3/lanes">
     <!-- Unique Marketplace id of this fork (the original Multirun owns com.khmelyuk.multirun).
          The run configuration type id is "Lanes" (changed from "Multirun" before this fork
          had any real users), so it can never collide with the original plugin's own type id if
          both are ever installed side by side; the original Multirun plugin should still be
          uninstalled before installing this one. -->
-    <id>io.github.welingtonmonteiro.lanes</id>
+    <id>io.github.pixelcodes.lanes</id>
     <name>Lanes</name>
     <!-- version is injected from build.gradle (project.version) by patchPluginXml -->
     <vendor url="https://github.com/WelingtonMonteiro" email="welington.rmonteiro@gmail.com">Welington Monteiro</vendor>
@@ -16,7 +16,7 @@
              of a local path. It only resolves once this branch is merged into mainline. -->
         <!-- width is capped (not 100%) so the banner stays modest in the IDE's install panel, where
              the description also renders - a full-width hero looked oversized there. -->
-        <p><img src="https://raw.githubusercontent.com/WelingtonMonteiro/lanes/mainline/brand/banner.png" alt="Lanes" width="420"/></p>
+        <p><img src="https://raw.githubusercontent.com/PixelC0d3/lanes/mainline/brand/banner.png" alt="Lanes" width="420"/></p>
 
         <p><b>Run, monitor and manage multiple run configurations at once.</b> Group your apps, servers,
         microservices or tests and start them with a single click - one by one with "ready when"
@@ -56,757 +56,155 @@
 
     <change-notes>
         <![CDATA[
-        <p><strong>3.0.0</strong>:</p>
-        <ul>
-            <li><strong>Rebrand: "Multiple Run" is now Lanes.</strong> New name, new visual identity
-                (the "Lanes" mark - parallel process lanes with live status dots), and a full
-                technical rename to match: the plugin id is now
-                <code>io.github.welingtonmonteiro.lanes</code> (was
-                <code>io.github.welingtonmonteiro.multiplerun</code>), the Kotlin package and every
-                class now use the <code>Lanes</code> prefix instead of <code>Multiplerun</code>, and
-                the run configuration type id changed from <code>"Multiplerun"</code> to
-                <code>"Lanes"</code>.</li>
-            <li><strong>Breaking for run configurations saved before this release</strong>: because
-                the plugin id and the run configuration type id both changed, previously-saved
-                "Multiple Run" configurations need to be recreated under the new Lanes type. This
-                plugin has no real users yet (unapproved Marketplace submission), so the trade-off
-                was made now, while it is still free - same reasoning as the 2.0.11 Multirun -&gt;
-                Multiplerun rename.</li>
-            <li>Action ids, the toolWindow id, the status bar widget id and the notification group id
-                all moved from "MultipleRun.*" / "Multiple Run" to "Lanes.*" / "Lanes" accordingly.</li>
-            <li>The credit to the original <a href="https://github.com/rkhmelyuk/multirun">Multirun</a>
-                plugin by Ruslan Khmeliuk, which this project still forks from, is unchanged.</li>
-        </ul>
-        <p><strong>2.1.4</strong>:</p>
-        <ul>
-            <li>Fix: the 2.1.3 "configured" icon never actually showed up in the "Edit Configurations"
-                tree or the toolbar Play/Debug widget. Root cause: the configuration type doubled as
-                its own factory through a platform class whose per-configuration icon method is
-                final and always returns the generic type icon, so those two surfaces could never see
-                a configuration's own icon no matter what it returned. Fixed by giving the type its
-                own factory with a proper icon override; existing saved configurations are
-                unaffected.</li>
-        </ul>
-        <p><strong>2.1.3</strong>:</p>
-        <ul>
-            <li>New: every saved Multiple Run configuration shows a distinct "configured" icon
-                instead of the plain mark - in the run/debug switcher, the toolbar Play/Debug widget,
-                the "Edit Configurations" tree and the Multiple Run Monitor's Name column. The
-                "Multiple Run" type icon (category node, "Add New Configuration") stays the plain
-                mark.</li>
-        </ul>
-        <p><strong>2.1.2</strong>:</p>
-        <ul>
-            <li>Fix: starting any run configuration could throw a ClassCastException from the New
-                UI's tool window stripe button, caused by the 2.1.1 running-apps badge icon. Fixed by
-                rebuilding the badge with the platform's own icon-composition mechanism.</li>
-        </ul>
-        <p><strong>2.1.1</strong>:</p>
-        <ul>
-            <li>New: the Multiple Run Monitor tool window shows a badge with the number of running
-                apps on its stripe button (hidden when none are running).</li>
-            <li>Fix: the plugin now shows as "Multiple Run" (not "multiple_run") in the Marketplace,
-                the plugins list and search.</li>
-        </ul>
-        <p><strong>2.1.0</strong>:</p>
-        <ul>
-            <li>New: load a .env file on a plain Play/Debug, not only through Multiple Run. Node-based
-                run configurations (Node.js, npm, Karma, Jest, Mocha, ...) get an "Environment file
-                (profile)" field on the Configuration tab where you register one or more .env files
-                and pick the active one. Variables from the configuration's own "Environment
-                variables" field still win on conflicts.</li>
-            <li>New: when more than one .env profile is set, a switch button appears on that app's
-                run toolbar (next to Rerun/Stop) - it opens a movable dialog listing the files by
-                name (active one marked) and restarts that same run with the one you pick.</li>
-            <li>New: the Multiple Run Monitor's Env column now also shows the .env of standalone apps
-                (started with a plain Play/Debug) and lets you click to view the variables loaded.</li>
-            <li>Only active in IDEs that have the JavaScript plugin (WebStorm, IntelliJ IDEA
-                Ultimate, ...); an optional module, so the core plugin is unchanged everywhere else,
-                and uninstalling removes the feature completely.</li>
-        </ul>
-        <p><strong>2.0.15</strong>:</p>
-        <ul>
-            <li>The Multiple Run Monitor now shows the new "Lanes" empty-state illustration instead
-                of a plain "No run configurations are running" line when nothing is being
-                monitored yet.</li>
-        </ul>
-        <p><strong>2.0.14</strong>:</p>
-        <ul>
-            <li>Fix: running a group where a child configuration needed "Edit Configuration" first
-                (an invalid/incomplete configuration, or one with "Edit configuration before run"
-                checked) could throw a threading exception ("Access is allowed from Event Dispatch
-                Thread only") and abort the run, instead of showing the edit dialog. The one-by-one
-                delay/wait chaining runs this check from a background thread on purpose (so the
-                wait doesn't freeze the IDE), but showing the dialog itself needs the UI thread -
-                now correctly switches to it just for that part.</li>
-        </ul>
-        <p><strong>2.0.13</strong>:</p>
-        <ul>
-            <li>Fix: creating a new Multiple Run configuration (or applying/running one) could throw
-                a NullPointerException and leave the editor unusable. The 2.0.8 Kotlin migration
-                declared the editor's <code>resetEditorFrom</code>/<code>applyEditorTo</code>
-                parameter as non-null, but the platform can still call them with a null
-                configuration while a brand-new entry is settling - the original Java
-                implementation took a <code>@Nullable</code> parameter for exactly that reason and
-                is now restored (with an explicit null check instead of relying on the type
-                system).</li>
-            <li>Fix: the Multiple Run configuration type icon (and every other spot that reused it)
-                rendered at 2.5x its intended size - it was accidentally sharing the plugin icon
-                file, which must declare a 40x40 size for the Settings > Plugins list. Now uses a
-                dedicated 16x16 icon with the same artwork.</li>
-        </ul>
-        <p><strong>2.0.12</strong>:</p>
-        <ul>
-            <li>New visual identity: the "Lanes" mark (parallel process lanes + live status dots)
-                replaces the generic platform icon everywhere the plugin shows its own branding -
-                the plugin icon, the Multiple Run configuration type icon, and the Multiple Run
-                Monitor tool window icon.</li>
-            <li>Custom icons for the actions that already had a generic platform icon: Refresh,
-                Restart / Restart All, Stop / Stop Multiple Run, Show Columns, Switch Environment,
-                Memory Analysis, the docker-compose import button, and the Processes/Logs tabs of
-                the monitor tool window.</li>
-            <li>Docs: new logo at the top of the README and the wiki home page; a
-                <code>brand/BRAND_GUIDELINES.md</code> design system doc (colors, iconography,
-                voice) for anyone contributing UI.</li>
-            <li>No functional change - actions, shortcuts and behavior are unchanged, only their
-                icons.</li>
-        </ul>
-        <p><strong>2.0.11</strong>:</p>
-        <ul>
-            <li>Internal: finished renaming the fork's own internal identifiers from "Multirun" to
-                "Multiplerun" - class/file names, log messages and comments now say "Multiplerun"
-                (code) / "Multiple Run" (user-facing text) consistently.</li>
-            <li><strong>Breaking for run configurations saved before this release</strong>: the run
-                configuration type id itself changed from <code>"Multirun"</code> to
-                <code>"Multiplerun"</code>, so it can never collide with the original third-party
-                Multirun plugin's own type id if both are ever installed together. This plugin has
-                no real users yet, so the trade-off (existing saved configurations need to be
-                recreated) was made now, while it is still free.</li>
-            <li>Docs: updated the README and Marketplace description to say "Multiple Run" instead
-                of "Multirun" wherever they refer to this plugin - the historical credit line to the
-                original Multirun plugin by Ruslan Khmeliuk is unchanged.</li>
-        </ul>
-        <p><strong>2.0.10</strong>:</p>
-        <ul>
-            <li>Docs: revamped the README (feature sections now scannable at a glance, a screenshot
-                up top) and added a support link for anyone who wants to buy the maintainer a
-                coffee. No functional change.</li>
-        </ul>
-        <p><strong>2.0.9</strong>:</p>
-        <ul>
-            <li>Internal (Kotlin migration, the rest of the codebase): converted the remaining 14
-                JUnit test classes from Java to Kotlin. Moved
-                <code>LanesRunConfigurationEditor.form</code> next to its Kotlin class under
-                <code>src/main/kotlin</code> (confirmed the GUI-Designer form instrumentation still
-                works from there). The entire codebase - <code>src/main</code> and
-                <code>src/test</code> - is now Kotlin; there is no Java source left in the project.
-                145 tests still pass. No functional change.</li>
-        </ul>
-        <p><strong>2.0.8</strong>:</p>
-        <ul>
-            <li>Internal (Kotlin migration complete): converted the last remaining Java class,
-                <code>LanesRunConfigurationEditor</code> (the run configuration editor UI), to
-                Kotlin. It still binds to its existing GUI-Designer <code>.form</code> file - the
-                form-to-bytecode weaving works the same for a Kotlin class as it did for Java, so
-                the editor's layout and behavior are unchanged. <code>src/main/java</code> now
-                contains no source files at all (100% Kotlin); only the test suite stays Java. No
-                functional change.</li>
-        </ul>
-        <p><strong>2.0.7</strong>:</p>
-        <ul>
-            <li>Internal (Kotlin migration, five classes - the last batch before the GUI-form-bound
-                editor): converted <code>LanesRunner</code> (the launcher extending
-                <code>GenericProgramRunner</code>), <code>AggregatedLogPanel</code> (the docker-compose-
-                logs-style aggregated Logs tab), <code>LanesRunnerState</code> (the launch pipeline:
-                one-by-one chaining, readiness gates, crash-restart, tab/content handling),
-                <code>LanesRunConfiguration</code> (persistence: readExternal/writeExternal,
-                presets, env profiles) and <code>LanesMonitorPanel</code> (the monitor tool window:
-                table model, columns, batch actions, env switching) from Java to Kotlin. Public
-                surfaces and behavior are unchanged - every getter/setter keeps its exact Java name.
-                Only the GUI-form-bound run-config editor stays Java (its <code>.form</code> is tied to
-                a Java class; migrating it means rewriting the UI in Kotlin UI DSL, deferred). No
-                functional change.</li>
-        </ul>
-        <p><strong>2.0.6</strong>:</p>
-        <ul>
-            <li>Internal (Kotlin migration, five classes): converted <code>EnvVarsDialog</code> (the
-                read-only loaded-variables viewer), <code>LanesProcessRegistry</code> (the
-                per-project registry of running apps the monitor lists), <code>LanesStatusBarWidget</code>,
-                <code>MemoryLimitWatcher</code> (the background memory/health/CPU alert watcher) and
-                <code>MemoryChartDialog</code> (the full-session memory chart + leak analysis + CSV
-                export) from Java to Kotlin. Public surfaces and behavior are unchanged. No functional change.</li>
-        </ul>
-        <p><strong>2.0.5</strong>:</p>
-        <ul>
-            <li>Internal (Kotlin migration, five classes): converted the IDE-glue registration
-                classes - <code>LanesConfigurationType</code>, <code>ShowLanesMonitorAction</code>,
-                <code>LanesMonitorToolWindowFactory</code>, <code>LanesStatusBarWidgetFactory</code>
-                and <code>StopRunningLanesConfigurationsAction</code> (the stop-all action and the
-                per-project process registry it keeps) - from Java to Kotlin. Same class names/ids, so
-                the plugin.xml registrations and every caller are untouched. No functional change.</li>
-        </ul>
-        <p><strong>2.0.4</strong>:</p>
-        <ul>
-            <li>Internal (Kotlin migration, two classes): converted <code>RunConfigurationHelper</code>
-                (env file parsing/merging, the "Ready when" condition parser, the env-override
-                reflection fallbacks) and <code>ProcessStatsSampler</code> (ps/lsof/proc parsing,
-                docker-stats-style formatting) from Java to Kotlin. Both public surfaces are
-                unchanged, so every caller (the launch pipeline, the monitor, the status bar
-                widget, the memory chart) keeps working exactly as before. No functional change.</li>
-        </ul>
-        <p><strong>2.0.3</strong>:</p>
-        <ul>
-            <li>Internal (Kotlin migration): converted the docker-compose parser
-                (<code>ComposeImporter</code> - reads <code>mem_limit</code>, <code>env_file</code>,
-                <code>depends_on</code>, <code>ports</code> and topologically orders services) from
-                Java to Kotlin. Its public surface is unchanged, so the run-config editor's
-                "Import from docker-compose.yml" keeps working exactly as before. No functional change.</li>
-        </ul>
-        <p><strong>2.0.2</strong>:</p>
-        <ul>
-            <li>Internal (Kotlin migration): converted the memory-history/leak-analysis helper
-                (<code>MemoryHistory</code>, with its <code>Sample</code>/<code>Analysis</code>/trend
-                model and CSV export) from Java to Kotlin. Its public surface is unchanged, so the
-                monitor and the memory chart keep working exactly as before. No functional change.</li>
-        </ul>
-        <p><strong>2.0.1</strong>:</p>
-        <ul>
-            <li>Maintenance (Marketplace verifier): migrated off the deprecated
-                <code>ProgramRunner.execute(environment, callback)</code> - the environment is now
-                built with its callback via <code>ExecutionEnvironmentBuilder</code> and run with the
-                non-deprecated <code>execute(environment)</code>. This clears the only deprecated-API
-                warning on 2023.3–2024.x (those now verify with <b>0 warnings</b>). No functional change.</li>
-        </ul>
-        <p><strong>2.0.0</strong>:</p>
-        <ul>
-            <li>Internal milestone: started the incremental <b>migration to Kotlin</b> (hence the 2.0
-                bump). The build now compiles Java and Kotlin together (Kotlin stdlib provided by the
-                IDE, not bundled); the first pure-logic class (the Logs filter) is now Kotlin. No
-                user-facing change; the complex UI/launch classes stay Java for now and move over
-                gradually.</li>
-        </ul>
-        <p><strong>1.45.3</strong>:</p>
-        <ul>
-            <li>Maintenance (Marketplace verifier): removed the <b>only internal-API usage</b> - the
-                runner now extends <code>GenericProgramRunner</code>, so the platform performs the
-                <code>ExecutionManager.startRunProfile</code> call itself. No functional change.</li>
-            <li>Also migrated off three deprecated APIs (<code>URL(String)</code> →
-                <code>URI.toURL()</code>, <code>DefaultActionGroup.addAll(ActionGroup)</code>,
-                <code>FileChooserDescriptorFactory.createSingleFileDescriptor()</code>). Verifier now
-                reports <b>0 internal / 3 deprecated</b> (down from 1 internal / 6-7 deprecated).</li>
-        </ul>
-        <p><strong>1.45.2</strong>:</p>
-        <ul>
-            <li>Fix: after switching an app's environment, the monitor's <b>Env column now shows the
-                env actually in effect</b> for that app (its per-app override), instead of still
-                showing the group's profile.</li>
-            <li>The <b>Switch Environment</b> modal marks and pre-selects the <b>active</b> environment;
-                the group-wide switch is authoritative - it clears the running apps' per-app overrides
-                so they all follow the chosen environment (and the Env column shows it uniformly).</li>
-        </ul>
-        <p><strong>1.45.1</strong>:</p>
-        <ul>
-            <li>Env switching (refines 1.45.0 after feedback): the <b>Env column dropdown now switches
-                just that application</b> (a per-app override) and restarts only it - the toolbar
-                <b>Switch Environment</b> button stays the group-wide "switch all" option.</li>
-            <li>Both now <b>keep each app's executor</b>: an app running under Debug comes back under
-                Debug (Run stays Run, …). They relaunch the app through the group, so it stays tracked
-                and shows its new environment.</li>
-            <li>The Switch Environment toolbar icon is now an environment-like icon (was a reddish one).</li>
-        </ul>
-        <p><strong>1.45.0</strong>:</p>
-        <ul>
-            <li>Environment file: the group's env-file browse button now takes <b>several .env files
-                at once</b> (Ctrl/Shift-select), instead of one per click, when building the profile list.</li>
-            <li>Monitor: when a group has more than one env profile, the <b>Env column becomes a
-                dropdown</b> to switch the environment; a "view loaded variables" entry still opens the viewer.</li>
-            <li>Monitor: new <b>Switch Environment</b> toolbar button (badge = running apps) switches the
-                environment of the running apps from a single modal, instead of app by app.</li>
-            <li>Tests: +6 unit tests (multi-file selection, switchable profiles, batch grouping). 145 total.</li>
-        </ul>
-        <p><strong>1.44.0</strong>:</p>
-        <ul>
-            <li>Monitor: selecting several applications and then running a batch action
-                (Restart / Stop / Force Kill) now keeps the whole selection across the automatic
-                refresh - the action targets every selected app, no longer collapsing to a single row.</li>
-            <li>Monitor: new <b>Restart All</b> toolbar button with a badge showing the number of
-                running applications - relaunches the whole set in one click, next to Stop All.</li>
-            <li>Tests: +3 unit tests for the multi-selection restore, 139 total.</li>
-        </ul>
-        <p><strong>1.43.0</strong>:</p>
-        <ul>
-            <li>Build: migrated to the <b>IntelliJ Platform Gradle Plugin 2.x</b> (the tooling
-                JetBrains recommends) on Gradle 9. Same compatibility targets (2023.3+, no upper
-                bound); no functional change to the plugin.</li>
-            <li>Build: the <b>JetBrains Plugin Verifier</b> now runs locally against the same IDE
-                matrix the Marketplace verifies (2023.3.8 → 2026.1.4), so API problems are caught
-                before publishing.</li>
-            <li>Tests: +6 unit tests (executor matching and alert-threshold clamps), 136 total.</li>
-        </ul>
-        <p><strong>1.42.2</strong>:</p>
-        <ul>
-            <li>Maintenance: migrate off two platform APIs the Marketplace verifier flagged - the
-                docker-compose import button no longer uses the removal-scheduled
-                <code>ToolbarDecorator.addExtraAction(AnActionButton)</code>, and child processes are
-                launched via the public <code>ProgramRunner.execute(env, callback)</code> instead of
-                the internal <code>ExecutionEnvironment.setCallback</code>. No functional change.</li>
-        </ul>
-        <p><strong>1.42.1</strong>:</p>
-        <ul>
-            <li>Fix: Logs tab layout - the filter controls now sit as a full-width strip on
-                <b>top</b> and the log fills the whole width <b>below</b> them (they were laid out as
-                a left-hand column, pushing the log to the right).</li>
-        </ul>
-        <p><strong>1.42.0</strong>:</p>
-        <ul>
-            <li>Logs tab: console output is now readable when apps emit <b>ANSI color codes</b>. By
-                default the escape codes are <b>stripped</b> (clean text); tick <b>ANSI</b> in the
-                header to <b>render the real colors</b> instead. Filtering always works on the clean
-                text.</li>
-            <li>Build: keep a rolling archive of the last 5 built plugin zips in <code>dist/</code>
-                (which survives <code>gradlew clean</code>), so recent artifacts are never lost. No
-                functional change to the plugin.</li>
-        </ul>
-        <p><strong>1.41.0</strong>:</p>
-        <ul>
-            <li>Logs tab: an <b>App</b> selector shows the logs of a single application (or all), and
-                <b>advanced, composable filters</b> - several comma-separated terms combined with
-                <i>any</i>/<i>all</i>, matched as substring or <b>regex</b>, case-sensitive or not,
-                to <b>show</b> or <b>hide</b> matches, plus a minimum <b>log level</b> (Info+/Warn+/
-                Errors) detected from the text.</li>
-            <li>Monitor: the <b>Stop Multiple Run</b> count now includes apps <b>restarted individually
-                from the monitor</b> (which the IDE relaunches as standalone runs) - it no longer
-                under-counts, and the button stops them too.</li>
-        </ul>
-        <p><strong>1.40.0</strong>:</p>
-        <ul>
-            <li>Monitor: the memory <b>Analysis</b> tab now loads its per-process breakdown correctly
-                (it was stuck on "Sampling…" inside the modal), and got <b>richer leak analysis</b> -
-                a steady-leak verdict backed by the growth rate, projected growth per hour, R² of the
-                trend and how often memory was never freed.</li>
-            <li>Monitor: the Analysis tab gained a <b>process filter</b> (by PID or command) and an
-                <b>Export analysis…</b> button that saves the verdict plus the per-process breakdown
-                as a text report.</li>
-            <li>Monitor: a new toolbar button opens the memory chart <b>straight on the Analysis
-                tab</b> for the selected application - no need to click the Mem trend sparkline.</li>
-            <li>Monitor: the <b>Stop Multiple Run</b> toolbar button now shows the <b>number of running
-                processes</b> next to a stop icon (like WebStorm), instead of a bare icon that was
-                easy to confuse with the per-row Stop.</li>
-        </ul>
-        <p><strong>1.39.0</strong>:</p>
-        <ul>
-            <li>Monitor: the memory chart (click a "Mem trend" sparkline) now has <b>labeled X and Y
-                axes</b> - X is elapsed time, Y is memory (RSS) - with grid lines and tick labels.</li>
-            <li>Monitor: the memory chart gained an <b>Analysis</b> tab with a memory-trend / possible
-                <b>leak verdict</b> (growing/stable/shrinking, with the growth rate) and a
-                <b>per-process breakdown</b> of the application's process tree, so a runaway child
-                process is easy to spot.</li>
-            <li>Monitor: <b>show/hide columns</b> - a toolbar button opens a checkbox list to choose
-                which columns are visible.</li>
-            <li>Monitor: the <b>Stop Multiple Run</b> toolbar button now has a visible icon (it was
-                blank because of a stale icon path).</li>
-        </ul>
-        <p><strong>1.38.0</strong>:</p>
-        <ul>
-            <li>Monitor: click the <b>Env</b> cell of a running application to open a viewer with the
-                environment variables Multiple Run loaded for it at launch (group variables, group
-                env file, memory-limit options and per-app env file, merged). A filter at the top
-                narrows by variable name, and values can be masked for screen sharing.</li>
-            <li>Monitor: the <b>Status</b> column now shows <b>running</b> for every live application
-                (green), refining to <b>healthy</b>/<b>down</b> when a port/http "Ready when"
-                condition is set - it no longer stays blank.</li>
-        </ul>
-        <p><strong>1.37.1</strong>:</p>
-        <ul>
-            <li>Build: disable buildSearchableOptions - the plugin has no Settings pages to index, and
-                that step launched a headless IDE that intermittently failed with a platform
-                ConcurrentModificationException. No functional change.</li>
-        </ul>
-        <p><strong>1.37.0</strong>:</p>
-        <ul>
-            <li>New: sustained CPU alert. Set a "CPU alert %" on the group and an application whose CPU
-                stays at or above it for three consecutive background checks raises a notification
-                (with a Restart button); the alert re-arms when it drops back. 0 disables it; values
-                above 100 make sense on multi-core machines. Cross-platform.</li>
-        </ul>
-        <p><strong>1.36.0</strong>:</p>
-        <ul>
-            <li>Monitor: batch actions. Select several rows (Ctrl/Shift-click) and Restart, Stop or
-                Force Kill acts on all of them. New "Restart Unhealthy" toolbar action restarts every
-                application whose port/http readiness check is currently down.</li>
-        </ul>
-        <p><strong>1.35.0</strong>:</p>
-        <ul>
-            <li>Monitor: click the "Mem trend" sparkline of a row to open a full-session memory chart
-                for that application (the sparkline only shows the last minute). The chart pop-up can
-                <b>export the history to CSV</b> (timestamp, RSS, percent).</li>
-        </ul>
-        <p><strong>1.34.0</strong>:</p>
-        <ul>
-            <li>New: crash and health alerts with a one-click Restart. When an app crashes and
-                "Restart on crash" is off (or its attempts are used up), a notification now offers a
-                <b>Restart</b> button instead of failing silently. And an app whose <code>port:</code>/
-                <code>http</code> "Ready when" condition stays down for three consecutive background
-                checks is reported unhealthy, also with a Restart button; the alert re-arms when the
-                app recovers.</li>
-        </ul>
-        <p><strong>1.33.0</strong>:</p>
-        <ul>
-            <li>New: status bar widget. A compact indicator shows how many applications Multiple Run
-                is running, their combined memory and how many are unhealthy (a port/http "Ready when"
-                that is currently down). Click it to open the Multiple Run Monitor. Toggle it from the
-                status bar widgets menu.</li>
-        </ul>
-        <p><strong>1.32.0</strong>:</p>
-        <ul>
-            <li>New: per-application environment file. The applications table has an "Env file (app)"
-                column - point an app at its own <code>.env</code> file and it overrides the group's
-                environment (variables and env file) just for that app. Empty = use the group's
-                environment. Re-read on every run; relative paths resolve against the project root.</li>
-        </ul>
-        <p><strong>1.31.0</strong>:</p>
-        <ul>
-            <li>Monitor: the Ports column is now clickable - click a port to open
-                <code>http://localhost:&lt;port&gt;</code> in the browser (a menu lets you pick when a
-                process listens on several ports). Ports render as links.</li>
-        </ul>
-        <p><strong>1.30.0</strong>:</p>
-        <ul>
-            <li>New: import from <code>docker-compose.yml</code>. The editor's list toolbar gains an
-                import button that reads a compose file and applies it to the run configurations whose
-                name matches a service: <code>mem_limit</code> (and <code>deploy.resources.limits.memory</code>)
-                becomes the Memory limit, <code>env_file</code> becomes an environment profile, and
-                <code>depends_on</code> reorders the list (dependencies first) and adds a <code>port:</code>
-                "Ready when" gate. Services without a matching run configuration are reported and skipped.</li>
-        </ul>
-        <p><strong>1.29.0</strong>:</p>
-        <ul>
-            <li>New: execution presets. Save the current On/Off selection of applications plus the
-                active environment profile as a named preset, and switch between scenarios
-                ("backend only", "full stack", ...) from a dropdown in the editor - no more
-                re-checking boxes by hand.</li>
-        </ul>
-        <p><strong>1.28.1</strong>:</p>
-        <ul>
-            <li>Fix: the run configuration editor (Edit Configurations for a Multiple Run entry) could
-                fail to open after the 1.27.2 package rename - the GUI form bound to the editor was
-                accidentally removed. Restored it.</li>
-        </ul>
-        <p><strong>1.28.0</strong>:</p>
-        <ul>
-            <li>New: the Multiple Run Monitor tool window has a second "Logs" tab - an aggregated view
-                of the console output of every running application, like <code>docker compose logs -f</code>.
-                Each line is prefixed with its application name in a distinct color, and a filter field
-                narrows the view to matching lines. The old table is now the "Processes" tab.</li>
-        </ul>
-        <p><strong>1.27.2</strong>:</p>
-        <ul>
-            <li>Internal: renamed the Java package from the original author's namespace to
-                io.github.welingtonmonteiro.lanes. No user-facing change - existing run
-                configurations keep working (the "Multirun" configuration type id is unchanged).</li>
-        </ul>
-        <p><strong>1.27.1</strong>:</p>
-        <ul>
-            <li>Fix: the "Memory limit (MB)" and "Ready when" cells no longer lose focus while
-                typing (the cell editor was being closed by the dialog's validation cycle).</li>
-        </ul>
-        <p><strong>1.27</strong>:</p>
-        <ul>
-            <li>Monitor: now lists EVERY process the IDE is running - standalone (singleton) runs
-                included, not only the ones started by Multiple Run. The Name column shows the origin:
-                the Multiple Run icon for grouped apps, the run configuration's own icon (node, npm,
-                jest, ...) for standalone ones.</li>
-            <li>Monitor: an application restarted from the monitor no longer disappears from the list,
-                and keeps showing its group, env profile and memory limit.</li>
-            <li>Monitor: columns are resizable - drag the header edges to adjust widths.</li>
-        </ul>
-        <p><strong>1.26</strong>:</p>
-        <ul>
-            <li>Monitor: new "Mem trend" sparkline column - a mini chart with the memory history of the
-                last minute per application (green/orange/red by how close to the limit it is), so leaks
-                and growth trends are visible at a glance.</li>
-            <li>Windows support for the monitor: memory and CPU are sampled through PowerShell
-                Get-Process when ps is not available. (Ports and kill-by-port still need lsof,
-                i.e. Linux/macOS.)</li>
-        </ul>
-        <p><strong>1.25</strong>:</p>
-        <ul>
-            <li>New: restart policies, docker style. "Restart application on crash" relaunches an app
-                that exits with a crash code (max 3 attempts per run); stops via the stop buttons never
-                trigger it. The memory limit alert threshold is now configurable (default 90%) and the
-                action can be "Notify" or "Restart application" - docker-like OOM handling.</li>
-        </ul>
-        <p><strong>1.24</strong>:</p>
-        <ul>
-            <li>New: enable/disable checkbox per application - unchecked apps stay in the list but are
-                not launched. Great for temporarily skipping a service without losing its settings.</li>
-            <li>New: "Ready when" column, a docker-compose-like readiness gate for one-by-one starts.
-                The next application only starts when the previous one is ready: port:3003 (TCP port
-                open), an http(s) health URL (2xx/3xx) or log:some text (console output contains it).
-                Capped at 2 minutes, then the chain continues anyway.</li>
-            <li>Monitor: new "Status" column - apps with a port/http readiness condition are re-checked
-                on every refresh and show healthy/down, like docker ps.</li>
-            <li>Monitor: double click on a row jumps to the console tab of that application.</li>
-        </ul>
-        <p><strong>1.23</strong>:</p>
-        <ul>
-            <li>New: environment profiles. The Environment file field is now an editable dropdown that
-                remembers every .env file you use - switch between environments (for example
-                .env.development, .env.staging, .env.production) by picking a profile, no more retyping
-                paths. The monitor shows the active profile of each running application in the new
-                "Env" column.</li>
-        </ul>
-        <p><strong>1.22.1</strong>:</p>
-        <ul>
-            <li>Monitor: the selected row is no longer deselected by the automatic refresh.</li>
-            <li>Monitor: fix CPU % stuck at 0.00% on Linux - the ps TIME column only has 1-second
-                resolution, so the sampler now reads /proc/[pid]/stat (10 ms ticks) instead.</li>
-        </ul>
-        <p><strong>1.22</strong>:</p>
-        <ul>
-            <li>Multiple Run Monitor: Restart action per row - stop and start again only the selected
-                application, the rest of the group keeps running.</li>
-            <li>Multiple Run Monitor: CPU % is now instantaneous (delta between two samples, like
-                docker stats) instead of the average since the process started.</li>
-            <li>New: memory limit alert. When an application with a configured memory limit crosses 90%
-                of it, the IDE shows a warning notification - even with the monitor closed. One alert
-                per process.</li>
-            <li>Multiple Run Monitor: new "Uptime" column.</li>
-        </ul>
-        <p><strong>1.21</strong>:</p>
-        <ul>
-            <li>Multiple Run Monitor: new "Ports" column showing the TCP ports each application is
-                listening on (like the PORTS column of docker ps).</li>
-            <li>Multiple Run Monitor: Stop and Force Kill actions per row (toolbar and right-click) -
-                Force Kill sends SIGKILL to the whole process tree of the selected application.</li>
-            <li>Multiple Run Monitor: "Kill Process on Port" action - type a TCP port and kill whatever
-                process is listening on it (with confirmation), even processes not started by the
-                plugin. Goodbye EADDRINUSE.</li>
-        </ul>
-        <p><strong>1.20</strong>:</p>
-        <ul>
-            <li>New: "Multiple Run Monitor" tool window (bottom stripe, also under Run -> Multiple Run Monitor).
-                A docker-stats-like live table with every application started by Multiple Run: PID,
-                memory usage vs. the configured limit (or the machine total), memory percentage and CPU.
-                Measures the whole process tree of each application (npm wrapper + node child, etc.)
-                and refreshes automatically every 2 seconds.</li>
-        </ul>
-        <p><strong>1.19</strong>:</p>
-        <ul>
-            <li>New: per-application memory limit. The configurations list is now a table with an editable
-                "Memory limit (MB)" column - type a heap cap right next to each application and it is applied
-                at launch as NODE_OPTIONS --max-old-space-size (Node.js) and JAVA_TOOL_OPTIONS -Xmx (JVM),
-                the process-level analog of docker's mem_limit.</li>
-        </ul>
-        <p><strong>1.18</strong>:</p>
-        <ul>
-            <li>New: Save console logs option. Point the configuration to a folder and the console output of every
-                configuration in the list is also written there as &lt;name&gt;.log, using the IDE's standard
-                "save console output to file" mechanism. Relative paths resolve against the project root.</li>
-        </ul>
-        <p><strong>1.17</strong>:</p>
-        <ul>
-            <li>New: Environment file option. Point the Multiple Run configuration to a .env file (browse button
-                or type the path; relative paths resolve against the project root) and its KEY=VALUE entries are
-                applied to every configuration in the list. The file is re-read on every run; variables configured
-                manually in the Environment variables field win over the file on conflicts.</li>
-            <li>Environment override now also reaches npm/pnpm/yarn run configurations.</li>
-            <li>Diagnostics: idea.log records which injection strategy each grouped configuration took
-                (variable names only, never values).</li>
-        </ul>
-        <p><strong>1.16.2</strong>:</p>
-        <ul>
-            <li>Migrate off deprecated platform APIs flagged by the Marketplace verifier
-                (RunnerRegistry.getRunner, ProcessAdapter, ListCellRendererWrapper), keeping the plugin
-                compatible with future IDE versions. No functional changes.</li>
-        </ul>
-        <p><strong>1.16.1</strong>:</p>
-        <ul>
-            <li>Use an own id for the "Stop Multiple Run" action, fixing the "ID is already taken" PluginException
-                on startup when the original Multirun plugin is installed alongside. Note: the two plugins still
-                cannot run together (they share the run configuration type) - uninstall the original Multirun.</li>
-        </ul>
-        <p><strong>1.16</strong>:</p>
-        <ul>
-            <li>New: restart behavior, like the built-in Compound configuration. Running a Multirun that is already
-                running now stops the processes it started before (waiting for their termination) and then starts
-                again - no need to use "Stop Multirun" first. Enabled by default; can be disabled per configuration
-                with the new "Restart running configurations before starting" option. Only the processes of the
-                restarted Multirun are stopped - other running Multirun groups are not affected.</li>
-            <li>The run configuration type is now shown as "Multiple Run" in the Add New Configuration list
-                (the internal type id is unchanged, existing configurations keep working). The stop action is
-                now "Stop Multiple Run".</li>
-        </ul>
-        <p><strong>1.15.2</strong>:</p>
-        <ul>
-            <li>Reference grouped run configurations by their configuration type id instead of the display name.
-                Fixes matching with plugins whose type display name differs (e.g. BashSupport Pro's Shell-compatible
-                configurations) and with translated IDEs (language packs). Existing configurations keep working and
-                are migrated automatically on the next save.</li>
-        </ul>
-        <p><strong>1.15.1</strong>:</p>
-        <ul>
-            <li>Fix delay value corruption in locales that use a comma as the decimal separator (German, pt-BR, ...):
-                the field now accepts both "." and "," and persisted values are no longer misread as tens
-                (e.g. "-1.0" turning into -10).</li>
-        </ul>
-        <p><strong>1.15</strong>:</p>
-        <ul>
-            <li>New: Environment variables option on the Multirun configuration. The variables are applied to every
-                configuration in the list (overriding same-named variables), including nested Multirun configurations.
-                The "Include system environment variables" flag is applied to children as well.</li>
-        </ul>
-        <p><strong>1.14.2</strong>:</p>
-        <ul>
-            <li>Fix cycle detection when a Multirun contains multiple nested Multirun configurations.</li>
-            <li>Fix delay value being reset to 0 in locales that use a comma as the decimal separator.</li>
-            <li>Run tab updates (icon/name/pin) now happen on the EDT to avoid "must be called on EDT" errors.</li>
-            <li>Build against IntelliJ Platform 2023.3 with Gradle 8.5; drop internal *Impl API usage and other cleanups.</li>
-        </ul>
-        <p><strong>1.14.1</strong>:</p>
-        <ul>
-            <li>Parsing the delay with respect to current locale.</li>
-            <li>Add profiler run configurations support.</li>
-        </ul>
-        <p><strong>1.14</strong>:</p>
-        <ul>
-            <li>Add support for 2023.3 version of IntelliJ based IDEs.</li>
-            <li>Fix "must be called on EDT exception"</li>
-            <li>Disable delay input if "Start configuration one by one" is disabled</li>
-        </ul>
-        <p><strong>1.13</strong>:</p>
-        <ul>
-            <li>Add support for 2021.2 version of IntelliJ based IDEs.</li>
-        </ul>
-        <p><strong>1.12</strong>:</p>
-        <ul>
-            <li>Stop using some of deprecated IntelliJ Platform API.</li>
-            <li>Move to Plugin SDK using Java 11.</li>
-        </ul>
-        <p><strong>1.11.2</strong>:</p>
-        <ul>
-            <li>Add plugin log icon.</li>
-        </ul>
-        <p><strong>1.11</strong>:</p>
-        <ul>
-            <li>Add support for sub-second delay.</li>
-            <li>Fix waiting for delay when no more configurations to run.</li>
-            <li>Add support for Coverage executor.</li>
-            <li>Enable re-using tabs with successful and failure results.</li>
-            <li>Fix issue when tabs couldn't be re-used after 'Stop Multirun' command.</li>
-            <li>Support serial execution of the configurations (Use 'Start configurations one by one' and use negative delay)</li>
-            <li>When 'Start configurations one by one' used with delay, do not wait till delay to start next configuration.</li>
-        </ul>
-        <p><strong>1.10</strong>:</p>
-        <ul>
-            <li>Update gradle-intellij-plugin and add support for IntellijIDEA 2019.1</li>
-        </ul>
-        <p><strong>1.9</strong>:</p>
-        <ul>
-            <li>Support for IntellijIDEA 2018.1</li>
-        </ul>
-        <p><strong>1.8</strong>:</p>
-        <ul>
-            <li>Support for IntellijIDEA 2017.3</li>
-        </ul>
-        <p><strong>1.7</strong>:</p>
-        <ul>
-            <li>Support for IntellijIDEA 2017.2</li>
-        </ul>
-        <p><strong>1.6</strong>:</p>
-        <ul>
-            <li>Support for IntellijIDEA 2017.1</li>
-        </ul>
-        <p><strong>1.5</strong>:</p>
-        <ul>
-            <li>Support for IntellijIDEA 2016.3</li>
-        </ul>
-        <p><strong>1.4</strong>:</p>
-        <ul>
-            <li>Support for IntellijIDEA 2016.2 EAP</li>
-        </ul>
-        <p><strong>1.3</strong>:</p>
-        <ul>
-            <li>Support for IntellijIDEA 16</li>
-        </ul>
-        <p><strong>1.1</strong>:</p>
-        <ul>
-            <li>Support for IntellijIDEA 15</li>
-        </ul>
         <p><strong>1.0.1</strong>:</p>
         <ul>
-            <li>Adding support for JRebel run configurations (thanks olmoser!)</li>
+            <li>Internal: the project moved to the <a href="https://github.com/PixelC0d3">PixelC0d3</a>
+                GitHub organization. The plugin id is now <code>io.github.pixelcodes.lanes</code> and
+                the Kotlin package moved accordingly.</li>
+            <li>No functional change; Welington Monteiro remains the plugin's maintainer/vendor.</li>
         </ul>
-        <p><strong>1.0</strong>:</p>
+        <p><strong>1.0</strong>: Initial release</p>
+
+        <p><b>Grouping</b></p>
         <ul>
-            <li>It works stable for almost 2 years for me. So I feel free to say it's 1.0 version. Woohoo!!</li>
-            <li>Fixed API issues with using Multirun from IntellijIDEA 14.1</li>
-            <li>Change shortcut to kill Multirun to Control + Alt + K on OS X</li>
+            <li>Group any number of run configurations into a single <b>Lanes</b> configuration and
+                start them with one click.</li>
+            <li><b>Nesting / composite configurations</b>: a Lanes configuration can contain other
+                Lanes configurations, so you can build a "master" configuration that starts several
+                groups at once - with loop protection (detects and prevents cycles).</li>
         </ul>
-        <p><strong>0.9</strong>:</p>
+
+        <p><b>Execution modes</b></p>
         <ul>
-            <li>Fixed API issues with using Multirun from IntellijIDEA 14 (thanks derkork!)</li>
-            <li>Change shortcut to kill Multirun to Shift + Alt + K to avoid conflict with Git plugin</li>
-            <li>Delay can be added before starting configurations in one-by-one mode</li>
+            <li><b>Parallel</b> or <b>one by one</b> (the next configuration starts only after the
+                previous one has started - useful when "Before launch" tasks would otherwise
+                collide).</li>
+            <li><b>Enable/disable per application</b> - an On checkbox per row; unchecked apps stay
+                in the list (keeping their settings) but are not launched.</li>
+            <li><b>Ready when</b> (docker-compose-style depends_on): with one-by-one, the next
+                application only starts once the previous one is actually ready -
+                <code>port:3003</code>, an http(s) health URL (2xx/3xx), or <code>log:some text</code>
+                (console output contains it). Capped at 2 minutes, then the chain continues anyway.
+                Also feeds the monitor's Status column (healthy/down, re-checked every refresh).</li>
+            <li><b>Delay between configurations</b> (one-by-one only): 0 starts immediately, a
+                positive value waits up to N seconds (with a countdown), a negative value waits for
+                the previous process to complete first (serial execution). Locale-aware (accepts
+                "," or "." as the decimal separator).</li>
         </ul>
-        <p><strong>0.8</strong>:</p>
+
+        <p><b>Environment variables &amp; .env files</b></p>
         <ul>
-            <li>Fixed API issues with using Multirun from IntellijIDEA 13 (thanks jgindin!)</li>
+            <li>Define environment variables directly on the Lanes configuration - applied to
+                every child configuration, overriding same-named variables, and propagating through
+                nested Lanes configurations too.</li>
+            <li><b>Environment file with profiles</b>: point the Environment file field at one or
+                more .env files (multi-select browse) and switch between them from a dropdown - no
+                retyping paths. Re-read on every run; the configuration's own Environment variables
+                field still wins on conflicts.</li>
+            <li><b>Per-application env file override</b>: an Env file (app) column lets a single app
+                use its own .env file instead of the group's.</li>
+            <li><b>Native Play/Debug support</b>: the same .env-profile loading is available
+                directly on Node-based run configurations (Node.js, npm/pnpm/yarn, Karma, Jest,
+                Mocha) - not just inside a Lanes group. A switch button on the run toolbar restarts
+                that same run with the chosen profile. Optional module: only active in IDEs with the
+                JavaScript plugin; uninstalling the plugin removes it cleanly.</li>
+            <li>Works with any configuration type that exposes environment variables (Node.js, npm,
+                Java Application, ...); other types run unchanged.</li>
         </ul>
-        <p><strong>0.7</strong>:</p>
+
+        <p><b>Execution presets</b></p>
         <ul>
-            <li>Enable Run Another Configuration option for Before Launch tasks if not enabled yet</li>
+            <li>Save the current On/Off selection of applications plus the active environment
+                profile as a named preset, and switch between scenarios ("backend only", "full
+                stack", ...) from a dropdown - no more re-checking boxes by hand.</li>
         </ul>
-        <p><strong>0.6.1</strong>:</p>
+
+        <p><b>Import from docker-compose.yml</b></p>
         <ul>
-            <li>Fix API issue when using Multirun in IDEA 12.0.x</li>
+            <li>Reads a compose file and applies it to run configurations already in the list whose
+                name matches a service: <code>mem_limit</code> (and
+                <code>deploy.resources.limits.memory</code>) becomes the Memory limit,
+                <code>env_file</code> becomes an environment profile, <code>depends_on</code>
+                reorders the list and adds a <code>port:&lt;published&gt;</code> Ready when gate.
+                Services without a matching configuration are reported and skipped - it never
+                creates one.</li>
         </ul>
-        <p><strong>0.6</strong>:</p>
+
+        <p><b>Per-application memory limit</b></p>
         <ul>
-            <li>Enabled Debug for Multirun configuration</li>
-            <li>Fix issue with starting composite Multirun configuration</li>
+            <li>An editable Memory limit (MB) column applies a heap cap at launch
+                (<code>NODE_OPTIONS --max-old-space-size</code> for Node.js,
+                <code>JAVA_TOOL_OPTIONS -Xmx</code> for the JVM) - the process-level analog of
+                Docker's <code>mem_limit</code>.</li>
         </ul>
-        <p><strong>0.5</strong>:</p>
+
+        <p><b>Lanes Monitor (docker-stats-style process table)</b></p>
         <ul>
-            <li>
-                Fixed reported and found issues
-                <ul>
-                    <li>NPE during process start</li>
-                    <li>circular reference issue during loading Multirun configurations</li>
-                    <li>killing composite/parallel Multirun configurations</li>
-                </ul>
-            </li>
+            <li>Lists every process the IDE is running - apps started by Lanes and standalone
+                (singleton) runs - with PID, ports, uptime, status, memory usage/limit, memory %,
+                memory trend and CPU %. Each application is measured as its whole process tree,
+                refreshed automatically every 2 seconds. A distinct "configured" icon marks every
+                saved Lanes instance everywhere the platform shows it.</li>
+            <li>Env column shows the active profile - click to view the variables actually loaded
+                (with a name filter and a mask-values toggle for screen sharing) - for grouped apps
+                and standalone runs alike.</li>
+            <li>Ports are clickable (opens the URL in the browser); Kill Process on Port... stops
+                whatever is listening on a port, even processes the plugin didn't start.</li>
+            <li>Mem trend sparkline (color-coded by proximity to the limit) opens a full-session
+                memory chart with labeled axes, CSV export, and a leak-analysis tab (growth rate,
+                projected growth/hour, R², a per-process breakdown, and a text export).</li>
+            <li>Restart / Stop / Force Kill per row or in batch (multi-select survives the automatic
+                refresh); Restart All and Restart Unhealthy toolbar actions; Switch Environment
+                per-row or group-wide, preserving each app's executor.</li>
+            <li>Show/Hide columns picker; Aggregated Logs tab merges every running app's console
+                into one color-coded stream, with an app selector, composable filters
+                (substring/regex, show/hide, case-sensitive, minimum log level) and an ANSI toggle.</li>
+            <li>Shows a branded empty-state illustration when nothing is running.</li>
+            <li>Windows support via PowerShell Get-Process for memory/CPU (Ports and Kill-by-Port
+                need lsof, Linux/macOS only).</li>
         </ul>
-        <p><strong>0.4</strong>:</p>
+
+        <p><b>Status bar widget</b></p>
         <ul>
-            <li>Mark the tab for failed process</li>
-            <li>Added option to close tabs for successfully completed run configurations</li>
-            <li>Better description for configuration options</li>
-            <li>Do not re-use the tab of failed run configuration</li>
+            <li>A compact indicator shows how many applications Lanes is running, their combined
+                memory and how many are unhealthy. Click it to open the Lanes Monitor; it hides
+                itself when nothing is running.</li>
         </ul>
-        <p><strong>0.3</strong>:</p>
+
+        <p><b>Restart policies &amp; alerts (docker style)</b></p>
         <ul>
-            <li>Stop running configurations using menu Run -> Stop Multirun or shortcut Ctrl + Shift + K</li>
-            <li>Improve Multirun configuration edit form</li>
-            <li>Pin tabs when the re-use tabs option is disabled</li>
-            <li>Mark running configurations with *</li>
-            <li>Change in default configuration: tabs re-use is disabled, starting configurations one-by-one is enabled</li>
-            <li>Improved plugin description</li>
+            <li><b>Restart application on crash</b> - relaunches an app that exits with a crash code
+                (max 3 attempts per run); intentional stops never trigger it.</li>
+            <li><b>Crash notification with Restart</b> - a one-click Restart button when crash-restart
+                is off or exhausted.</li>
+            <li><b>Unhealthy alert</b> - an app whose readiness condition stays down for 3 consecutive
+                checks is reported unhealthy with a Restart button; re-arms on recovery.</li>
+            <li><b>Sustained CPU alert</b> - a configurable CPU % threshold held for 3 consecutive
+                checks raises a notification with Restart.</li>
+            <li><b>Memory limit alert</b> - configurable threshold (default 90%) with a Notify or
+                Restart application action, docker-like OOM handling.</li>
         </ul>
-        <p><strong>0.2</strong>:</p>
+
+        <p><b>Console tab handling</b></p>
         <ul>
-            <li>Enable Multirun for PyCharm, RubyMine, PhpStorm, WebStorm and AppCode</li>
+            <li>Mark the tab of a failed configuration; optionally close tabs of successfully
+                completed ones; reuse tabs for succeeded and/or failed runs.</li>
+            <li>Save console logs to folder - writes each configuration's output as a log file via
+                the IDE's standard mechanism.</li>
         </ul>
-        <p><strong>0.1</strong>:</p>
+
+        <p><b>Restarting and stopping</b></p>
         <ul>
-            <li>Multirun run configuration option to group multiple run configurations and run them in a single click</li>
-            <li>Group multiple Multirun configurations in single master Multirun configuration to start everything</li>
-            <li>Basic configuration options:
-                <ul>
-                    <li>start configurations one-by-one or in parallel</li>
-                    <li>re-use the tabs or run each configuration in separate tab</li>
-                </ul>
-            </li>
+            <li><b>Restart on rerun</b> (default on) - running a Lanes configuration that's already
+                running stops its own processes first, then starts again; other running Lanes groups
+                are untouched. Can be disabled per configuration.</li>
+            <li><b>Stop Lanes</b> action stops everything the plugin started, available from
+                Run -&gt; Stop Lanes and via Shift+Alt+K (macOS: Control+Alt+K).</li>
+        </ul>
+
+        <p><b>Supported executors</b></p>
+        <ul>
+            <li>Run, Debug, Run with Coverage, Profiler, and JRebel (Run and Debug).</li>
         </ul>
         ]]>
     </change-notes>
@@ -828,35 +226,35 @@
     <actions>
         <!-- id must stay in sync with StopRunningLanesConfigurationsAction.ACTION_ID;
              namespaced to avoid colliding with the original Multirun plugin's action id -->
-        <action id="Lanes.StopRunning" class="io.github.welingtonmonteiro.lanes.StopRunningLanesConfigurationsAction"
+        <action id="Lanes.StopRunning" class="io.github.pixelcodes.lanes.StopRunningLanesConfigurationsAction"
                 text="Stop Lanes" description="Stop running Lanes configurations"
-                icon="io.github.welingtonmonteiro.lanes.LanesIcons.StopAll">
+                icon="io.github.pixelcodes.lanes.LanesIcons.StopAll">
             <add-to-group group-id="RunMenu" relative-to-action="Stop" anchor="after"/>
             <keyboard-shortcut keymap="$default" first-keystroke="shift alt K"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="control alt K"/>
         </action>
-        <action id="Lanes.ShowMonitor" class="io.github.welingtonmonteiro.lanes.ShowLanesMonitorAction"
+        <action id="Lanes.ShowMonitor" class="io.github.pixelcodes.lanes.ShowLanesMonitorAction"
                 text="Lanes Monitor" description="Show memory and CPU usage of the applications started by Lanes">
             <add-to-group group-id="RunMenu" relative-to-action="Lanes.StopRunning" anchor="after"/>
         </action>
     </actions>
 
     <extensions defaultExtensionNs="com.intellij">
-        <configurationType implementation="io.github.welingtonmonteiro.lanes.LanesConfigurationType"/>
-        <programRunner implementation="io.github.welingtonmonteiro.lanes.LanesRunner"/>
+        <configurationType implementation="io.github.pixelcodes.lanes.LanesConfigurationType"/>
+        <programRunner implementation="io.github.pixelcodes.lanes.LanesRunner"/>
         <!-- docker-stats-like monitor for the processes started by the plugin -->
         <toolWindow id="Lanes Monitor" anchor="bottom" canCloseContents="false"
-                    icon="io.github.welingtonmonteiro.lanes.LanesIcons.OpenDashboard"
-                    factoryClass="io.github.welingtonmonteiro.lanes.ui.LanesMonitorToolWindowFactory"/>
+                    icon="io.github.pixelcodes.lanes.LanesIcons.OpenDashboard"
+                    factoryClass="io.github.pixelcodes.lanes.ui.LanesMonitorToolWindowFactory"/>
         <!-- status bar widget: running apps, total memory and unhealthy count (click opens the monitor) -->
         <statusBarWidgetFactory id="Lanes.Monitor.Widget"
-                                implementation="io.github.welingtonmonteiro.lanes.ui.LanesStatusBarWidgetFactory"
+                                implementation="io.github.pixelcodes.lanes.ui.LanesStatusBarWidgetFactory"
                                 order="last"/>
         <!-- balloon warnings raised by the memory limit watcher -->
         <notificationGroup id="Lanes" displayType="BALLOON"/>
         <!-- keeps the running-apps count badge on the monitor tool window in sync with process start/stop -->
-        <postStartupActivity implementation="io.github.welingtonmonteiro.lanes.ui.LanesMonitorBadgeActivity"/>
+        <postStartupActivity implementation="io.github.pixelcodes.lanes.ui.LanesMonitorBadgeActivity"/>
         <!-- clears any stale cached icon so every saved Lanes instance shows the "configured" icon -->
-        <postStartupActivity implementation="io.github.welingtonmonteiro.lanes.LanesConfiguredIconRefreshActivity"/>
+        <postStartupActivity implementation="io.github.pixelcodes.lanes.LanesConfiguredIconRefreshActivity"/>
     </extensions>
 </idea-plugin>

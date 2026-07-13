@@ -10,6 +10,6 @@
 <idea-plugin>
     <extensions defaultExtensionNs="JavaScript">
         <nodeRunConfigurationExtension
-                implementation="io.github.welingtonmonteiro.lanes.nodejs.LanesNodeEnvFileExtension"/>
+                implementation="io.github.pixelcodes.lanes.nodejs.LanesNodeEnvFileExtension"/>
     </extensions>
 </idea-plugin>
