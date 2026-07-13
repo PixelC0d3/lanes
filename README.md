@@ -331,7 +331,7 @@ The plugin version is managed from `build.gradle` (`version = '…'`) and inject
 
 ## ⭐ Open Source
 
-GitHub repository: [WelingtonMonteiro/lanes](https://github.com/WelingtonMonteiro/lanes)
+GitHub repository: [PixelC0d3/lanes](https://github.com/PixelC0d3/lanes)
 
 Contributions, feature requests and bug reports are always welcome. Working on UI? See
 [brand/BRAND_GUIDELINES.md](brand/BRAND_GUIDELINES.md) for the color palette, iconography rules
