@@ -5,6 +5,12 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.4] — Env picker now matches the run configuration selector's style
+- The toolbar button from 1.0.3 now renders like a combo box, the same style as the run
+  configuration selector next to it: the env icon, the active profile's name, and a dropdown arrow.
+  Clicking it opens the profile list directly (no separate popup dialog); picking one updates the
+  name shown right there.
+
 ## [1.0.3] — Pick the .env profile from the toolbar
 - Fixes 1.0.2: the pre-Play picker never actually rendered (the platform widget it relied on only
   shows once a non-default "execution target" is already active, which nothing ever set for a
