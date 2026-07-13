@@ -1,11 +1,11 @@
-<idea-plugin url="https://github.com/WelingtonMonteiro/multiple_run">
+<idea-plugin url="https://github.com/WelingtonMonteiro/lanes">
     <!-- Unique Marketplace id of this fork (the original Multirun owns com.khmelyuk.multirun).
-         The run configuration type id is "Multiplerun" (changed from "Multirun" before this fork
+         The run configuration type id is "Lanes" (changed from "Multirun" before this fork
          had any real users), so it can never collide with the original plugin's own type id if
          both are ever installed side by side; the original Multirun plugin should still be
          uninstalled before installing this one. -->
-    <id>io.github.welingtonmonteiro.multiplerun</id>
-    <name>Multiple Run</name>
+    <id>io.github.welingtonmonteiro.lanes</id>
+    <name>Lanes</name>
     <!-- version is injected from build.gradle (project.version) by patchPluginXml -->
     <vendor url="https://github.com/WelingtonMonteiro" email="welington.rmonteiro@gmail.com">Welington Monteiro</vendor>
 
@@ -16,7 +16,7 @@
              of a local path. It only resolves once this branch is merged into mainline. -->
         <!-- width is capped (not 100%) so the banner stays modest in the IDE's install panel, where
              the description also renders - a full-width hero looked oversized there. -->
-        <p><img src="https://raw.githubusercontent.com/WelingtonMonteiro/multiple_run/mainline/brand/banner.png" alt="Multiple Run" width="420"/></p>
+        <p><img src="https://raw.githubusercontent.com/WelingtonMonteiro/lanes/mainline/brand/banner.png" alt="Lanes" width="420"/></p>
 
         <p><b>Run, monitor and manage multiple run configurations at once.</b> Group your apps, servers,
         microservices or tests and start them with a single click - one by one with "ready when"
@@ -26,7 +26,7 @@
 
         <p>Manage environments without leaving the IDE: load <b>.env</b> environment files per app or group,
         switch between environment profiles on the fly, and <b>import a docker-compose</b> file to create run
-        configurations. Not only application and test configurations can be grouped - other Multiple Run
+        configurations. Not only application and test configurations can be grouped - other Lanes
         configurations can be nested into a single one.</p>
 
         <p>Fork of the <a href="https://github.com/rkhmelyuk/multirun">Multirun</a> plugin by Ruslan Khmeliuk.
@@ -41,13 +41,13 @@
         <p>Usage:</p>
         <ol>
             <li>Run -> Edit Configurations...</li>
-            <li>Find and add a new Multiple Run configuration</li>
-            <li>Add other run configurations to the Multiple Run configuration</li>
+            <li>Find and add a new Lanes configuration</li>
+            <li>Add other run configurations to the Lanes configuration</li>
             <li>Pick options you'd like</li>
             <li>Ready to use</li>
         </ol>
 
-        <p>Multiple Run + Before Launch Tasks gives even more functionality: read more at <a href="https://goo.gl/KwHvx">https://goo.gl/KwHvx</a></p>
+        <p>Lanes + Before Launch Tasks gives even more functionality: read more at <a href="https://goo.gl/KwHvx">https://goo.gl/KwHvx</a></p>
 
         <p>If this plugin saves you time, consider <a href="https://buymeacoffee.com/welingtonmonteiro">buying me a coffee</a> ☕</p>
 
@@ -56,6 +56,27 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>3.0.0</strong>:</p>
+        <ul>
+            <li><strong>Rebrand: "Multiple Run" is now Lanes.</strong> New name, new visual identity
+                (the "Lanes" mark - parallel process lanes with live status dots), and a full
+                technical rename to match: the plugin id is now
+                <code>io.github.welingtonmonteiro.lanes</code> (was
+                <code>io.github.welingtonmonteiro.multiplerun</code>), the Kotlin package and every
+                class now use the <code>Lanes</code> prefix instead of <code>Multiplerun</code>, and
+                the run configuration type id changed from <code>"Multiplerun"</code> to
+                <code>"Lanes"</code>.</li>
+            <li><strong>Breaking for run configurations saved before this release</strong>: because
+                the plugin id and the run configuration type id both changed, previously-saved
+                "Multiple Run" configurations need to be recreated under the new Lanes type. This
+                plugin has no real users yet (unapproved Marketplace submission), so the trade-off
+                was made now, while it is still free - same reasoning as the 2.0.11 Multirun -&gt;
+                Multiplerun rename.</li>
+            <li>Action ids, the toolWindow id, the status bar widget id and the notification group id
+                all moved from "MultipleRun.*" / "Multiple Run" to "Lanes.*" / "Lanes" accordingly.</li>
+            <li>The credit to the original <a href="https://github.com/rkhmelyuk/multirun">Multirun</a>
+                plugin by Ruslan Khmeliuk, which this project still forks from, is unchanged.</li>
+        </ul>
         <p><strong>2.1.4</strong>:</p>
         <ul>
             <li>Fix: the 2.1.3 "configured" icon never actually showed up in the "Edit Configurations"
@@ -175,7 +196,7 @@
         <ul>
             <li>Internal (Kotlin migration, the rest of the codebase): converted the remaining 14
                 JUnit test classes from Java to Kotlin. Moved
-                <code>MultiplerunRunConfigurationEditor.form</code> next to its Kotlin class under
+                <code>LanesRunConfigurationEditor.form</code> next to its Kotlin class under
                 <code>src/main/kotlin</code> (confirmed the GUI-Designer form instrumentation still
                 works from there). The entire codebase - <code>src/main</code> and
                 <code>src/test</code> - is now Kotlin; there is no Java source left in the project.
@@ -184,7 +205,7 @@
         <p><strong>2.0.8</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration complete): converted the last remaining Java class,
-                <code>MultiplerunRunConfigurationEditor</code> (the run configuration editor UI), to
+                <code>LanesRunConfigurationEditor</code> (the run configuration editor UI), to
                 Kotlin. It still binds to its existing GUI-Designer <code>.form</code> file - the
                 form-to-bytecode weaving works the same for a Kotlin class as it did for Java, so
                 the editor's layout and behavior are unchanged. <code>src/main/java</code> now
@@ -194,12 +215,12 @@
         <p><strong>2.0.7</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration, five classes - the last batch before the GUI-form-bound
-                editor): converted <code>MultiplerunRunner</code> (the launcher extending
+                editor): converted <code>LanesRunner</code> (the launcher extending
                 <code>GenericProgramRunner</code>), <code>AggregatedLogPanel</code> (the docker-compose-
-                logs-style aggregated Logs tab), <code>MultiplerunRunnerState</code> (the launch pipeline:
+                logs-style aggregated Logs tab), <code>LanesRunnerState</code> (the launch pipeline:
                 one-by-one chaining, readiness gates, crash-restart, tab/content handling),
-                <code>MultiplerunRunConfiguration</code> (persistence: readExternal/writeExternal,
-                presets, env profiles) and <code>MultiplerunMonitorPanel</code> (the monitor tool window:
+                <code>LanesRunConfiguration</code> (persistence: readExternal/writeExternal,
+                presets, env profiles) and <code>LanesMonitorPanel</code> (the monitor tool window:
                 table model, columns, batch actions, env switching) from Java to Kotlin. Public
                 surfaces and behavior are unchanged - every getter/setter keeps its exact Java name.
                 Only the GUI-form-bound run-config editor stays Java (its <code>.form</code> is tied to
@@ -209,8 +230,8 @@
         <p><strong>2.0.6</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration, five classes): converted <code>EnvVarsDialog</code> (the
-                read-only loaded-variables viewer), <code>MultiplerunProcessRegistry</code> (the
-                per-project registry of running apps the monitor lists), <code>MultiplerunStatusBarWidget</code>,
+                read-only loaded-variables viewer), <code>LanesProcessRegistry</code> (the
+                per-project registry of running apps the monitor lists), <code>LanesStatusBarWidget</code>,
                 <code>MemoryLimitWatcher</code> (the background memory/health/CPU alert watcher) and
                 <code>MemoryChartDialog</code> (the full-session memory chart + leak analysis + CSV
                 export) from Java to Kotlin. Public surfaces and behavior are unchanged. No functional change.</li>
@@ -218,9 +239,9 @@
         <p><strong>2.0.5</strong>:</p>
         <ul>
             <li>Internal (Kotlin migration, five classes): converted the IDE-glue registration
-                classes - <code>MultiplerunConfigurationType</code>, <code>ShowMultiplerunMonitorAction</code>,
-                <code>MultiplerunMonitorToolWindowFactory</code>, <code>MultiplerunStatusBarWidgetFactory</code>
-                and <code>StopRunningMultiplerunConfigurationsAction</code> (the stop-all action and the
+                classes - <code>LanesConfigurationType</code>, <code>ShowLanesMonitorAction</code>,
+                <code>LanesMonitorToolWindowFactory</code>, <code>LanesStatusBarWidgetFactory</code>
+                and <code>StopRunningLanesConfigurationsAction</code> (the stop-all action and the
                 per-project process registry it keeps) - from Java to Kotlin. Same class names/ids, so
                 the plugin.xml registrations and every caller are untouched. No functional change.</li>
         </ul>
@@ -481,7 +502,7 @@
         <p><strong>1.27.2</strong>:</p>
         <ul>
             <li>Internal: renamed the Java package from the original author's namespace to
-                io.github.welingtonmonteiro.multiplerun. No user-facing change - existing run
+                io.github.welingtonmonteiro.lanes. No user-facing change - existing run
                 configurations keep working (the "Multirun" configuration type id is unchanged).</li>
         </ul>
         <p><strong>1.27.1</strong>:</p>
@@ -799,43 +820,43 @@
     <depends>com.intellij.modules.lang</depends>
     <!-- OPTIONAL: only loaded when the host IDE has the JavaScript plugin (WebStorm, IDEA Ultimate,
          ...). Adds an "Env Files" tab to Node-based run configurations (Node.js, npm, Karma, Jest,
-         Mocha) so a standalone Play/Debug can load .env files too - the same feature Multiple Run
+         Mocha) so a standalone Play/Debug can load .env files too - the same feature Lanes
          groups already have. In IDEs without JavaScript the module is skipped and the core plugin
-         works unchanged. See META-INF/multiplerun-nodejs.xml. -->
-    <depends optional="true" config-file="multiplerun-nodejs.xml">JavaScript</depends>
+         works unchanged. See META-INF/lanes-nodejs.xml. -->
+    <depends optional="true" config-file="lanes-nodejs.xml">JavaScript</depends>
 
     <actions>
-        <!-- id must stay in sync with StopRunningMultiplerunConfigurationsAction.ACTION_ID;
+        <!-- id must stay in sync with StopRunningLanesConfigurationsAction.ACTION_ID;
              namespaced to avoid colliding with the original Multirun plugin's action id -->
-        <action id="MultipleRun.StopRunning" class="io.github.welingtonmonteiro.multiplerun.StopRunningMultiplerunConfigurationsAction"
-                text="Stop Multiple Run" description="Stop running Multiple Run configurations"
-                icon="io.github.welingtonmonteiro.multiplerun.MultiplerunIcons.StopAll">
+        <action id="Lanes.StopRunning" class="io.github.welingtonmonteiro.lanes.StopRunningLanesConfigurationsAction"
+                text="Stop Lanes" description="Stop running Lanes configurations"
+                icon="io.github.welingtonmonteiro.lanes.LanesIcons.StopAll">
             <add-to-group group-id="RunMenu" relative-to-action="Stop" anchor="after"/>
             <keyboard-shortcut keymap="$default" first-keystroke="shift alt K"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="control alt K"/>
         </action>
-        <action id="MultipleRun.ShowMonitor" class="io.github.welingtonmonteiro.multiplerun.ShowMultiplerunMonitorAction"
-                text="Multiple Run Monitor" description="Show memory and CPU usage of the applications started by Multiple Run">
-            <add-to-group group-id="RunMenu" relative-to-action="MultipleRun.StopRunning" anchor="after"/>
+        <action id="Lanes.ShowMonitor" class="io.github.welingtonmonteiro.lanes.ShowLanesMonitorAction"
+                text="Lanes Monitor" description="Show memory and CPU usage of the applications started by Lanes">
+            <add-to-group group-id="RunMenu" relative-to-action="Lanes.StopRunning" anchor="after"/>
         </action>
     </actions>
 
     <extensions defaultExtensionNs="com.intellij">
-        <configurationType implementation="io.github.welingtonmonteiro.multiplerun.MultiplerunConfigurationType"/>
-        <programRunner implementation="io.github.welingtonmonteiro.multiplerun.MultiplerunRunner"/>
+        <configurationType implementation="io.github.welingtonmonteiro.lanes.LanesConfigurationType"/>
+        <programRunner implementation="io.github.welingtonmonteiro.lanes.LanesRunner"/>
         <!-- docker-stats-like monitor for the processes started by the plugin -->
-        <toolWindow id="Multiple Run Monitor" anchor="bottom" canCloseContents="false"
-                    icon="io.github.welingtonmonteiro.multiplerun.MultiplerunIcons.OpenDashboard"
-                    factoryClass="io.github.welingtonmonteiro.multiplerun.ui.MultiplerunMonitorToolWindowFactory"/>
+        <toolWindow id="Lanes Monitor" anchor="bottom" canCloseContents="false"
+                    icon="io.github.welingtonmonteiro.lanes.LanesIcons.OpenDashboard"
+                    factoryClass="io.github.welingtonmonteiro.lanes.ui.LanesMonitorToolWindowFactory"/>
         <!-- status bar widget: running apps, total memory and unhealthy count (click opens the monitor) -->
-        <statusBarWidgetFactory id="MultipleRun.Monitor.Widget"
-                                implementation="io.github.welingtonmonteiro.multiplerun.ui.MultiplerunStatusBarWidgetFactory"
+        <statusBarWidgetFactory id="Lanes.Monitor.Widget"
+                                implementation="io.github.welingtonmonteiro.lanes.ui.LanesStatusBarWidgetFactory"
                                 order="last"/>
         <!-- balloon warnings raised by the memory limit watcher -->
-        <notificationGroup id="Multiple Run" displayType="BALLOON"/>
+        <notificationGroup id="Lanes" displayType="BALLOON"/>
         <!-- keeps the running-apps count badge on the monitor tool window in sync with process start/stop -->
-        <postStartupActivity implementation="io.github.welingtonmonteiro.multiplerun.ui.MultiplerunMonitorBadgeActivity"/>
-        <!-- clears any stale cached icon so every saved Multiple Run instance shows the "configured" icon -->
-        <postStartupActivity implementation="io.github.welingtonmonteiro.multiplerun.MultiplerunConfiguredIconRefreshActivity"/>
+        <postStartupActivity implementation="io.github.welingtonmonteiro.lanes.ui.LanesMonitorBadgeActivity"/>
+        <!-- clears any stale cached icon so every saved Lanes instance shows the "configured" icon -->
+        <postStartupActivity implementation="io.github.welingtonmonteiro.lanes.LanesConfiguredIconRefreshActivity"/>
     </extensions>
 </idea-plugin>

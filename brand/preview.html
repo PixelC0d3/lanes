@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Multiple Run — Brand Preview</title>
+<title>Lanes — Brand Preview</title>
 <style>
   :root {
     --bg:#FFFFFF; --panel:#F7F8FA; --border:#D6D9E0; --t1:#1E1F22; --t2:#6C707E;
@@ -44,15 +44,15 @@
 <body data-theme="dark">
 <div class="wrap">
   <header>
-    <h1>Multiple <span class="r">Run</span> — Visual Identity</h1>
+    <h1>Lanes<span class="r">.</span> — Visual Identity</h1>
     <button class="toggle" onclick="document.body.dataset.theme=document.body.dataset.theme==='dark'?'light':'dark'">Toggle light / dark</button>
   </header>
-  <p style="color:var(--t2);margin:0">Signature: <strong style="color:var(--t1)">"Lanes"</strong> — parallel processes with live status signals. Grid 16×16 · stroke 1.5 · flat · JetBrains design language.</p>
+  <p style="color:var(--t2);margin:0">Signature: parallel process <strong style="color:var(--t1)">lanes</strong> with live status signals. Grid 16×16 · stroke 1.5 · flat · JetBrains design language.</p>
 
   <h2>Plugin icon</h2>
   <div class="card iconbox">
     <figure><span style="display:inline-block;background:#FFFFFF;border:1px solid var(--border);border-radius:12px;padding:16px"><svg width="40" height="40" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Multiple Run · "Lanes" mark: parallel processes + live status -->
+  <!-- Lanes · "Lanes" mark: parallel processes + live status -->
   <rect x="2" y="2" width="8" height="3" rx="1.5" fill="#3574F0"/>
   <circle cx="12.5" cy="3.5" r="1.5" fill="#4FC3F7"/>
   <rect x="2" y="6.5" width="12" height="3" rx="1.5" fill="#3574F0"/>
@@ -61,7 +61,7 @@
 </svg>
 </span><figcaption>pluginIcon.svg (light)</figcaption></figure>
     <figure><span style="display:inline-block;background:#1E1F22;border:1px solid var(--border);border-radius:12px;padding:16px"><svg width="40" height="40" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Multiple Run · dark theme variant -->
+  <!-- Lanes · dark theme variant -->
   <rect x="2" y="2" width="8" height="3" rx="1.5" fill="#548AF7"/>
   <circle cx="12.5" cy="3.5" r="1.5" fill="#6CD1FF"/>
   <rect x="2" y="6.5" width="12" height="3" rx="1.5" fill="#548AF7"/>
@@ -69,6 +69,23 @@
   <circle cx="10.5" cy="12.5" r="1.5" fill="#548AF7"/>
 </svg>
 </span><figcaption>pluginIcon_dark.svg (dark)</figcaption></figure>
+    <figure><span style="display:inline-flex;gap:14px;background:#FFFFFF;border:1px solid var(--border);border-radius:12px;padding:16px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lanes · configured state: lanes wrapped by the restart/orchestration arrow -->
+  <path d="M14 8a6 6 0 1 1-6-6c1.68 0 3.29.67 4.5 1.83L14 5.33" stroke="#3574F0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M14 2v3.33h-3.33" stroke="#3574F0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="5" y="5.1" width="5.4" height="1.9" rx="0.95" fill="#3574F0"/>
+  <rect x="5" y="8.9" width="3.6" height="1.9" rx="0.95" fill="#4FC3F7"/>
+  <circle cx="10.2" cy="9.85" r="0.95" fill="#3574F0"/>
+</svg>
+</span><figcaption>configured (light)</figcaption></figure>
+    <figure><span style="display:inline-flex;gap:14px;background:#1E1F22;border:1px solid var(--border);border-radius:12px;padding:16px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M14 8a6 6 0 1 1-6-6c1.68 0 3.29.67 4.5 1.83L14 5.33" stroke="#548AF7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M14 2v3.33h-3.33" stroke="#548AF7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="5" y="5.1" width="5.4" height="1.9" rx="0.95" fill="#548AF7"/>
+  <rect x="5" y="8.9" width="3.6" height="1.9" rx="0.95" fill="#6CD1FF"/>
+  <circle cx="10.2" cy="9.85" r="0.95" fill="#548AF7"/>
+</svg>
+</span><figcaption>configured (dark)</figcaption></figure>
     <figure class="sizerow">
       <span style="display:inline-flex;gap:14px;align-items:flex-end;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px">
         <svg width="16" height="16" viewBox="0 0 16 16"><use href="#mark"/></svg>
@@ -80,7 +97,7 @@
       <figcaption>16 / 20 / 24 / 32 / 40 px</figcaption>
     </figure>
     <figure><span style="display:inline-block;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px"><svg width="48" height="48" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Loading">
-  <!-- Multiple Run spinner: the lanes come alive -->
+  <!-- Lanes spinner: the lanes come alive -->
   <rect x="2" y="2" height="3" rx="1.5" fill="#3574F0" width="8">
     <animate attributeName="width" values="4;11;4" dur="1.2s" repeatCount="indefinite" begin="0s"
              calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"/>
@@ -108,16 +125,15 @@
   </g></defs></svg>
 
   <h2>Brand logo</h2>
-  <div class="card row"><svg width="340" height="64" viewBox="0 0 340 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Multiple Run">
+  <div class="card row"><svg width="260" height="64" viewBox="0 0 260 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lanes">
   <style>
-    .word { font-family: 'Inter', 'JetBrains Sans', -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 30px; letter-spacing: -0.5px; }
-    .w1 { font-weight: 700; fill: #1E1F22; }
-    .w2 { font-weight: 700; fill: #3574F0; }
-    .sub { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; letter-spacing: 2.5px; fill: #6C707E; }
+    .word { font-family: 'Inter', 'JetBrains Sans', -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 34px; font-weight: 700; letter-spacing: -0.5px; fill: #1E1F22; }
+    .dotc { fill: #3574F0; }
+    .sub  { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; letter-spacing: 2.5px; fill: #6C707E; }
     @media (prefers-color-scheme: dark) {
-      .w1 { fill: #ECEDF0; }
-      .w2 { fill: #548AF7; }
-      .sub { fill: #9DA0A8; }
+      .word { fill: #ECEDF0; }
+      .dotc { fill: #548AF7; }
+      .sub  { fill: #9DA0A8; }
     }
   </style>
 
@@ -130,8 +146,8 @@
     <circle cx="10.5" cy="12.5" r="1.5" fill="#3574F0"/>
   </g>
 
-  <!-- Wordmark -->
-  <text x="62" y="38" class="word"><tspan class="w1">Multiple</tspan><tspan class="w2" dx="7">Run</tspan></text>
+  <!-- Wordmark: "Lanes." — the period is the brand's live status dot -->
+  <text x="62" y="38" class="word">Lanes<tspan class="dotc">.</tspan></text>
   <text x="63" y="54" class="sub">RUN · MONITOR · AUTOMATE</text>
 </svg>
 </div>
@@ -159,7 +175,7 @@
     <circle cx="10.5" cy="12.5" r="1.5" fill="#3574F0"/>
   </g>
 
-  <text x="96" y="272" font-size="64" font-weight="700" letter-spacing="-1.5" fill="#ECEDF0">Multiple <tspan fill="#548AF7">Run</tspan></text>
+  <text x="96" y="276" font-size="80" font-weight="700" letter-spacing="-2" fill="#ECEDF0">Lanes<tspan fill="#548AF7">.</tspan></text>
 
   <text x="98" y="322" font-size="24" font-weight="400" fill="#B4B8BF" letter-spacing="0.2">Run, Monitor &amp; Automate Your Development Apps</text>
 
@@ -182,10 +198,10 @@
     <text x="540" y="382" fill="#B4B8BF">HEALTH</text>
   </g>
 
-  <text x="98" y="452" font-family="'JetBrains Mono', ui-monospace, Consolas, monospace" font-size="15" fill="#6C707E">$ run --all --watch --auto-restart</text>
+  <text x="98" y="452" font-family="'JetBrains Mono', ui-monospace, Consolas, monospace" font-size="15" fill="#6C707E">$ lanes --all --watch --auto-restart</text>
 
   <!-- JetBrains-plugin hint line -->
-  <text x="98" y="560" font-size="16" fill="#6C707E" letter-spacing="0.4">Advanced application manager for JetBrains IDEs · Windows · Linux · macOS</text>
+  <text x="98" y="560" font-size="16" fill="#6C707E" letter-spacing="0.4">Lanes · Advanced application manager for JetBrains IDEs · Windows · Linux · macOS</text>
 
   <!-- ============ RIGHT: orchestration board illustration ============ -->
   <!-- Card 1 : api-gateway -->
@@ -332,6 +348,6 @@
   <h2>Color palette</h2>
   <div class="card swatches"><div class="sw"><div class="chip" style="background:#3574F0"></div><code>#3574F0</code><span>Primary</span></div><div class="sw"><div class="chip" style="background:#548AF7"></div><code>#548AF7</code><span>Primary · dark</span></div><div class="sw"><div class="chip" style="background:#4FC3F7"></div><code>#4FC3F7</code><span>Telemetry</span></div><div class="sw"><div class="chip" style="background:#6CD1FF"></div><code>#6CD1FF</code><span>Telemetry · dark</span></div><div class="sw"><div class="chip" style="background:#7B61FF"></div><code>#7B61FF</code><span>Accent / Memory</span></div><div class="sw"><div class="chip" style="background:#5FB865"></div><code>#5FB865</code><span>Success</span></div><div class="sw"><div class="chip" style="background:#E8A33D"></div><code>#E8A33D</code><span>Warning</span></div><div class="sw"><div class="chip" style="background:#DB5C5C"></div><code>#DB5C5C</code><span>Danger</span></div><div class="sw"><div class="chip" style="background:#1E1F22"></div><code>#1E1F22</code><span>Bg dark</span></div><div class="sw"><div class="chip" style="background:#26282C"></div><code>#26282C</code><span>Panel dark</span></div><div class="sw"><div class="chip" style="background:#3B3E45"></div><code>#3B3E45</code><span>Border dark</span></div><div class="sw"><div class="chip" style="background:#ECEDF0"></div><code>#ECEDF0</code><span>Text dark</span></div></div>
 
-  <footer>Multiple Run · full token tables, spacing and voice rules in <code>BRAND_GUIDELINES.md</code></footer>
+  <footer>Lanes · full token tables, spacing and voice rules in <code>BRAND_GUIDELINES.md</code></footer>
 </div>
 </body></html>

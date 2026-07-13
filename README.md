@@ -1,28 +1,28 @@
-![Multiple Run](brand/logo.svg)
+![Lanes](brand/logo.svg)
 
 > **Group, launch and control multiple Run Configurations from a single click — with the
 > environment, ordering and monitoring that a real multi-service workflow needs.**
 >
-> Multiple Run turns IntelliJ IDEA, WebStorm and every other JetBrains IDE into a lightweight
+> Lanes turns IntelliJ IDEA, WebStorm and every other JetBrains IDE into a lightweight
 > orchestrator for the services, tests and tools you run together every day.
 
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) plugin by Ruslan Khmeliuk.
 
-![Add a Multiple Run configuration](screenshots/Screenshot1.png)
+![Add a Lanes configuration](screenshots/Screenshot1.png)
 
 IntelliJ ships with a built-in [Compound run/debug configuration](https://www.jetbrains.com/help/idea/run-debug-configuration-compound.html),
 but if you need more flexibility and control over *how* the configurations are executed
-(order, delay, tab handling, marking failures, etc.) then Multiple Run is for you.
+(order, delay, tab handling, marking failures, etc.) then Lanes is for you.
 
-You create a **Multiple Run** run configuration, add the run configurations you want to it, pick a
+You create a **Lanes** run configuration, add the run configurations you want to it, pick a
 few options, and run everything at once — as a group, in parallel or one-by-one.
 
 ## ✨ Features
 
 ### 📦 Grouping
-- Group any number of run configurations into a single **Multiple Run** configuration and start
+- Group any number of run configurations into a single **Lanes** configuration and start
   them with one click.
-- **Nesting / composite configurations**: a Multiple Run configuration can contain other Multiple
+- **Nesting / composite configurations**: a Lanes configuration can contain other Multiple
   Run configurations, so you can build a "master" configuration that starts several groups at once.
 - **Loop protection**: the editor and runner detect and prevent cycles (A contains B, B contains
   A), so you can nest freely without breaking anything.
@@ -44,7 +44,7 @@ few options, and run everything at once — as a group, in parallel or one-by-on
   | `log:Server started` | the console output contains the text (plain text works too) |
 
   The wait is capped at 2 minutes — after that the chain continues anyway. Port/http conditions
-  also feed the *Status* column of the Multiple Run Monitor (healthy/down, re-checked every
+  also feed the *Status* column of the Lanes Monitor (healthy/down, re-checked every
   refresh, like `docker ps`).
 
 ### ⏱️ Delay between configurations (one-by-one mode only)
@@ -60,11 +60,11 @@ The delay field is only enabled when *Start configurations one by one* is checke
 is parsed using the current locale (so `0,5` works on locales that use a comma as the decimal separator).
 
 ### 🌱 Environment variables override
-- Define environment variables directly on the Multiple Run configuration — they are applied to
+- Define environment variables directly on the Lanes configuration — they are applied to
   **every** configuration in the list, overriding the child's own variables with the same name.
 - Uses the standard IDE dialog (add variables one by one, paste, and toggle
   *Include system environment variables*).
-- Overrides propagate through nested Multiple Run configurations too.
+- Overrides propagate through nested Lanes configurations too.
 - **Environment file with profiles**: the *Environment file* field is an editable dropdown.
   Point it to a `.env` file (browse button or type the path — relative paths are resolved against
   the project root) and the file becomes a **profile** that stays in the dropdown; switch between
@@ -73,7 +73,7 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   adding them all to the dropdown in one go. The ✕ button removes the selected profile from the list.
   The file uses the usual dotenv format: `KEY=VALUE` lines, `#` comments, optional `export` prefix and
   quoted values. It is re-read on every run, so editing the file requires no configuration changes.
-  Variables from the table above win over the file on conflicts. The **Multiple Run Monitor** shows the
+  Variables from the table above win over the file on conflicts. The **Lanes Monitor** shows the
   active profile of each running application in its *Env* column — and, when the group has more than one
   profile, lets you **switch the whole group's environment from there** (see below).
 - Works with configuration types that expose environment variables (Node.js, npm, Java
@@ -111,19 +111,19 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   runtime heap, which is what usually matters for Node/JVM apps in development.
 
 ### 📊 Process monitor (docker-stats style)
-- The **Multiple Run Monitor** tool window (bottom stripe of the IDE, or `Run → Multiple Run
+- The **Lanes Monitor** tool window (bottom stripe of the IDE, or `Run → Lanes
   Monitor`) shows a live table with **every process the IDE is running** — apps started by
-  Multiple Run *and* standalone (singleton) runs:
+  Lanes *and* standalone (singleton) runs:
 
-  | Name | Multiple Run | Env | PID | Ports | Uptime | Status | Mem Usage / Limit | Mem % | Mem trend | CPU % |
+  | Name | Lanes | Env | PID | Ports | Uptime | Status | Mem Usage / Limit | Mem % | Mem trend | CPU % |
   |------|--------------|-----|-----|-------|--------|--------|-------------------|-------|-----------|-------|
 
-- The **Name** column shows the origin of each app: the Multiple Run icon for apps launched by a
+- The **Name** column shows the origin of each app: the Lanes icon for apps launched by a
   group, or the run configuration's own icon (node, npm, jest, …) for standalone runs. An app
   restarted individually from the monitor stays in the list and keeps showing its group, env
   profile and memory limit.
 - **Env** shows the active environment profile — **click it** to open a viewer with the
-  environment variables Multiple Run actually loaded for that app at launch (group variables, group
+  environment variables Lanes actually loaded for that app at launch (group variables, group
   env file, memory-limit options and per-app env file, merged). The viewer has a **filter by
   variable name** at the top and a **Mask values** toggle for screen sharing.
 - **Status** shows **running** (green) for every live application, refining to **healthy**/**down**
@@ -163,7 +163,7 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   (same as the stop button of its run tab); *Force Kill* sends SIGKILL to the whole process tree
   of the selected application, after confirmation — for processes that refuse to die.
 - **Kill Process on Port…** — type a TCP port and the plugin finds whatever process is listening
-  on it (even one not started by Multiple Run), shows PID + command for confirmation and kills it.
+  on it (even one not started by Lanes), shows PID + command for confirmation and kills it.
   The quickest cure for `EADDRINUSE: address already in use`.
 - **Mem trend** — a sparkline with the memory history of the last minute per application; the
   shape shows growth/leaks at a glance and the color tracks how close the app is to its limit
@@ -182,7 +182,7 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   the Analysis tab**, without clicking the Mem trend sparkline.
 - **Show/Hide columns** — a toolbar button opens a checkbox list to choose which columns are
   visible (the *Name* column is always shown).
-- The tool window toolbar also has a manual refresh button and a **Stop Multiple Run** button that
+- The tool window toolbar also has a manual refresh button and a **Stop Lanes** button that
   shows the **number of running processes** (like WebStorm) and stops all of them — including apps
   you **restarted individually** from the monitor (which the IDE relaunches as standalone runs).
 - Sampling uses the OS `ps` and `lsof` commands on Linux/macOS; on **Windows** memory/CPU come
@@ -202,9 +202,9 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   The process table lives in the **Processes** tab next to it.
 
 ### 📌 Status bar widget
-- A compact indicator in the IDE status bar shows how many applications Multiple Run is running,
+- A compact indicator in the IDE status bar shows how many applications Lanes is running,
   their **combined memory** and how many are **unhealthy** (a `port:`/`http` *Ready when* that is
-  currently down) — e.g. `▶ 3 apps · 1.2 GiB · ⚠ 1`. **Click it** to open the Multiple Run Monitor.
+  currently down) — e.g. `▶ 3 apps · 1.2 GiB · ⚠ 1`. **Click it** to open the Lanes Monitor.
 - It hides itself when nothing this plugin started is running. Toggle it from the status bar
   widgets menu (right-click the status bar).
 
@@ -233,7 +233,7 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
 ### ⚡ Restart policies (docker style)
 - **Restart application on crash** — like docker's `restart: on-failure`: an application that
   exits with a crash code is relaunched automatically, at most 3 times per run. Intentional stops
-  (stop button, *Stop Multiple Run*, Force Kill — SIGINT/SIGTERM/SIGKILL) never trigger a restart.
+  (stop button, *Stop Lanes*, Force Kill — SIGINT/SIGTERM/SIGKILL) never trigger a restart.
   A notification tells you when it happens. Off by default.
 - **Crash notification with Restart** — when *Restart on crash* is **off** (or its attempts are used
   up), a crash instead raises a notification with a one-click **Restart** button, so a failure is
@@ -251,20 +251,20 @@ is parsed using the current locale (so `0,5` works on locales that use a comma a
   degrades into GC thrashing). One action per process; a restart re-arms it.
 
 ### 🔁 Restarting and stopping
-- **Restart on rerun** (enabled by default) — running a Multiple Run that is already running first
+- **Restart on rerun** (enabled by default) — running a Lanes that is already running first
   stops the processes it started before, waits for them to terminate, and then starts everything
   again — just like the built-in Compound configuration. No need to stop the services manually
-  before rebuilding/rerunning. Only the processes of the restarted Multiple Run are stopped; other
-  running Multiple Run groups are untouched. Can be disabled per configuration with the
+  before rebuilding/rerunning. Only the processes of the restarted Lanes are stopped; other
+  running Lanes groups are untouched. Can be disabled per configuration with the
   *Restart running configurations before starting* option.
-- **Stop Multiple Run** action stops all running configurations started by the plugin (and cancels
+- **Stop Lanes** action stops all running configurations started by the plugin (and cancels
   any that are still queued to start).
-- Available from **Run → Stop Multiple Run** and via shortcut:
+- Available from **Run → Stop Lanes** and via shortcut:
   - Windows/Linux: <kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>K</kbd>
   - macOS: <kbd>Control</kbd>+<kbd>Alt</kbd>+<kbd>K</kbd>
 
 ### ⚙️ Supported executors
-Multiple Run configurations can be launched with:
+Lanes configurations can be launched with:
 - **Run**
 - **Debug**
 - **Run with Coverage**
@@ -273,7 +273,7 @@ Multiple Run configurations can be launched with:
 
 ## 🌍 Supported IDEs
 
-Multiple Run only depends on the platform and language modules, so it works in IntelliJ IDEA and
+Lanes only depends on the platform and language modules, so it works in IntelliJ IDEA and
 the other IntelliJ-based IDEs: **WebStorm, PyCharm, PhpStorm, RubyMine, GoLand, CLion, Rider,
 AppCode**, etc.
 
@@ -282,21 +282,21 @@ Compatible with builds since `233` (**2023.3** and newer).
 ## Installation
 
 ### From the JetBrains Marketplace
-`Settings/Preferences → Plugins → Marketplace`, search for **Multiple Run**, install and restart.
+`Settings/Preferences → Plugins → Marketplace`, search for **Lanes**, install and restart.
 
 ### From disk (a locally built `.zip`)
 `Settings/Preferences → Plugins → ⚙ (gear icon) → Install Plugin from Disk…`, select the
-`multiple_run-<version>.zip` file (see *Building from source* below), then restart the IDE.
+`lanes-<version>.zip` file (see *Building from source* below), then restart the IDE.
 
 ## Usage
 
 1. `Run → Edit Configurations…`
-2. Click **+** and add a new **Multiple Run** configuration.
+2. Click **+** and add a new **Lanes** configuration.
 3. Use the list toolbar to add the run configurations you want to launch.
 4. Pick the options you need (parallel vs one-by-one, delay, tab handling, marking failures, …).
-5. Apply and run the Multiple Run configuration like any other configuration.
+5. Apply and run the Lanes configuration like any other configuration.
 
-Tip: **Multiple Run + Before Launch tasks** unlocks even more scenarios — for example, chaining setup
+Tip: **Lanes + Before Launch tasks** unlocks even more scenarios — for example, chaining setup
 tasks before a group of applications or tests.
 
 ## Building from source
@@ -309,7 +309,7 @@ recent IntelliJ-based IDE works well).
 # point JAVA_HOME at a JDK 17+ (e.g. a bundled JBR)
 export JAVA_HOME=/path/to/jbr
 
-# build the installable plugin zip -> build/distributions/multiple_run-<version>.zip
+# build the installable plugin zip -> build/distributions/lanes-<version>.zip
 # (also archived into dist/, which keeps the last 5 builds)
 ./gradlew buildPlugin
 
@@ -331,7 +331,7 @@ The plugin version is managed from `build.gradle` (`version = '…'`) and inject
 
 ## ⭐ Open Source
 
-GitHub repository: [WelingtonMonteiro/multiple_run](https://github.com/WelingtonMonteiro/multiple_run)
+GitHub repository: [WelingtonMonteiro/lanes](https://github.com/WelingtonMonteiro/lanes)
 
 Contributions, feature requests and bug reports are always welcome. Working on UI? See
 [brand/BRAND_GUIDELINES.md](brand/BRAND_GUIDELINES.md) for the color palette, iconography rules
@@ -339,7 +339,7 @@ and voice/tone this project follows.
 
 ## ☕ Support This Project
 
-If Multiple Run saves you time, consider buying me a coffee — it helps keep the plugin maintained
+If Lanes saves you time, consider buying me a coffee — it helps keep the plugin maintained
 and new features coming:
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-orange?logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/welingtonmonteiro)
