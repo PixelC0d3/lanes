@@ -12,8 +12,14 @@
         <nodeRunConfigurationExtension
                 implementation="io.github.pixelcodes.lanes.nodejs.LanesNodeEnvFileExtension"/>
     </extensions>
-    <extensions defaultExtensionNs="com.intellij">
-        <!-- pre-Play .env picker in the run widget, once a Node run config has 2+ saved profiles -->
-        <executionTargetProvider implementation="io.github.pixelcodes.lanes.nodejs.NodeEnvExecutionTargetProvider"/>
-    </extensions>
+    <actions>
+        <!-- toolbar button next to the run configuration selector: pick which .env profile the
+             selected Node run configuration runs with next, once it has 2+ saved profiles -->
+        <action id="Lanes.PickNodeEnvProfile" class="io.github.pixelcodes.lanes.nodejs.NodeEnvProfileToolbarAction"
+                text="Env" description="Pick which .env profile the selected Node run configuration runs with next"
+                icon="io.github.pixelcodes.lanes.LanesIcons.EnvVariables">
+            <add-to-group group-id="ToolbarRunGroup" anchor="before" relative-to-action="RunnerActions"/>
+            <add-to-group group-id="MainToolbarRight" anchor="before" relative-to-action="NewUiRunWidget"/>
+        </action>
+    </actions>
 </idea-plugin>

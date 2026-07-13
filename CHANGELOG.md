@@ -5,15 +5,20 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
-## [1.0.2] — Pick the .env profile before Play/Debug
-- The run widget now shows an environment picker right next to the run configuration selector,
-  before Play/Debug even starts - available once a Lanes group or a native Node run configuration
-  (Node.js, npm/pnpm/yarn, Karma, Jest, Mocha) has 2 or more saved `.env` profiles. The active
-  profile is marked, matching the existing switch dropdowns; picking a different one persists it
-  as the active profile, exactly like switching it from the Lanes Monitor.
-- The IDE always also shows a "Default" entry alongside the profiles (its own
-  `DefaultExecutionTargetProvider`, contributed to every run configuration) - picking it just keeps
-  whichever profile is already active.
+## [1.0.3] — Pick the .env profile from the toolbar
+- Fixes 1.0.2: the pre-Play picker never actually rendered (the platform widget it relied on only
+  shows once a non-default "execution target" is already active, which nothing ever set for a
+  Lanes group or a plain Node run configuration).
+- Replaced with a toolbar button next to the run configuration selector (both classic and new UI):
+  shown once the selected Lanes group or native Node run configuration (Node.js, npm/pnpm/yarn,
+  Karma, Jest, Mocha) has 2 or more saved `.env` profiles. Clicking it opens a small list of the
+  profiles, the active one marked; picking a different one persists it as the active profile,
+  exactly like switching it from the Lanes Monitor - no modal, no restart required to just change
+  what the next Play/Debug will use.
+
+## [1.0.2] — Pick the .env profile before Play/Debug (superseded by 1.0.3)
+- Attempted a pre-Play environment picker in the run widget itself, before Play/Debug even starts.
+  Never actually appeared in a real IDE - see 1.0.3.
 
 ## [1.0.1] — Moved to the PixelC0d3 GitHub organization
 - Internal: the project moved to the [PixelC0d3](https://github.com/PixelC0d3) GitHub organization.
