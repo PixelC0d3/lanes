@@ -5,6 +5,14 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.5] — Clearer crash message for a Memory limit / NODE_OPTIONS conflict
+- When an app with a Memory limit configured crashes and its own stderr shows Node rejected a flag
+  in NODE_OPTIONS (a real interaction: this app's Memory limit sets NODE_OPTIONS, and its start
+  script may reassign NODE_OPTIONS itself without `export` - bash keeps an already-exported variable
+  exported across such a reassignment, and Node disallows some flags, like `--trace-gc`, in
+  NODE_OPTIONS specifically), the crash notification now explains this instead of just showing the
+  exit code.
+
 ## [1.0.4] — Env picker now matches the run configuration selector's style
 - The toolbar button from 1.0.3 now renders like a combo box, the same style as the run
   configuration selector next to it: the env icon, the active profile's name, and a dropdown arrow.

@@ -193,6 +193,9 @@ class LanesRunnerState(
                     val processHandler = descriptor.getProcessHandler()
                     if (processHandler != null) {
                         processHandler.addProcessListener(object : ProcessListener {
+                            /** Set when stderr shows Node rejected a NODE_OPTIONS flag - see [onTermination]. */
+                            private val nodeOptionsRejected = AtomicBoolean(false)
+
                             override fun startNotified(processEvent: ProcessEvent) {
                                 val content = descriptor.getAttachedContent() ?: return
 
@@ -236,6 +239,9 @@ class LanesRunnerState(
                                     && text.contains(readyCondition.value)) {
                                     readyLogSeen.set(true)
                                 }
+                                if (text != null && RunConfigurationHelper.isNodeOptionsRejection(text)) {
+                                    nodeOptionsRejected.set(true)
+                                }
                             }
 
                             override fun processTerminated(processEvent: ProcessEvent) {
@@ -246,6 +252,19 @@ class LanesRunnerState(
                                 // docker "restart: on-failure": intentional stops (0/130/137/143) never restart
                                 if (RunConfigurationHelper.isCrashExit(processEvent.getExitCode())
                                     && !stopRunningLanesConfiguration.isStopLanesTriggered()) {
+                                    // Node rejected a flag in NODE_OPTIONS - very likely this app's own
+                                    // Memory limit (which sets NODE_OPTIONS) combined with its start
+                                    // script reassigning NODE_OPTIONS without `export` (bash keeps an
+                                    // already-exported variable exported across such a reassignment).
+                                    val nodeOptionsHint = if (nodeOptionsRejected.get() && memoryLimitMb != null && memoryLimitMb > 0) {
+                                        " Node rejected a flag in NODE_OPTIONS - this app's Memory limit " +
+                                            "($memoryLimitMb MB) sets NODE_OPTIONS, and its start script likely " +
+                                            "reassigns NODE_OPTIONS itself without \"export\", which keeps it " +
+                                            "exported. Check the script for a flag Node disallows there (e.g. " +
+                                            "--trace-gc), or use \"export NODE_OPTIONS=...\" / cross-env instead."
+                                    } else {
+                                        ""
+                                    }
                                     if (restartOnCrash && crashRestarts.incrementAndGet() <= MAX_CRASH_RESTARTS) {
                                         // relaunch automatically, at most MAX_CRASH_RESTARTS times
                                         val attempt = crashRestarts.get()
@@ -255,7 +274,7 @@ class LanesRunnerState(
                                                 "Application restarted after crash",
                                                 "'${runConfiguration.getName()}' exited with code " +
                                                     "${processEvent.getExitCode()} - restarting (attempt " +
-                                                    "$attempt/$MAX_CRASH_RESTARTS).",
+                                                    "$attempt/$MAX_CRASH_RESTARTS).$nodeOptionsHint",
                                                 NotificationType.WARNING)
                                             .notify(project)
                                         ApplicationManager.getApplication().invokeLater {
@@ -268,7 +287,7 @@ class LanesRunnerState(
                                             .getNotificationGroup("Lanes")
                                             .createNotification(
                                                 "Application crashed",
-                                                "'${runConfiguration.getName()}' exited with code ${processEvent.getExitCode()}.",
+                                                "'${runConfiguration.getName()}' exited with code ${processEvent.getExitCode()}.$nodeOptionsHint",
                                                 NotificationType.WARNING)
                                         notification.addAction(
                                             NotificationAction.createSimpleExpiring("Restart") {
