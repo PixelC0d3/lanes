@@ -478,6 +478,12 @@ class LanesRunConfiguration(project: Project, factory: ConfigurationFactory, nam
     }
 
     override fun getState(executor: Executor, executionEnvironment: ExecutionEnvironment): RunProfileState {
+        // the run widget's pre-Play env picker (see EnvProfileExecutionTarget) - picking a profile
+        // there persists it as the active one, same as switching it from the Lanes Monitor
+        val target = executionEnvironment.getExecutionTarget()
+        if (target is EnvProfileExecutionTarget && target.canRun(this) && target.profile != envFilePath) {
+            setEnvFilePath(target.profile)
+        }
         // unchecked (disabled) applications stay in the configuration but are not launched
         val enabled = ArrayList<RunConfiguration>()
         for (each in getRunConfigurations()) {
