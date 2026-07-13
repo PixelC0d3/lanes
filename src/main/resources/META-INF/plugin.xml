@@ -56,6 +56,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.0.4</strong>:</p>
+        <ul>
+            <li>The <code>.env</code> picker now renders like a combo box, matching the run
+                configuration selector next to it (icon, active profile name, dropdown arrow) -
+                picking a profile updates the name shown right there, no separate popup.</li>
+        </ul>
         <p><strong>1.0.3</strong>:</p>
         <ul>
             <li>Fixes 1.0.2 (which never actually rendered): a toolbar button next to the run
