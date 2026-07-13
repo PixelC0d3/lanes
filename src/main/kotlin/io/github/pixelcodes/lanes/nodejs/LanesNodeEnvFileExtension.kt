@@ -1,6 +1,7 @@
 package io.github.pixelcodes.lanes.nodejs
 
 import com.intellij.execution.configuration.EnvironmentVariablesData
+import com.intellij.execution.configurations.RunConfigurationBase
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.javascript.nodejs.execution.AbstractNodeTargetRunProfile
@@ -11,6 +12,7 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.options.SettingsEditor
 import org.jdom.Element
 
+import io.github.pixelcodes.lanes.EnvProfileExecutionTarget
 import io.github.pixelcodes.lanes.RunConfigurationHelper
 import io.github.pixelcodes.lanes.StandaloneEnvRegistry
 
@@ -71,7 +73,7 @@ class LanesNodeEnvFileExtension : AbstractNodeRunConfigurationExtension() {
         private var processHandler: ProcessHandler? = null
 
         override fun addNodeOptionsTo(targetRun: NodeTargetRun) {
-            val active = NodeEnvFileSettings.of(configuration).active
+            val active = resolveActiveProfile()
             if (active.isNotBlank()) {
                 // File variables are the base; whatever the configuration already resolved onto the
                 // run (its own "Environment variables" field, pass-parent, ...) wins on conflicts -
@@ -87,6 +89,26 @@ class LanesNodeEnvFileExtension : AbstractNodeRunConfigurationExtension() {
         override fun onProcessCreated(processHandler: ProcessHandler) {
             this.processHandler = processHandler
             StandaloneEnvRegistry.register(processHandler, activeFileName, loadedEnv.envs, loadedEnv.isPassParentEnvs)
+        }
+
+        /**
+         * The profile to load: the run widget's pre-Play picker (see [EnvProfileExecutionTarget])
+         * wins over the stored "active" one and persists as the new active - same effect as
+         * [SwitchNodeEnvAction], just chosen before the process starts instead of restarting it.
+         */
+        private fun resolveActiveProfile(): String {
+            val settings = NodeEnvFileSettings.of(configuration)
+            val target = environment.executionTarget
+            if (target !is EnvProfileExecutionTarget || !target.canRun(configuration) || target.profile == settings.active) {
+                return settings.active
+            }
+            val updated = settings.withActive(target.profile)
+            NodeEnvFileSettings.store(configuration, updated)
+            val canonical = environment.runnerAndConfigurationSettings?.configuration
+            if (canonical is RunConfigurationBase<*> && canonical !== configuration) {
+                NodeEnvFileSettings.store(canonical, updated)
+            }
+            return target.profile
         }
 
         override fun getRunDebugActions(): List<AnAction> {

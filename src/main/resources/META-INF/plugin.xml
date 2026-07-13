@@ -56,6 +56,14 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.0.2</strong>:</p>
+        <ul>
+            <li>The run widget now shows an environment picker next to the run configuration
+                selector, before Play/Debug even starts - available once a Lanes group or a native
+                Node run configuration has 2 or more saved <code>.env</code> profiles. Picking a
+                profile persists it as the active one, same as switching it from the Lanes
+                Monitor.</li>
+        </ul>
         <p><strong>1.0.1</strong>:</p>
         <ul>
             <li>Internal: the project moved to the <a href="https://github.com/PixelC0d3">PixelC0d3</a>
@@ -242,6 +250,8 @@
     <extensions defaultExtensionNs="com.intellij">
         <configurationType implementation="io.github.pixelcodes.lanes.LanesConfigurationType"/>
         <programRunner implementation="io.github.pixelcodes.lanes.LanesRunner"/>
+        <!-- pre-Play .env picker in the run widget, once a Lanes group has 2+ saved profiles -->
+        <executionTargetProvider implementation="io.github.pixelcodes.lanes.LanesEnvExecutionTargetProvider"/>
         <!-- docker-stats-like monitor for the processes started by the plugin -->
         <toolWindow id="Lanes Monitor" anchor="bottom" canCloseContents="false"
                     icon="io.github.pixelcodes.lanes.LanesIcons.OpenDashboard"

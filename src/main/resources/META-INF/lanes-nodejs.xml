@@ -12,4 +12,8 @@
         <nodeRunConfigurationExtension
                 implementation="io.github.pixelcodes.lanes.nodejs.LanesNodeEnvFileExtension"/>
     </extensions>
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- pre-Play .env picker in the run widget, once a Node run config has 2+ saved profiles -->
+        <executionTargetProvider implementation="io.github.pixelcodes.lanes.nodejs.NodeEnvExecutionTargetProvider"/>
+    </extensions>
 </idea-plugin>

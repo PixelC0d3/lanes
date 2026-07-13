@@ -5,6 +5,16 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.2] — Pick the .env profile before Play/Debug
+- The run widget now shows an environment picker right next to the run configuration selector,
+  before Play/Debug even starts - available once a Lanes group or a native Node run configuration
+  (Node.js, npm/pnpm/yarn, Karma, Jest, Mocha) has 2 or more saved `.env` profiles. The active
+  profile is marked, matching the existing switch dropdowns; picking a different one persists it
+  as the active profile, exactly like switching it from the Lanes Monitor.
+- The IDE always also shows a "Default" entry alongside the profiles (its own
+  `DefaultExecutionTargetProvider`, contributed to every run configuration) - picking it just keeps
+  whichever profile is already active.
+
 ## [1.0.1] — Moved to the PixelC0d3 GitHub organization
 - Internal: the project moved to the [PixelC0d3](https://github.com/PixelC0d3) GitHub organization.
   The plugin id is now `io.github.pixelcodes.lanes` and the Kotlin package moved accordingly.
