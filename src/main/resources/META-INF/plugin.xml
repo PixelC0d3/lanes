@@ -56,6 +56,12 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.0.5</strong>:</p>
+        <ul>
+            <li>Clearer crash message when a Memory limit's NODE_OPTIONS injection conflicts with
+                the app's own start script reassigning NODE_OPTIONS (a real Node/bash
+                interaction) - explains the likely cause instead of just the exit code.</li>
+        </ul>
         <p><strong>1.0.4</strong>:</p>
         <ul>
             <li>The <code>.env</code> picker now renders like a combo box, matching the run

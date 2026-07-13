@@ -187,6 +187,17 @@ class RunConfigurationHelper private constructor() {
             return exitCode != 0 && exitCode != 130 && exitCode != 137 && exitCode != 143
         }
 
+        /**
+         * Node's own exact wording when a flag it disallows in NODE_OPTIONS (e.g. --trace-gc) reaches
+         * it that way - only a handful of flags are usable directly on the command line but not here.
+         * Used to give a clearer crash message when this app also has a Memory limit configured (which
+         * injects NODE_OPTIONS itself): see [io.github.pixelcodes.lanes.LanesRunnerState].
+         */
+        @JvmStatic
+        fun isNodeOptionsRejection(stderrLine: String): Boolean {
+            return stderrLine.contains("is not allowed in NODE_OPTIONS")
+        }
+
         /** Short display name of the active env profile (its file name), or "-" when none is set. */
         @JvmStatic
         fun envFileDisplayName(envFilePath: String?): String {
