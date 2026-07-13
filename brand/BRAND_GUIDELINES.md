@@ -1,4 +1,4 @@
-# Multiple Run — Brand & Design System
+# Lanes — Brand & Design System
 
 Advanced application manager for JetBrains IDEs.
 Identity concept: **"Lanes"** — parallel processes running side by side, each with a live status signal. The mark is not a play button, a whale, or a helm: it is the thing the plugin actually shows you — multiple applications, alive, observed.
@@ -141,3 +141,11 @@ Voice:
 - No emoji in product UI. No exclamation marks. Not playful — but never cold: empty states invite action.
 
 The bar: every surface should look like it shipped from JetBrains itself.
+
+---
+
+## 6. Naming
+
+Product name: **Lanes** (wordmark: `Lanes.` — the period is always rendered in `brand.primary` and represents the live status dot from the mark).
+Marketplace listing: "Lanes — Run, Monitor & Automate Your Development Apps".
+CLI/marketing voice uses the name as a plain noun: "Add an app to Lanes", never "the Lanes plugin experience".

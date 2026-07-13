@@ -1,5 +1,5 @@
 <svg width="48" height="48" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Loading">
-  <!-- Multiple Run spinner: the lanes come alive -->
+  <!-- Lanes spinner: the lanes come alive -->
   <rect x="2" y="2" height="3" rx="1.5" fill="#3574F0" width="8">
     <animate attributeName="width" values="4;11;4" dur="1.2s" repeatCount="indefinite" begin="0s"
              calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"/>

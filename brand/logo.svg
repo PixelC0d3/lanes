@@ -1,13 +1,12 @@
-<svg width="340" height="64" viewBox="0 0 340 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Multiple Run">
+<svg width="260" height="64" viewBox="0 0 260 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lanes">
   <style>
-    .word { font-family: 'Inter', 'JetBrains Sans', -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 30px; letter-spacing: -0.5px; }
-    .w1 { font-weight: 700; fill: #1E1F22; }
-    .w2 { font-weight: 700; fill: #3574F0; }
-    .sub { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; letter-spacing: 2.5px; fill: #6C707E; }
+    .word { font-family: 'Inter', 'JetBrains Sans', -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 34px; font-weight: 700; letter-spacing: -0.5px; fill: #1E1F22; }
+    .dotc { fill: #3574F0; }
+    .sub  { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: 10px; letter-spacing: 2.5px; fill: #6C707E; }
     @media (prefers-color-scheme: dark) {
-      .w1 { fill: #ECEDF0; }
-      .w2 { fill: #548AF7; }
-      .sub { fill: #9DA0A8; }
+      .word { fill: #ECEDF0; }
+      .dotc { fill: #548AF7; }
+      .sub  { fill: #9DA0A8; }
     }
   </style>
 
@@ -20,7 +19,7 @@
     <circle cx="10.5" cy="12.5" r="1.5" fill="#3574F0"/>
   </g>
 
-  <!-- Wordmark -->
-  <text x="62" y="38" class="word"><tspan class="w1">Multiple</tspan><tspan class="w2" dx="7">Run</tspan></text>
+  <!-- Wordmark: "Lanes." — the period is the brand's live status dot -->
+  <text x="62" y="38" class="word">Lanes<tspan class="dotc">.</tspan></text>
   <text x="63" y="54" class="sub">RUN · MONITOR · AUTOMATE</text>
 </svg>

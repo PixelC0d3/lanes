@@ -8,7 +8,7 @@ plugins {
 }
 
 group = 'io.github.welingtonmonteiro'
-version = '2.1.4'
+version = '3.0.0'
 
 repositories {
     mavenCentral()
@@ -32,7 +32,7 @@ dependencies {
         bundledPlugin('com.jetbrains.performancePlugin.async')
         // JavaScript plugin (id 'JavaScript'): provides the EP 'JavaScript.nodeRunConfigurationExtension'
         // plus AbstractNodeRunConfigurationExtension / AbstractNodeTargetRunProfile / NodeTargetRun,
-        // used ONLY by the optional module in src/main/resources/META-INF/multiplerun-nodejs.xml. It is
+        // used ONLY by the optional module in src/main/resources/META-INF/lanes-nodejs.xml. It is
         // loaded at runtime only when the host IDE actually has the JavaScript plugin (WebStorm, IDEA
         // Ultimate, ...); elsewhere the optional module is skipped and this code is never classloaded.
         bundledPlugin('JavaScript')
@@ -58,7 +58,7 @@ kotlin {
         // though the platform can still call it with a raw null (the original Java override took
         // @Nullable and handled it gracefully). Without this flag, Kotlin's automatic
         // Intrinsics.checkNotNullParameter on that non-null-declared parameter throws before our
-        // own null-check ever runs. See MultiplerunRunConfigurationEditor.resetEditorFrom/
+        // own null-check ever runs. See LanesRunConfigurationEditor.resetEditorFrom/
         // applyEditorTo for the actual handling.
         freeCompilerArgs.add("-Xno-param-assertions")
     }
@@ -78,9 +78,9 @@ intellijPlatform {
 
     pluginConfiguration {
         // Display name shown in the Marketplace, the installed-plugins list and plugin search.
-        // Must be the human-readable name, NOT the artifact id - 'multiple_run' used to leak the
-        // underscore artifact name into all of those. plugin.xml's <name> is the same value.
-        name = 'Multiple Run'
+        // Must be the human-readable name, NOT the artifact id (rootProject.name is 'lanes').
+        // plugin.xml's <name> is the same value.
+        name = 'Lanes'
         ideaVersion {
             sinceBuild = '233'
             // no upper bound (previously: intellij { updateSinceUntilBuild = false })

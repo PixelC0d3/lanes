@@ -1,9 +1,26 @@
 # Changelog
 
-All notable changes to **Multiple Run** are documented here. Newest first.
+All notable changes to **Lanes** (formerly "Multiple Run") are documented here. Newest first.
 
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
+
+## [3.0.0] — Rebrand: Multiple Run is now Lanes
+- **Rebrand:** new name and visual identity - the "Lanes" mark (parallel process lanes with live
+  status dots) replaces "Multiple Run" everywhere: the plugin id is now
+  `io.github.welingtonmonteiro.lanes` (was `io.github.welingtonmonteiro.multiplerun`), the Kotlin
+  package and every class use the `Lanes` prefix instead of `Multiplerun`, and the run configuration
+  type id changed from `"Multiplerun"` to `"Lanes"`.
+- **Breaking for run configurations saved before this release**: because the plugin id and the run
+  configuration type id both changed, previously-saved "Multiple Run" configurations need to be
+  recreated under the new Lanes type. This plugin has no real users yet (unapproved Marketplace
+  submission), so the trade-off was made now, while it is still free - same reasoning as the 2.0.11
+  Multirun → Multiplerun rename.
+- Action ids, the toolWindow id, the status bar widget id and the notification group id all moved
+  from `MultipleRun.*` / `"Multiple Run"` to `Lanes.*` / `"Lanes"` accordingly.
+- The credit to the original [Multirun](https://github.com/rkhmelyuk/multirun) plugin by Ruslan
+  Khmeliuk, which this project still forks from, is unchanged.
+- 152 tests pass.
 
 ## [2.1.4] — Fix "configured" icon never showing on the tree or the toolbar widget
 - **Fix:** the 2.1.3 "configured" icon never showed up in the "Edit Configurations" tree's leaf

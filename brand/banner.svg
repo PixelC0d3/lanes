@@ -20,7 +20,7 @@
     <circle cx="10.5" cy="12.5" r="1.5" fill="#3574F0"/>
   </g>
 
-  <text x="96" y="272" font-size="64" font-weight="700" letter-spacing="-1.5" fill="#ECEDF0">Multiple <tspan fill="#548AF7">Run</tspan></text>
+  <text x="96" y="276" font-size="80" font-weight="700" letter-spacing="-2" fill="#ECEDF0">Lanes<tspan fill="#548AF7">.</tspan></text>
 
   <text x="98" y="322" font-size="24" font-weight="400" fill="#B4B8BF" letter-spacing="0.2">Run, Monitor &amp; Automate Your Development Apps</text>
 
@@ -43,10 +43,10 @@
     <text x="540" y="382" fill="#B4B8BF">HEALTH</text>
   </g>
 
-  <text x="98" y="452" font-family="'JetBrains Mono', ui-monospace, Consolas, monospace" font-size="15" fill="#6C707E">$ run --all --watch --auto-restart</text>
+  <text x="98" y="452" font-family="'JetBrains Mono', ui-monospace, Consolas, monospace" font-size="15" fill="#6C707E">$ lanes --all --watch --auto-restart</text>
 
   <!-- JetBrains-plugin hint line -->
-  <text x="98" y="560" font-size="16" fill="#6C707E" letter-spacing="0.4">Advanced application manager for JetBrains IDEs · Windows · Linux · macOS</text>
+  <text x="98" y="560" font-size="16" fill="#6C707E" letter-spacing="0.4">Lanes · Advanced application manager for JetBrains IDEs · Windows · Linux · macOS</text>
 
   <!-- ============ RIGHT: orchestration board illustration ============ -->
   <!-- Card 1 : api-gateway -->
