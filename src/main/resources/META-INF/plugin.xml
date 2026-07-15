@@ -56,6 +56,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.0.8</strong>:</p>
+        <ul>
+            <li>Lanes Monitor: an app started standalone with the IDE's own Play/Debug no longer
+                borrows a Lanes group's name/env just because a same-named app exists in a group.
+                The Lanes column shows "-" and the Env column shows what the run actually loaded
+                (matched by the real process, not by name).</li>
+        </ul>
         <p><strong>1.0.7</strong>:</p>
         <ul>
             <li>Lanes Monitor: apps launched through a nested Lanes group now show the top-level
