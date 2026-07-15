@@ -1,13 +1,13 @@
 ![Lanes](brand/logo.svg)
 
-**Thank you so much for your support! 🎉**
+**Thank you so much for your support!**
 
 This project is built and maintained with dedication in my own time. Your contribution helps
 cover maintenance costs and allows me to continue creating free tools, improving existing ones,
 and building new projects for the community.
 
 Every contribution, no matter the size, makes a real difference. Thank you for being part of
-this journey! ❤️
+this journey! 🎉 ❤️
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-orange?logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/welingtonmonteiro)
 

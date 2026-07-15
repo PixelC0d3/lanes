@@ -14,21 +14,21 @@
          of a local path (only resolves once this branch is merged into mainline). Its width is
          capped (not 100%) so it stays modest in the IDE's install panel, where this also renders,
          a full-width hero looked oversized there.
-         These notes are deliberately kept OUTSIDE the CDATA block below: text inside CDATA is not
-         XML-parsed, so an HTML comment placed there is literal markup text to some validators,
-         not an actual comment. Marketplace's upload check rejected the description for not
-         starting with a Latin character because of exactly that, even though the visible text
-         did start with one. -->
+         Marketplace's upload validator requires the FIRST ~40 characters of the rendered
+         description text to be plain Latin - keep emoji out of the opening line (they are fine
+         further down). A leading emoji in the first line is what made 1.0.9 fail to upload with
+         "description must start with Latin characters"; the celebratory emoji now live on the
+         paragraphs below the first line, well past that 40-character window. -->
     <description>
         <![CDATA[
         <p><img src="https://raw.githubusercontent.com/PixelC0d3/lanes/mainline/brand/banner.png" alt="Lanes" width="420"/></p>
 
-        <p><b>Thank you so much for your support! 🎉</b></p>
+        <p><b>Thank you so much for your support!</b></p>
         <p>This project is built and maintained with dedication in my own time. Your contribution helps
         cover maintenance costs and allows me to continue creating free tools, improving existing ones,
         and building new projects for the community.</p>
         <p>Every contribution, no matter the size, makes a real difference. Thank you for being part of
-        this journey! ❤️</p>
+        this journey! 🎉 ❤️</p>
         <p>☕ <a href="https://buymeacoffee.com/welingtonmonteiro">Buy me a coffee</a></p>
 
         <p><b>Run, monitor and manage multiple run configurations at once.</b> Group your apps, servers,
@@ -67,6 +67,11 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.0.10</strong>:</p>
+        <ul>
+            <li>Maintenance release - no functional changes since 1.0.9 (which never reached the
+                Marketplace because of a description formatting issue, now fixed).</li>
+        </ul>
         <p><strong>1.0.9</strong>:</p>
         <ul>
             <li>The "Environment file (profile)" field on native run configurations is now offered
