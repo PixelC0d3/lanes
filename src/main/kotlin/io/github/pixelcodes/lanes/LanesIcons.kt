@@ -27,6 +27,11 @@ object LanesIcons {
     @JvmField val Process: Icon = IconLoader.getIcon("/icons/process.svg", LanesIcons::class.java)
     @JvmField val MemoryLeak: Icon = IconLoader.getIcon("/icons/memory-leak.svg", LanesIcons::class.java)
 
+    // Monitor row actions: pause/resume sampling of a single app (it keeps running, only the
+    // memory/CPU polling stops), so heavy apps can be excluded from monitoring on demand.
+    @JvmField val PauseMonitoring: Icon = IconLoader.getIcon("/icons/pause-monitoring.svg", LanesIcons::class.java)
+    @JvmField val ResumeMonitoring: Icon = IconLoader.getIcon("/icons/resume-monitoring.svg", LanesIcons::class.java)
+
     // Trimmed down from brand/empty-state.svg: the two <text> lines and the CSS <style>/@media
     // block were dropped (real JBLabels handle the text and theme colors on the Swing side; see
     // LanesMonitorPanel's empty-state panel), leaving just the illustration.
