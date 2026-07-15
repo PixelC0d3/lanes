@@ -5,6 +5,17 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.9] — Env file field only where the IDE actually loads it
+- The **Environment file (profile)** field on native run configurations is now offered only on
+  **Node.js** and **npm/pnpm/yarn**, where the IDE really applies it at launch. It used to also
+  appear on **Mocha, Karma and Jest**, but those run states never invoke plugin launch extensions
+  (verified against the IDE's own code, 2024.2–2026.1), so the field silently did nothing there —
+  the configured file was never loaded, and the Lanes Monitor's Env column stayed empty. Hiding it
+  beats pretending. For test runners, use the native *Environment variables* field or run them
+  through a **Lanes group** (group env injection uses a different mechanism and works for every
+  type). The pre-Play env combo in the run toolbar follows the same rule.
+- Marketplace description: the support message moved to the top, right below the banner.
+
 ## [1.0.8] — Monitor no longer mislabels a standalone run as a group's app
 - Fixes the Lanes Monitor showing a Lanes group name (and that group's env profile) for an app you
   started standalone with the IDE's own Play/Debug, when a same-named app also exists inside a Lanes
@@ -93,10 +104,10 @@ Uninstall the original plugin before installing this one.
 - **Per-application env file override**: an *Env file (app)* column lets a single app use its own
   `.env` file instead of the group's.
 - **Native Play/Debug support**: the same `.env`-profile loading is available directly on
-  Node-based run configurations (Node.js, npm/pnpm/yarn, Karma, Jest, Mocha) — not just inside a
-  Lanes group. A switch button on the run toolbar restarts that same run with the chosen profile.
-  Optional module: only active in IDEs with the JavaScript plugin; uninstalling the plugin removes
-  it cleanly.
+  Node.js and npm/pnpm/yarn run configurations — not just inside a Lanes group. A switch button on
+  the run toolbar restarts that same run with the chosen profile. Optional module: only active in
+  IDEs with the JavaScript plugin; uninstalling the plugin removes it cleanly. (Since 1.0.9 the
+  field is only offered where the IDE actually applies it at launch — see the 1.0.9 entry.)
 - Works with any configuration type that exposes environment variables (Node.js, npm, Java
   Application, …); other types run unchanged.
 

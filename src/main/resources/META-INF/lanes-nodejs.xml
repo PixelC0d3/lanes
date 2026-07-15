@@ -2,10 +2,11 @@
   Optional module, wired from plugin.xml via <depends optional="true" config-file="lanes-nodejs.xml">JavaScript</depends>.
   It is loaded ONLY when the host IDE has the JavaScript plugin (WebStorm, IntelliJ IDEA Ultimate, ...).
 
-  Contributes a Lanes "Env Files" section to every Node-based run configuration
-  (AbstractNodeTargetRunProfile: Node.js, npm/pnpm/yarn, Karma, Jest, Mocha, ...), so running such an
-  app directly with the IDE's own Play/Debug can load one or more .env files - the same capability a
-  Lanes group already offers its children. See LanesNodeEnvFileExtension.
+  Contributes a Lanes "Env Files" section to the Node-based run configurations whose launch actually
+  applies extensions: Node.js and npm/pnpm/yarn scripts. Running such an app directly with the IDE's
+  own Play/Debug can load one or more .env files - the same capability a Lanes group already offers
+  its children. Mocha/Karma/Jest run states never invoke the extension launch session, so the field
+  is hidden there (see NodeEnvFileSettings.isLaunchInjectionSupported). See LanesNodeEnvFileExtension.
 -->
 <idea-plugin>
     <extensions defaultExtensionNs="JavaScript">

@@ -58,8 +58,12 @@ class NodeEnvProfileToolbarAction : ComboBoxAction() {
 
     private fun selectedConfig(e: AnActionEvent): AbstractNodeTargetRunProfile? = e.project?.let { selectedConfig(it) }
 
-    private fun selectedConfig(project: Project): AbstractNodeTargetRunProfile? =
-        RunManager.getInstance(project).selectedConfiguration?.configuration as? AbstractNodeTargetRunProfile
+    private fun selectedConfig(project: Project): AbstractNodeTargetRunProfile? {
+        val config = RunManager.getInstance(project).selectedConfiguration?.configuration as? AbstractNodeTargetRunProfile
+            ?: return null
+        // same gate as the editor field: only types whose launch actually loads the env file
+        return if (NodeEnvFileSettings.isLaunchInjectionSupported(config)) config else null
+    }
 
     private class ProfileAction(
         private val config: AbstractNodeTargetRunProfile,

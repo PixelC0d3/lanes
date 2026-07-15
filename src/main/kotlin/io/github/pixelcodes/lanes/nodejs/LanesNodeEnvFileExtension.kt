@@ -15,10 +15,14 @@ import io.github.pixelcodes.lanes.RunConfigurationHelper
 import io.github.pixelcodes.lanes.StandaloneEnvRegistry
 
 /**
- * Brings Lanes's `.env`-file loading to every Node-based run configuration
- * (`AbstractNodeTargetRunProfile`: Node.js, npm/pnpm/yarn, Karma, Jest, Mocha, ...), so an app
- * started with the IDE's own Play/Debug can load a `.env` file - the same capability a Lanes
- * group already gives its children.
+ * Brings Lanes's `.env`-file loading to Node-based run configurations whose launch actually
+ * applies extensions - Node.js and npm/pnpm/yarn scripts - so an app started with the IDE's own
+ * Play/Debug can load a `.env` file - the same capability a Lanes group already gives its
+ * children. Mocha/Karma/Jest also extend `AbstractNodeTargetRunProfile`, but their run states
+ * never invoke the extension launch session (see [NodeEnvFileSettings.isLaunchInjectionSupported]),
+ * so [isApplicableFor] hides the field there instead of offering a file that would never load;
+ * for those, a Lanes *group* still injects env normally (different mechanism), as does the
+ * native Environment variables field.
  *
  * Registered through the OPTIONAL module (`META-INF/lanes-nodejs.xml`, EP
  * `JavaScript.nodeRunConfigurationExtension`), so it only exists when the host IDE has the
@@ -32,7 +36,8 @@ import io.github.pixelcodes.lanes.StandaloneEnvRegistry
  */
 class LanesNodeEnvFileExtension : AbstractNodeRunConfigurationExtension() {
 
-    override fun isApplicableFor(configuration: AbstractNodeTargetRunProfile): Boolean = true
+    override fun isApplicableFor(configuration: AbstractNodeTargetRunProfile): Boolean =
+        NodeEnvFileSettings.isLaunchInjectionSupported(configuration)
 
     override fun getEditorTitle(): String = "Env Files"
 
