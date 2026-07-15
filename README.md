@@ -1,5 +1,16 @@
 ![Lanes](brand/logo.svg)
 
+**🎉 Thank you so much for your support!**
+
+This project is built and maintained with dedication in my own time. Your contribution helps
+cover maintenance costs and allows me to continue creating free tools, improving existing ones,
+and building new projects for the community.
+
+Every contribution, no matter the size, makes a real difference. Thank you for being part of
+this journey! ❤️
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-orange?logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/welingtonmonteiro)
+
 > **Group, launch and control multiple Run Configurations from a single click — with the
 > environment, ordering and monitoring that a real multi-service workflow needs.**
 >
@@ -336,13 +347,6 @@ GitHub repository: [PixelC0d3/lanes](https://github.com/PixelC0d3/lanes)
 Contributions, feature requests and bug reports are always welcome. Working on UI? See
 [brand/BRAND_GUIDELINES.md](brand/BRAND_GUIDELINES.md) for the color palette, iconography rules
 and voice/tone this project follows.
-
-## ☕ Support This Project
-
-If Lanes saves you time, consider buying me a coffee — it helps keep the plugin maintained
-and new features coming:
-
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-orange?logo=buy-me-a-coffee&logoColor=white)](https://buymeacoffee.com/welingtonmonteiro)
 
 ## Credits By
 
