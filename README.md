@@ -1,6 +1,6 @@
 ![Lanes](brand/logo.svg)
 
-**🎉 Thank you so much for your support!**
+**Thank you so much for your support! 🎉**
 
 This project is built and maintained with dedication in my own time. Your contribution helps
 cover maintenance costs and allows me to continue creating free tools, improving existing ones,
