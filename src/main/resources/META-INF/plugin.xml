@@ -9,13 +9,18 @@
     <!-- version is injected from build.gradle (project.version) by patchPluginXml -->
     <vendor url="https://github.com/WelingtonMonteiro" email="welington.rmonteiro@gmail.com">Welington Monteiro</vendor>
 
+    <!-- The Marketplace renders the description below as standalone HTML - it has no access to
+         the plugin's own .zip, so the banner image is pulled from GitHub's raw content CDN instead
+         of a local path (only resolves once this branch is merged into mainline). Its width is
+         capped (not 100%) so it stays modest in the IDE's install panel, where this also renders,
+         a full-width hero looked oversized there.
+         These notes are deliberately kept OUTSIDE the CDATA block below: text inside CDATA is not
+         XML-parsed, so an HTML comment placed there is literal markup text to some validators,
+         not an actual comment. Marketplace's upload check rejected the description for not
+         starting with a Latin character because of exactly that, even though the visible text
+         did start with one. -->
     <description>
         <![CDATA[
-        <!-- The Marketplace renders this description as standalone HTML - it has no access to the
-             plugin's own .zip, so the image below is pulled from GitHub's raw content CDN instead
-             of a local path. It only resolves once this branch is merged into mainline. -->
-        <!-- width is capped (not 100%) so the banner stays modest in the IDE's install panel, where
-             the description also renders - a full-width hero looked oversized there. -->
         <p><img src="https://raw.githubusercontent.com/PixelC0d3/lanes/mainline/brand/banner.png" alt="Lanes" width="420"/></p>
 
         <p><b>Thank you so much for your support! 🎉</b></p>
