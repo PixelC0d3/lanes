@@ -131,6 +131,8 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         @JvmField val memTrend: DoubleArray,
         /** The env-file profiles configured on the app's Lanes group (empty when unknown). */
         envProfiles: List<String>?,
+        /** True when the user paused monitoring for this app: values are frozen, the row is greyed. */
+        @JvmField val paused: Boolean = false,
     ) {
         @JvmField val envProfiles: List<String> = envProfiles ?: emptyList()
     }
@@ -154,6 +156,12 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
 
     /** Full session memory history per process, for the click-to-open chart (bounded). */
     private val fullHistory: MutableMap<ProcessHandler, MutableList<MemoryHistory.Sample>> = ConcurrentHashMap()
+
+    /** Apps the user paused monitoring for: they keep running, but are not sampled (no ps/lsof/tree walk). */
+    private val pausedHandlers: MutableSet<ProcessHandler> = Collections.newSetFromMap(ConcurrentHashMap())
+
+    /** Last built row per handler, so a paused app can keep showing its frozen last values. */
+    private val lastRowByHandler: MutableMap<ProcessHandler, Row> = HashMap()
     private val sparklineRenderer = SparklineCellRenderer()
     private val portsRenderer = PortsCellRenderer()
     private val statusRenderer = StatusCellRenderer()
@@ -210,7 +218,21 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
             },
             column("CPU %") { it.cpuPercent },
         )
-        table = TableView(model)
+        table = object : TableView<Row>(model) {
+            // grey out a paused row across every column: text cells get the disabled foreground, the
+            // sparkline is told to paint muted (it ignores foreground). Selection keeps its own colors.
+            override fun prepareRenderer(renderer: TableCellRenderer, row: Int, column: Int): Component {
+                val component = super.prepareRenderer(renderer, row, column)
+                val item = this@LanesMonitorPanel.model.getItem(convertRowIndexToModel(row))
+                val paused = item != null && item.paused
+                if (component is SparklineCellRenderer) {
+                    component.paused = paused
+                } else if (paused && !isCellSelected(row, column)) {
+                    component.setForeground(UIUtil.getLabelDisabledForeground())
+                }
+                return component
+            }
+        }
         // apply initial widths (and honor any hidden columns); all columns stay resizable
         applyColumnVisibility()
         // batch actions: the row actions operate on every selected row
@@ -220,12 +242,17 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         val restartSelected: AnAction = RestartSelectedAction()
         val stopSelected: AnAction = StopSelectedAction()
         val killSelected: AnAction = KillSelectedAction()
+        val pauseMonitoring: AnAction = PauseMonitoringAction()
+        val resumeMonitoring: AnAction = ResumeMonitoringAction()
         val restartUnhealthy: AnAction = RestartUnhealthyAction()
 
         val rowActions = DefaultActionGroup()
         rowActions.add(restartSelected)
         rowActions.add(stopSelected)
         rowActions.add(killSelected)
+        rowActions.addSeparator()
+        rowActions.add(pauseMonitoring)
+        rowActions.add(resumeMonitoring)
         rowActions.addSeparator()
         rowActions.add(restartUnhealthy)
 
@@ -237,6 +264,8 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         })
         // add the row actions individually (avoids the deprecated DefaultActionGroup.addAll(ActionGroup))
         toolbarGroup.addAll(restartSelected, stopSelected, killSelected)
+        toolbarGroup.addSeparator()
+        toolbarGroup.addAll(pauseMonitoring, resumeMonitoring)
         toolbarGroup.addSeparator()
         toolbarGroup.add(restartUnhealthy)
         toolbarGroup.add(MemoryAnalysisAction())
@@ -803,6 +832,61 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         }
     }
 
+    /**
+     * Pauses monitoring for the selected app(s): they keep running, but Lanes stops sampling their
+     * memory/CPU (no process-tree walk, no ps/lsof), so a heavy app can be excluded from monitoring.
+     * The row stays in the table, frozen at its last values and greyed out.
+     */
+    private inner class PauseMonitoringAction : DumbAwareAction(
+        "Pause Monitoring",
+        "Stop sampling memory/CPU for the selected application(s) - they keep running; the row freezes at its last values",
+        LanesIcons.PauseMonitoring) {
+
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+
+        override fun update(e: AnActionEvent) {
+            e.getPresentation().setEnabled(selectedRows().any { it.handler != null && !pausedHandlers.contains(it.handler) })
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            var changed = false
+            for (row in selectedRows()) {
+                val handler = row.handler ?: continue
+                if (pausedHandlers.add(handler)) {
+                    changed = true
+                }
+            }
+            if (changed) {
+                refresh()
+            }
+        }
+    }
+
+    /** Resumes monitoring (re-enables sampling) for the selected paused app(s). */
+    private inner class ResumeMonitoringAction : DumbAwareAction(
+        "Resume Monitoring", "Resume sampling memory/CPU for the selected application(s)",
+        LanesIcons.ResumeMonitoring) {
+
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+
+        override fun update(e: AnActionEvent) {
+            e.getPresentation().setEnabled(selectedRows().any { it.handler != null && pausedHandlers.contains(it.handler) })
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            var changed = false
+            for (row in selectedRows()) {
+                val handler = row.handler ?: continue
+                if (pausedHandlers.remove(handler)) {
+                    changed = true
+                }
+            }
+            if (changed) {
+                refresh()
+            }
+        }
+    }
+
     /** Restarts every application whose readiness status is currently "down". */
     private inner class RestartUnhealthyAction : DumbAwareAction(
         "Restart Unhealthy", "Restart every application whose port/http readiness check is currently down",
@@ -1177,10 +1261,15 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
             liveByHandler[entry.handler] = entry
         }
 
-        // resolve the process tree of every row first, then sample everything in single ps/lsof calls
+        // resolve the process tree of every row first, then sample everything in single ps/lsof calls.
+        // paused apps are skipped entirely here - the whole point is to stop spending the tree walk /
+        // ps / lsof on them; their row is rebuilt from the last known values below.
         val treeBySnapshot = LinkedHashMap<ProcessSnapshot, Set<Long>>()
         val allPids = LinkedHashSet<Long>()
         for (snapshot in snapshots) {
+            if (pausedHandlers.contains(snapshot.handler)) {
+                continue
+            }
             val treePids = ProcessStatsSampler.processTreePids(LanesProcessRegistry.pidOf(snapshot.handler))
             treeBySnapshot[snapshot] = treePids
             allPids.addAll(treePids)
@@ -1194,6 +1283,11 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
 
         val rows = ArrayList<Row>(snapshots.size)
         for (snapshot in snapshots) {
+            if (pausedHandlers.contains(snapshot.handler)) {
+                // frozen row: keep the last known values, greyed out, no fresh sampling
+                rows.add(pausedRow(snapshot))
+                continue
+            }
             val treePids = treeBySnapshot[snapshot] ?: emptySet()
             val rootPid = if (treePids.isEmpty()) -1L else treePids.iterator().next()
             val stats = ProcessStatsSampler.aggregate(statsByPid, treePids)
@@ -1268,10 +1362,12 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
 
             val envProfiles = if (meta != null) envProfilesByGroup[meta.lanesName] ?: emptyList() else emptyList()
 
-            rows.add(Row(name, icon, lanesName, envFileName, snapshot.handler, snapshot.descriptor, meta,
+            val row = Row(name, icon, lanesName, envFileName, snapshot.handler, snapshot.descriptor, meta,
                         if (rootPid > 0) rootPid.toString() else "n/a",
                         portsText, uptimeText, statusText, memUsage, memPercent, cpuPercent, memTrend,
-                        envProfiles))
+                        envProfiles)
+            lastRowByHandler[snapshot.handler] = row
+            rows.add(row)
         }
 
         // baseline for the next CPU delta
@@ -1280,15 +1376,35 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         prevCpuSecondsByPid = newPrev
         prevSampleNanos = nowNanos
 
-        // drop the history of processes that are gone
+        // drop the state of processes that are gone
         val liveHandlers = HashSet<ProcessHandler>()
         for (snapshot in snapshots) {
             liveHandlers.add(snapshot.handler)
         }
         memHistory.keys.retainAll(liveHandlers)
         fullHistory.keys.retainAll(liveHandlers)
+        lastRowByHandler.keys.retainAll(liveHandlers)
+        pausedHandlers.retainAll(liveHandlers)
 
         return rows
+    }
+
+    /**
+     * A frozen display row for a paused app: its last sampled values kept as-is (memory, CPU,
+     * ports, uptime, status), only marked [Row.paused] so the table greys it out. Identity fields
+     * (handler/descriptor) come from the fresh snapshot so restart/stop/resume still target it. When
+     * paused before any sample exists, falls back to neutral placeholders.
+     */
+    private fun pausedRow(snapshot: ProcessSnapshot): Row {
+        val last = lastRowByHandler[snapshot.handler]
+        if (last == null) {
+            val icon = snapshot.icon ?: AllIcons.RunConfigurations.Application
+            return Row(snapshot.name, icon, "-", "-", snapshot.handler, snapshot.descriptor, null,
+                        "n/a", "-", "n/a", "paused", "n/a", "n/a", "n/a", DoubleArray(0), emptyList(), true)
+        }
+        return Row(last.name, last.icon, last.lanesName, last.envFileName, snapshot.handler, snapshot.descriptor,
+                    last.meta, last.pid, last.ports, last.uptime, last.status, last.memUsage, last.memPercent,
+                    last.cpuPercent, last.memTrend, last.envProfiles, true)
     }
 
     /**
@@ -1300,6 +1416,9 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         private var values: DoubleArray = DoubleArray(0)
         private var selected = false
         private var table: JTable? = null
+
+        /** Set by the table's prepareRenderer for a paused row: the frozen line is drawn muted. */
+        var paused = false
 
         override fun getTableCellRendererComponent(
             table: JTable, value: Any?, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int,
@@ -1337,7 +1456,12 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
                 ys[i] = 3 + Math.round(height - (values[i] - min) / span * height).toInt()
             }
             val last = values[values.size - 1]
-            g2.setColor(if (last >= 90) JBColor.RED else if (last >= 70) JBColor.ORANGE else JBColor.GREEN)
+            g2.setColor(when {
+                paused -> UIUtil.getLabelDisabledForeground()
+                last >= 90 -> JBColor.RED
+                last >= 70 -> JBColor.ORANGE
+                else -> JBColor.GREEN
+            })
             g2.drawPolyline(xs, ys, values.size)
         }
     }

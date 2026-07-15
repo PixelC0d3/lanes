@@ -5,6 +5,14 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.6] — Pause monitoring per application
+- The Lanes Monitor can now pause monitoring for one or more selected apps (Pause Monitoring /
+  Resume Monitoring, in the toolbar and the right-click menu). A paused app keeps running - Lanes
+  just stops sampling its memory/CPU (no process-tree walk, no ps/lsof), so a heavy app can be
+  excluded from monitoring on demand and you choose exactly which apps to watch.
+- A paused app stays in the table, greyed out and frozen at its last values, and resumes right
+  where it left off.
+
 ## [1.0.5] — Clearer crash message for a Memory limit / NODE_OPTIONS conflict
 - When an app with a Memory limit configured crashes and its own stderr shows Node rejected a flag
   in NODE_OPTIONS (a real interaction: this app's Memory limit sets NODE_OPTIONS, and its start

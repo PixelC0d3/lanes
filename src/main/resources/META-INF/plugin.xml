@@ -47,7 +47,7 @@
             <li>Ready to use</li>
         </ol>
 
-        <p>Lanes + Before Launch Tasks gives even more functionality: read more at <a href="https://goo.gl/KwHvx">https://goo.gl/KwHvx</a></p>
+        <p>Lanes + Before Launch Tasks gives even more functionality: read more at <a href="https://github.com/PixelC0d3/lanes/wiki">https://github.com/PixelC0d3/lanes/wiki</a></p>
 
         <p>If this plugin saves you time, consider <a href="https://buymeacoffee.com/welingtonmonteiro">buying me a coffee</a> ☕</p>
 
@@ -56,6 +56,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.0.6</strong>:</p>
+        <ul>
+            <li>The Lanes Monitor can pause monitoring for selected apps (Pause/Resume Monitoring):
+                the app keeps running but is no longer sampled (no memory/CPU polling), so heavy
+                apps can be excluded on demand. Paused rows stay in the table, greyed and frozen at
+                their last values.</li>
+        </ul>
         <p><strong>1.0.5</strong>:</p>
         <ul>
             <li>Clearer crash message when a Memory limit's NODE_OPTIONS injection conflicts with
