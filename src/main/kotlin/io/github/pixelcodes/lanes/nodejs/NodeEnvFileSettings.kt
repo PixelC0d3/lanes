@@ -5,8 +5,8 @@ import com.intellij.openapi.util.Key
 import org.jdom.Element
 
 /**
- * The Lanes env-file settings attached to a single Node-based run configuration (Node.js,
- * npm, Karma, Jest, Mocha, ... - anything that is an `AbstractNodeTargetRunProfile`): a list of
+ * The Lanes env-file settings attached to a single Node-based run configuration (Node.js and
+ * npm/pnpm/yarn scripts - see [isLaunchInjectionSupported] for why only those): a list of
  * known `.env` "profiles" and which one is currently active.
  *
  * Mirrors the environment model a Lanes *group* already offers its children, but for a
@@ -49,6 +49,25 @@ class NodeEnvFileSettings(profiles: List<String>, active: String) {
     }
 
     companion object {
+        /**
+         * Configuration types whose run states actually apply node run-configuration extensions at
+         * launch: `NodeJsRunProfileState` and `NpmRunProfileState` are the only ones that create the
+         * extension launch session (`NodeRunConfigurationExtensionsManager.createLaunchSession`).
+         * Mocha, Karma and Jest build their command line directly and never consult extensions —
+         * verified by disassembling their run states on 2024.2 and 2026.1 — so offering the env-file
+         * field there would let the user configure a file that never loads. The ids are stable
+         * across those versions.
+         */
+        private val LAUNCH_CAPABLE_TYPE_IDS = setOf(
+            "NodeJSConfigurationType", // Node.js
+            "js.build_tools.npm",      // npm/pnpm/yarn scripts
+        )
+
+        /** True when the IDE actually loads the active env file at launch for this configuration type. */
+        @JvmStatic
+        fun isLaunchInjectionSupported(configuration: RunConfigurationBase<*>): Boolean =
+            LAUNCH_CAPABLE_TYPE_IDS.contains(configuration.getType().getId())
+
         /** Unique per-extension id; also the value the platform stores in the XML wrapper element. */
         const val SERIALIZATION_ID = "io.github.pixelcodes.lanes.nodeEnvFiles"
 

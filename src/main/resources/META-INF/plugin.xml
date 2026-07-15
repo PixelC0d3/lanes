@@ -18,6 +18,14 @@
              the description also renders - a full-width hero looked oversized there. -->
         <p><img src="https://raw.githubusercontent.com/PixelC0d3/lanes/mainline/brand/banner.png" alt="Lanes" width="420"/></p>
 
+        <p><b>🎉 Thank you so much for your support!</b></p>
+        <p>This project is built and maintained with dedication in my own time. Your contribution helps
+        cover maintenance costs and allows me to continue creating free tools, improving existing ones,
+        and building new projects for the community.</p>
+        <p>Every contribution, no matter the size, makes a real difference. Thank you for being part of
+        this journey! ❤️</p>
+        <p>☕ <a href="https://buymeacoffee.com/welingtonmonteiro">Buy me a coffee</a></p>
+
         <p><b>Run, monitor and manage multiple run configurations at once.</b> Group your apps, servers,
         microservices or tests and start them with a single click - one by one with "ready when"
         (port / HTTP / log) checks when you need startup ordering. Then watch everything live in a
@@ -49,13 +57,21 @@
 
         <p>Lanes + Before Launch Tasks gives even more functionality: read more at <a href="https://github.com/PixelC0d3/lanes/wiki">https://github.com/PixelC0d3/lanes/wiki</a></p>
 
-        <p>If this plugin saves you time, consider <a href="https://buymeacoffee.com/welingtonmonteiro">buying me a coffee</a> ☕</p>
-
         ]]>
     </description>
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.0.9</strong>:</p>
+        <ul>
+            <li>The "Environment file (profile)" field on native run configurations is now offered
+                only on Node.js and npm/pnpm/yarn - the types where the IDE actually applies it at
+                launch. On Mocha/Karma/Jest the IDE never invokes plugin launch extensions, so the
+                field silently did nothing there; it is hidden instead of pretending. For test
+                runners, use the native Environment variables field or run them through a Lanes
+                group (group env injection works for every type). The pre-Play env combo follows
+                the same rule.</li>
+        </ul>
         <p><strong>1.0.8</strong>:</p>
         <ul>
             <li>Lanes Monitor: an app started standalone with the IDE's own Play/Debug no longer
@@ -144,10 +160,10 @@
             <li><b>Per-application env file override</b>: an Env file (app) column lets a single app
                 use its own .env file instead of the group's.</li>
             <li><b>Native Play/Debug support</b>: the same .env-profile loading is available
-                directly on Node-based run configurations (Node.js, npm/pnpm/yarn, Karma, Jest,
-                Mocha) - not just inside a Lanes group. A switch button on the run toolbar restarts
-                that same run with the chosen profile. Optional module: only active in IDEs with the
-                JavaScript plugin; uninstalling the plugin removes it cleanly.</li>
+                directly on Node.js and npm/pnpm/yarn run configurations - not just inside a Lanes
+                group. A switch button on the run toolbar restarts that same run with the chosen
+                profile. Optional module: only active in IDEs with the JavaScript plugin;
+                uninstalling the plugin removes it cleanly.</li>
             <li>Works with any configuration type that exposes environment variables (Node.js, npm,
                 Java Application, ...); other types run unchanged.</li>
         </ul>
@@ -257,10 +273,10 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.lang</depends>
     <!-- OPTIONAL: only loaded when the host IDE has the JavaScript plugin (WebStorm, IDEA Ultimate,
-         ...). Adds an "Env Files" tab to Node-based run configurations (Node.js, npm, Karma, Jest,
-         Mocha) so a standalone Play/Debug can load .env files too - the same feature Lanes
-         groups already have. In IDEs without JavaScript the module is skipped and the core plugin
-         works unchanged. See META-INF/lanes-nodejs.xml. -->
+         ...). Adds an "Env Files" field to Node.js and npm run configurations so a standalone
+         Play/Debug can load .env files too - the same feature Lanes groups already have (not
+         Mocha/Karma/Jest: their run states never apply launch extensions, see lanes-nodejs.xml).
+         In IDEs without JavaScript the module is skipped and the core plugin works unchanged. -->
     <depends optional="true" config-file="lanes-nodejs.xml">JavaScript</depends>
 
     <actions>
