@@ -5,6 +5,12 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.10] — Maintenance release
+- No functional changes since 1.0.9. Republished to the Marketplace after fixing a description
+  formatting issue: a leading emoji in the plugin description made the upload fail validation
+  ("description must start with Latin characters"), because the Marketplace checks that the first
+  characters of the rendered text are plain Latin. The emoji were moved off the opening line.
+
 ## [1.0.9] — Env file field only where the IDE actually loads it
 - The **Environment file (profile)** field on native run configurations is now offered only on
   **Node.js** and **npm/pnpm/yarn**, where the IDE really applies it at launch. It used to also
