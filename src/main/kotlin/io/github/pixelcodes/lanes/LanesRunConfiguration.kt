@@ -72,6 +72,21 @@ class LanesRunConfiguration(project: Project, factory: ConfigurationFactory, nam
     private var runConfigurations: MutableList<RunConfigurationInternal> = ArrayList()
 
     /**
+     * Set only on a clone made while this group runs *nested* inside another Lanes group (see
+     * [LanesRunnerState.runConfigurations]): the top-level group the user actually started and the
+     * env profile it launched with. The runner state registers this nested group's apps under
+     * these for the monitor's Lanes/Env columns, instead of this nested config's own name/env.
+     * Never persisted (read/writeExternal only handle explicit attributes) - clone-only display state.
+     */
+    private var rootGroupName: String? = null
+    private var rootEnvFilePath: String? = null
+
+    fun setRootGroupContext(groupName: String, envFilePath: String) {
+        this.rootGroupName = groupName
+        this.rootEnvFilePath = envFilePath
+    }
+
+    /**
      * A named execution preset: a saved combination of which applications are enabled and which
      * environment profile is active, so a group can be flipped between scenarios ("backend only",
      * "full stack", ...) from a dropdown without re-checking boxes.
@@ -492,7 +507,7 @@ class LanesRunConfiguration(project: Project, factory: ConfigurationFactory, nam
                                    getAppEnvFiles(),
                                    restartRunning, restartOnCrash, memAlertThreshold, memLimitRestart,
                                    cpuAlertThreshold,
-                                   getProject(), getName())
+                                   getProject(), getName(), rootGroupName, rootEnvFilePath)
     }
 
     /**
@@ -510,7 +525,7 @@ class LanesRunConfiguration(project: Project, factory: ConfigurationFactory, nam
                                    getAppEnvFiles(),
                                    false, restartOnCrash, memAlertThreshold, memLimitRestart,
                                    cpuAlertThreshold,
-                                   getProject(), getName())
+                                   getProject(), getName(), rootGroupName, rootEnvFilePath)
     }
 
     override fun checkConfiguration() {

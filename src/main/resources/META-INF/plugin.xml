@@ -56,6 +56,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.0.7</strong>:</p>
+        <ul>
+            <li>Lanes Monitor: apps launched through a nested Lanes group now show the top-level
+                group you actually started (and its env profile) in the Lanes/Env columns, instead
+                of the inner group's name. Display-only fix; restart/switch of a single app is
+                unchanged.</li>
+        </ul>
         <p><strong>1.0.6</strong>:</p>
         <ul>
             <li>The Lanes Monitor can pause monitoring for selected apps (Pause/Resume Monitoring):

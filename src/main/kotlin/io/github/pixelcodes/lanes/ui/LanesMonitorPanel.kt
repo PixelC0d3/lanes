@@ -190,9 +190,12 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
                     }
                 }
             },
-            column("Lanes") { it.lanesName },
+            // shows the top-level group the user started (root), falling back to the owning group;
+            // row.lanesName stays the owning group for restart/switch lookups (see findGroupConfig)
+            column("Lanes") { it.meta?.rootLanesName ?: it.lanesName },
             object : ColumnInfo<Row, String>("Env") {
-                override fun valueOf(row: Row): String? = row.envFileName
+                // the root group's env profile when nested, else this app's own (see Lanes column)
+                override fun valueOf(row: Row): String? = row.meta?.rootEnvFileName ?: row.envFileName
 
                 override fun getRenderer(row: Row): TableCellRenderer =
                     EnvCellRenderer(hasLoadedEnv(row), row.envProfiles.size > 1)
