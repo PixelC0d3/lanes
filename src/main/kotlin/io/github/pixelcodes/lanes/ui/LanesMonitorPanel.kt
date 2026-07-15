@@ -1295,10 +1295,17 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
             val rootPid = if (treePids.isEmpty()) -1L else treePids.iterator().next()
             val stats = ProcessStatsSampler.aggregate(statsByPid, treePids)
 
-            // grouped app? live registry entry first; otherwise last-known Lanes metadata by
-            // name, so an app restarted individually keeps showing its group, env profile and limit
+            // grouped app? live registry entry (matched by this exact process handler) first.
+            // A Node app launched with the IDE's own Play/Debug is tracked in StandaloneEnvRegistry
+            // by its real handler - when present it's a genuine standalone run, so we must NOT guess
+            // a Lanes group by name: an app named like a Lanes child (e.g. a Mocha "eparts-api" that
+            // also exists inside a "CORE" group) would otherwise be mislabeled with that group and
+            // its env. Only when neither handler-based source knows the process do we fall back to
+            // the last-known Lanes metadata by name (keeps a truly individually-restarted app grouped).
             val live = liveByHandler[snapshot.handler]
-            val meta = live ?: LanesProcessRegistry.findMetadataByName(project, snapshot.name)
+            val standalone = StandaloneEnvRegistry.find(snapshot.handler)
+            val meta = live ?: if (standalone != null) null
+                               else LanesProcessRegistry.findMetadataByName(project, snapshot.name)
 
             val name = live?.appName ?: snapshot.name
             val icon: Icon = if (live != null) configuredAppIcon
@@ -1306,7 +1313,7 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
             val lanesName = meta?.lanesName ?: "-"
             // grouped app: its Lanes env; standalone app: the env the plugin loaded into it
             // (active .env file name, or "-" when it runs with only its own variables)
-            val envFileName = meta?.envFileName ?: StandaloneEnvRegistry.find(snapshot.handler)?.envFileName ?: "-"
+            val envFileName = meta?.envFileName ?: standalone?.envFileName ?: "-"
             val memoryLimitMb = meta?.memoryLimitMb
 
             val treePorts = TreeSet<Int>()

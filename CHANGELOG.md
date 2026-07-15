@@ -5,6 +5,12 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.8] — Monitor no longer mislabels a standalone run as a group's app
+- Fixes the Lanes Monitor showing a Lanes group name (and that group's env profile) for an app you
+  started standalone with the IDE's own Play/Debug, when a same-named app also exists inside a Lanes
+  group. The Lanes column now shows "-" and the Env column shows the env the run actually loaded
+  (matched by the real process, not by name).
+
 ## [1.0.7] — Monitor shows the started group for nested apps
 - Fixes the Lanes Monitor's Lanes and Env columns for apps launched through a nested Lanes group:
   they now show the top-level group you actually started (and the env profile it launched with),
