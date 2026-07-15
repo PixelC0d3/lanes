@@ -21,6 +21,7 @@ class LanesProcessRegistry private constructor() {
 
     /** One running application started by a Lanes configuration. */
     class Entry internal constructor(
+        /** The group that directly owns the app - used by the monitor to restart/switch just it. */
         @JvmField val lanesName: String,
         @JvmField val appName: String,
         @JvmField val handler: ProcessHandler,
@@ -38,10 +39,22 @@ class LanesProcessRegistry private constructor() {
         /** true = restart the app at the threshold; false = just notify. */
         @JvmField val memLimitRestart: Boolean,
         rawCpuAlertThreshold: Int,
+        /**
+         * Display-only: the top-level Lanes group the user actually started, when this app was
+         * launched through a nested group ([lanesName] is that nested group). null when the app's
+         * owning group IS the one that was started. The monitor's Lanes column prefers this.
+         */
+        @JvmField val rootLanesName: String? = null,
+        /** Display-only: file name of the top-level group's env profile, paired with [rootLanesName]. */
+        rawRootEnvFileName: String? = null,
     ) {
         /** File name of the active env profile at launch time, or "-" when none. */
         @JvmField
         val envFileName: String = if (rawEnvFileName.isNullOrEmpty()) "-" else rawEnvFileName
+
+        /** Display-only env file name of the top-level group (see [rootLanesName]); null when same. */
+        @JvmField
+        val rootEnvFileName: String? = if (rawRootEnvFileName.isNullOrEmpty()) null else rawRootEnvFileName
 
         /**
          * The environment variables Lanes actually injected into this app at launch
@@ -82,10 +95,12 @@ class LanesProcessRegistry private constructor() {
             loadedEnv: Map<String, String>?, includeSystemEnv: Boolean,
             readyCondition: String?, memAlertThreshold: Int, memLimitRestart: Boolean,
             cpuAlertThreshold: Int,
+            rootLanesName: String? = null, rootEnvFileName: String? = null,
         ) {
             val entry = Entry(lanesName, appName, handler, memoryLimitMb, environment,
                               envFileName, loadedEnv, includeSystemEnv, readyCondition,
-                              memAlertThreshold, memLimitRestart, cpuAlertThreshold)
+                              memAlertThreshold, memLimitRestart, cpuAlertThreshold,
+                              rootLanesName, rootEnvFileName)
             ENTRIES.computeIfAbsent(project) { CopyOnWriteArrayList() }.add(entry)
             LAST_BY_NAME.computeIfAbsent(project) { ConcurrentHashMap() }.put(appName, entry)
             handler.addProcessListener(object : ProcessListener {

@@ -5,6 +5,13 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.7] — Monitor shows the started group for nested apps
+- Fixes the Lanes Monitor's Lanes and Env columns for apps launched through a nested Lanes group:
+  they now show the top-level group you actually started (and the env profile it launched with),
+  instead of the inner group's own name/profile. E.g. starting "CORE" (which contains "LOGIN") now
+  lists every app under "CORE" with the env picked next to Play. Purely a display fix - restarting
+  or switching an individual app from the monitor still works exactly as before.
+
 ## [1.0.6] — Pause monitoring per application
 - The Lanes Monitor can now pause monitoring for one or more selected apps (Pause Monitoring /
   Resume Monitoring, in the toolbar and the right-click menu). A paused app keeps running - Lanes

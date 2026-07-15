@@ -63,6 +63,10 @@ class LanesRunnerState(
     private val cpuAlertThreshold: Int,
     private val project: Project,
     private val configurationName: String,
+    /** When this group runs nested, the top-level group the user started; null when it IS top-level. */
+    private val rootGroupName: String? = null,
+    /** When this group runs nested, the top-level group's env profile path; null when top-level. */
+    private val rootEnvFilePath: String? = null,
 ) : RunProfileState {
 
     private val envData: EnvironmentVariablesData = envData ?: EnvironmentVariablesData.DEFAULT
@@ -141,6 +145,16 @@ class LanesRunnerState(
             // effectively-final snapshot of what Lanes injected, for the monitor's Env viewer
             val loadedEnvData = childEnvData
             var effectiveConfiguration = RunConfigurationHelper.withEnvironmentOverride(runConfiguration, childEnvData)
+            if (runConfiguration is LanesRunConfiguration) {
+                // a nested Lanes group: tell its clone the top-level group + env the user actually
+                // started, so its own apps register (and show in the monitor) under that group and
+                // env - not this nested config's own name/profile. Always a clone, never the original.
+                val nestedClone = if (effectiveConfiguration === runConfiguration)
+                    runConfiguration.clone() as LanesRunConfiguration
+                else effectiveConfiguration as LanesRunConfiguration
+                nestedClone.setRootGroupContext(rootGroupName ?: configurationName, rootEnvFilePath ?: envFilePath)
+                effectiveConfiguration = nestedClone
+            }
             if (saveOutputDir.isNotEmpty()) {
                 val target = if (effectiveConfiguration === runConfiguration) runConfiguration.clone() else effectiveConfiguration
                 if (RunConfigurationHelper.applySaveOutput(target, saveOutputDir, runConfiguration.getName())) {
@@ -346,7 +360,9 @@ class LanesRunnerState(
                                                          RunConfigurationHelper.envFileDisplayName(effectiveEnvFilePath),
                                                          loadedEnvData.getEnvs(), loadedEnvData.isPassParentEnvs(),
                                                          readyConditions[runConfiguration.getName()],
-                                                         memAlertThreshold, memLimitRestart, cpuAlertThreshold)
+                                                         memAlertThreshold, memLimitRestart, cpuAlertThreshold,
+                                                         rootGroupName,
+                                                         rootEnvFilePath?.let { RunConfigurationHelper.envFileDisplayName(it) })
                     }
                     if (!initialStart) {
                         // individual restart from the monitor: only re-track the new
