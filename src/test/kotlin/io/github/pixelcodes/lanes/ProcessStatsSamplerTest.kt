@@ -227,6 +227,43 @@ class ProcessStatsSamplerTest {
                    ProcessStatsSampler.processTreePids(myPid).contains(myPid))
     }
 
+    // --- processTreePidsFor (batch: one process-table scan for every tree) ---------------------
+
+    @Test
+    fun batchTreesSkipInvalidRootsAndKeepValidOnes() {
+        val myPid = ProcessHandle.current().pid()
+
+        val trees = ProcessStatsSampler.processTreePidsFor(listOf(-1L, 0L, myPid))
+
+        assertEquals("only the valid root yields a tree", setOf(myPid), trees.keys)
+        assertTrue(trees[myPid]!!.contains(myPid))
+    }
+
+    @Test
+    fun batchTreesAreEmptyWithoutAnyValidRoot() {
+        assertTrue(ProcessStatsSampler.processTreePidsFor(emptyList()).isEmpty())
+        assertTrue(ProcessStatsSampler.processTreePidsFor(listOf(-1L, 0L)).isEmpty())
+    }
+
+    @Test
+    fun batchTreeMatchesTheSingleRootWalk() {
+        val myPid = ProcessHandle.current().pid()
+
+        // the batch form must be a drop-in replacement for the per-app walk it replaces
+        assertEquals(ProcessStatsSampler.processTreePids(myPid),
+                     ProcessStatsSampler.processTreePidsFor(listOf(myPid))[myPid])
+    }
+
+    @Test
+    fun batchTreesTolerateRepeatedRoots() {
+        val myPid = ProcessHandle.current().pid()
+
+        val trees = ProcessStatsSampler.processTreePidsFor(listOf(myPid, myPid))
+
+        assertEquals(1, trees.size)
+        assertTrue(trees[myPid]!!.contains(myPid))
+    }
+
     // --- processStartMillis (uptime of standalone apps) ---------------------------------------
 
     @Test

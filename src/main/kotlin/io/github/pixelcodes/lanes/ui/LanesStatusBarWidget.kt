@@ -71,17 +71,24 @@ class LanesStatusBarWidget(private val project: Project) : StatusBarWidget, Stat
         }
         val entries = LanesProcessRegistry.getEntries(project)
 
-        val allPids = LinkedHashSet<Long>()
+        // resolve every process tree in a single process-table scan, then reuse it: this used to
+        // walk the tree of each app twice per tick (once to collect pids, once to aggregate)
+        val rootPidByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Long>()
         for (entry in entries) {
-            allPids.addAll(ProcessStatsSampler.processTreePids(LanesProcessRegistry.pidOf(entry.handler)))
+            rootPidByEntry[entry] = LanesProcessRegistry.pidOf(entry.handler)
+        }
+        val treeByRootPid = ProcessStatsSampler.processTreePidsFor(rootPidByEntry.values)
+        val allPids = LinkedHashSet<Long>()
+        for (treePids in treeByRootPid.values) {
+            allPids.addAll(treePids)
         }
         val statsByPid = ProcessStatsSampler.samplePids(allPids)
 
         var totalRssKb = 0L
         var unhealthy = 0
-        for (entry in entries) {
-            val treePids = ProcessStatsSampler.processTreePids(LanesProcessRegistry.pidOf(entry.handler))
-            val stats = ProcessStatsSampler.aggregate(statsByPid, treePids)
+        for ((entry, rootPid) in rootPidByEntry) {
+            val treePids = treeByRootPid[rootPid]
+            val stats = if (treePids == null) null else ProcessStatsSampler.aggregate(statsByPid, treePids)
             if (stats != null) {
                 totalRssKb += stats.rssKb
             }

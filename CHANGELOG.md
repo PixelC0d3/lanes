@@ -5,6 +5,22 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.11] — Much cheaper monitoring
+- The monitor's sampling no longer walks the machine's whole process table once **per application**.
+  `ProcessHandle.descendants()` scans every process on the system on each call (~94 ms with ~640
+  processes running), and it was called once per monitored app by each of the three sampling loops -
+  so a refresh cost grew with the number of apps (~600 ms for 10 apps, every 2 seconds). One scan
+  now resolves every process tree at once: ~130 ms for the same 10 apps, and flat as apps are added.
+- The listening-ports call (`lsof`) now uses `-b -w`, skipping the kernel calls that block on every
+  mounted file system. On a machine with many mounts (a Docker host with a few dozen overlay mounts
+  is enough) that stat storm dominated the call: measured 889 ms before, 190 ms after, with the same
+  ports reported.
+- The status bar widget resolved the process tree of every app **twice** per tick (once to collect
+  pids, once to aggregate); it now reuses the single scan. This loop runs even with the monitor
+  closed, so it was burning CPU in the background.
+- Net effect with 10 apps running: roughly 1.5 s of work per monitor refresh down to ~0.4 s, and
+  the cost no longer scales with the number of applications.
+
 ## [1.0.10] — Maintenance release
 - No functional changes since 1.0.9. Republished to the Marketplace after fixing a description
   formatting issue: a leading emoji in the plugin description made the upload fail validation

@@ -67,6 +67,18 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.0.11</strong>:</p>
+        <ul>
+            <li>Much cheaper monitoring. Sampling no longer walks the machine's whole process table
+                once per application (that scan costs ~94 ms with ~640 processes running, and each
+                of the three sampling loops did it per app); a single scan now resolves every
+                process tree, so a refresh with 10 apps went from ~600 ms to ~130 ms of tree walking
+                and no longer grows with the number of apps.</li>
+            <li>The listening-ports lookup now runs lsof with -b -w, skipping the calls that block
+                on every mounted file system - 889 ms to 190 ms on a Docker host, same ports
+                reported. The status bar widget also stopped resolving each app's process tree
+                twice per tick (it runs even with the monitor closed).</li>
+        </ul>
         <p><strong>1.0.10</strong>:</p>
         <ul>
             <li>Maintenance release - no functional changes since 1.0.9 (which never reached the

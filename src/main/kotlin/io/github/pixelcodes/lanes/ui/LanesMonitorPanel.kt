@@ -1267,13 +1267,17 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         // resolve the process tree of every row first, then sample everything in single ps/lsof calls.
         // paused apps are skipped entirely here - the whole point is to stop spending the tree walk /
         // ps / lsof on them; their row is rebuilt from the last known values below.
+        val sampled = snapshots.filterNot { pausedHandlers.contains(it.handler) }
+        val rootPidBySnapshot = LinkedHashMap<ProcessSnapshot, Long>()
+        for (snapshot in sampled) {
+            rootPidBySnapshot[snapshot] = LanesProcessRegistry.pidOf(snapshot.handler)
+        }
+        // one process-table scan resolves every tree at once (see processTreePidsFor)
+        val treeByRootPid = ProcessStatsSampler.processTreePidsFor(rootPidBySnapshot.values)
         val treeBySnapshot = LinkedHashMap<ProcessSnapshot, Set<Long>>()
         val allPids = LinkedHashSet<Long>()
-        for (snapshot in snapshots) {
-            if (pausedHandlers.contains(snapshot.handler)) {
-                continue
-            }
-            val treePids = ProcessStatsSampler.processTreePids(LanesProcessRegistry.pidOf(snapshot.handler))
+        for ((snapshot, rootPid) in rootPidBySnapshot) {
+            val treePids = treeByRootPid[rootPid] ?: continue
             treeBySnapshot[snapshot] = treePids
             allPids.addAll(treePids)
         }
