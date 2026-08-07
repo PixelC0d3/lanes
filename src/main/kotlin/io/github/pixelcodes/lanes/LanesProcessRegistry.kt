@@ -6,6 +6,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 import com.intellij.execution.process.BaseProcessHandler
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.util.Disposer
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.process.ProcessListener
@@ -105,6 +107,7 @@ class LanesProcessRegistry private constructor() {
                               envFileName, loadedEnv, includeSystemEnv, readyCondition,
                               memAlertThreshold, memLimitRestart, cpuAlertThreshold,
                               rootLanesName, rootEnvFileName)
+            forgetWhenProjectCloses(project)
             ENTRIES.computeIfAbsent(project) { CopyOnWriteArrayList() }.add(entry)
             LAST_BY_NAME.computeIfAbsent(project) { ConcurrentHashMap() }.put(appName, entry)
             handler.addProcessListener(object : ProcessListener {
@@ -117,6 +120,37 @@ class LanesProcessRegistry private constructor() {
                 unregister(project, handler)
             }
             MemoryLimitWatcher.ensureStarted()
+        }
+
+        /** Projects already wired to drop their state when they close. */
+        private val CLEANUP_REGISTERED: MutableSet<Project> =
+            Collections.newSetFromMap(ConcurrentHashMap<Project, Boolean>())
+
+        /**
+         * Drops everything this registry holds for a project once the project is closed.
+         *
+         * Both maps are process-wide and keyed by project, and an entry only leaves on process
+         * termination - so an app still running when the project closes (and every name in
+         * [LAST_BY_NAME], which deliberately outlives its process) would pin that Project instance
+         * for the rest of the IDE session.
+         */
+        private fun forgetWhenProjectCloses(project: Project) {
+            if (project.isDisposed() || !CLEANUP_REGISTERED.add(project)) {
+                return
+            }
+            Disposer.register(project, Disposable {
+                ENTRIES.remove(project)
+                LAST_BY_NAME.remove(project)
+                CLEANUP_REGISTERED.remove(project)
+            })
+        }
+
+        /** Forgets a project's state right away; used by tests and by the disposer above. */
+        @JvmStatic
+        internal fun forgetProject(project: Project) {
+            ENTRIES.remove(project)
+            LAST_BY_NAME.remove(project)
+            CLEANUP_REGISTERED.remove(project)
         }
 
         @JvmStatic

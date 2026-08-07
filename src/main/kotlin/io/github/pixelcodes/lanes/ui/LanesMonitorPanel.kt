@@ -166,8 +166,12 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
     private var prevCpuSecondsByPid: Map<Long, Double> = emptyMap()
     private var prevSampleNanos: Long = 0
 
-    /** Recent memory-percent samples per process, feeding the "Mem trend" sparkline column. */
-    private val memHistory: MutableMap<ProcessHandler, ArrayDeque<Double>> = HashMap()
+    /**
+     * Recent memory-percent samples per process, feeding the "Mem trend" sparkline column.
+     * Concurrent: written by the sampling thread in [buildRows] and cleared from the EDT by
+     * Remove from List.
+     */
+    private val memHistory: MutableMap<ProcessHandler, ArrayDeque<Double>> = ConcurrentHashMap()
 
     /** Full session memory history per process, for the click-to-open chart (bounded). */
     private val fullHistory: MutableMap<ProcessHandler, MutableList<MemoryHistory.Sample>> = ConcurrentHashMap()
@@ -175,8 +179,12 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
     /** Apps the user paused monitoring for: they keep running, but are not sampled (no ps/lsof/tree walk). */
     private val pausedHandlers: MutableSet<ProcessHandler> = Collections.newSetFromMap(ConcurrentHashMap())
 
-    /** Last built row per handler, so a paused app can keep showing its frozen last values. */
-    private val lastRowByHandler: MutableMap<ProcessHandler, Row> = HashMap()
+    /**
+     * Last built row per handler, so a paused or stopped app keeps showing its frozen last values.
+     * Concurrent for the same reason as [memHistory]: the sampling thread writes it, the EDT
+     * clears entries from it.
+     */
+    private val lastRowByHandler: MutableMap<ProcessHandler, Row> = ConcurrentHashMap()
 
     /**
      * Terminated apps the user removed from the list. The table is rebuilt from the IDE's run

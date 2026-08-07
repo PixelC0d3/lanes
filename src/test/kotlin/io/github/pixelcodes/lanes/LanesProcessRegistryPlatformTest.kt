@@ -20,9 +20,7 @@ class LanesProcessRegistryPlatformTest : BasePlatformTestCase() {
      */
     override fun tearDown() {
         try {
-            for (entry in LanesProcessRegistry.getEntries(project)) {
-                LanesProcessRegistry.unregister(project, entry.handler)
-            }
+            LanesProcessRegistry.forgetProject(project)
         } finally {
             super.tearDown()
         }
@@ -99,6 +97,21 @@ class LanesProcessRegistryPlatformTest : BasePlatformTestCase() {
         assertNull("concurrent termination must not throw: ${failure.get()}", failure.get())
         assertTrue("every terminated app should be gone",
                    LanesProcessRegistry.getEntries(project).isEmpty())
+    }
+
+    fun testClosingAProjectDropsItsState() {
+        // an app still running when the project closes used to keep the Project instance (and its
+        // launch metadata, which outlives the process on purpose) pinned for the whole IDE session
+        val stillRunning = NopProcessHandler()
+        register("api", stillRunning)
+        assertFalse(LanesProcessRegistry.getEntries(project).isEmpty())
+
+        LanesProcessRegistry.forgetProject(project)
+
+        assertTrue("closing a project must drop its entries",
+                   LanesProcessRegistry.getEntries(project).isEmpty())
+        assertNull("closing a project must drop its launch metadata too",
+                   LanesProcessRegistry.findMetadataByName(project, "api"))
     }
 
     fun testMetadataSurvivesTerminationForTheMonitor() {
