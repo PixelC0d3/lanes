@@ -78,7 +78,11 @@ class LanesProcessRegistry private constructor() {
     }
 
     companion object {
-        private val ENTRIES = ConcurrentHashMap<Project, MutableList<Entry>>()
+        /**
+         * The list must stay a [CopyOnWriteArrayList]: entries are removed from process-termination
+         * callbacks, which the platform fires on several threads at once when a group is stopped.
+         */
+        private val ENTRIES = ConcurrentHashMap<Project, CopyOnWriteArrayList<Entry>>()
 
         /**
          * Last Lanes launch metadata per app name. Unlike ENTRIES this survives process
@@ -117,7 +121,22 @@ class LanesProcessRegistry private constructor() {
 
         @JvmStatic
         fun unregister(project: Project, handler: ProcessHandler) {
-            ENTRIES[project]?.removeAll { it.handler === handler }
+            ENTRIES[project]?.let { dropEntriesOf(it, handler) }
+        }
+
+        /**
+         * Drops every entry of [handler] from [entries]; returns whether anything was removed.
+         *
+         * Uses `removeIf`, never Kotlin's `removeAll { }`: the latter walks the list by index (it
+         * reads the size once, then indexes into it), which is not atomic on a
+         * [CopyOnWriteArrayList]. Stopping a group terminates several apps at once, so two
+         * termination callbacks unregister concurrently and one shrinks the list while the other is
+         * still indexing into it - that threw "ArrayIndexOutOfBoundsException: Index 8 out of bounds
+         * for length 8". `CopyOnWriteArrayList.removeIf` does the whole removal under its own lock.
+         */
+        @JvmStatic
+        internal fun dropEntriesOf(entries: MutableList<Entry>, handler: ProcessHandler): Boolean {
+            return entries.removeIf { it.handler === handler }
         }
 
         @JvmStatic

@@ -124,9 +124,8 @@ class MemoryLimitWatcher private constructor() {
             val now = System.nanoTime()
             val elapsedSeconds = if (prevCpuNanos == 0L) -1.0 else (now - prevCpuNanos) / 1_000_000_000.0
 
-            val treeByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Set<Long>>()
+            val rootPidByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Long>()
             val projectByEntry = HashMap<LanesProcessRegistry.Entry, Project>()
-            val allPids = LinkedHashSet<Long>()
             for ((project, entries) in snapshot) {
                 if (project.isDisposed()) {
                     continue
@@ -135,11 +134,18 @@ class MemoryLimitWatcher private constructor() {
                     if (entry.cpuAlertThreshold <= 0 || entry.handler.isProcessTerminated()) {
                         continue
                     }
-                    val treePids = ProcessStatsSampler.processTreePids(LanesProcessRegistry.pidOf(entry.handler))
-                    treeByEntry[entry] = treePids
+                    rootPidByEntry[entry] = LanesProcessRegistry.pidOf(entry.handler)
                     projectByEntry[entry] = project
-                    allPids.addAll(treePids)
                 }
+            }
+            // one process-table scan for every tree, instead of one walk per application
+            val treeByRootPid = ProcessStatsSampler.processTreePidsFor(rootPidByEntry.values)
+            val treeByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Set<Long>>()
+            val allPids = LinkedHashSet<Long>()
+            for ((entry, rootPid) in rootPidByEntry) {
+                val treePids = treeByRootPid[rootPid] ?: continue
+                treeByEntry[entry] = treePids
+                allPids.addAll(treePids)
             }
             if (allPids.isEmpty()) {
                 prevCpuByPid.clear()
@@ -235,14 +241,23 @@ class MemoryLimitWatcher private constructor() {
 
         private fun check(project: Project, entries: List<LanesProcessRegistry.Entry>) {
             // only applications with a configured limit are worth a ps call
-            val treeByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Set<Long>>()
-            val allPids = LinkedHashSet<Long>()
+            val rootPidByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Long>()
             for (entry in entries) {
                 val limit = entry.memoryLimitMb
                 if (limit == null || limit <= 0 || entry.handler.isProcessTerminated()) {
                     continue
                 }
-                val treePids = ProcessStatsSampler.processTreePids(LanesProcessRegistry.pidOf(entry.handler))
+                rootPidByEntry[entry] = LanesProcessRegistry.pidOf(entry.handler)
+            }
+            if (rootPidByEntry.isEmpty()) {
+                return
+            }
+            // one process-table scan for every tree, instead of one walk per application
+            val treeByRootPid = ProcessStatsSampler.processTreePidsFor(rootPidByEntry.values)
+            val treeByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Set<Long>>()
+            val allPids = LinkedHashSet<Long>()
+            for ((entry, rootPid) in rootPidByEntry) {
+                val treePids = treeByRootPid[rootPid] ?: continue
                 treeByEntry[entry] = treePids
                 allPids.addAll(treePids)
             }
