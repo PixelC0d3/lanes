@@ -47,6 +47,7 @@ import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.execution.ui.RunContentManager
 import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionToolbar
@@ -100,8 +101,12 @@ import io.github.pixelcodes.lanes.StopRunningLanesConfigurationsAction
  */
 class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(false, true), Disposable {
 
-    /** Column header names the user chose to hide (empty = everything visible). */
-    private val hiddenColumns: MutableSet<String> = LinkedHashSet()
+    /**
+     * Column header names the user chose to hide (empty = everything visible).
+     * Restored from [PropertiesComponent] so the choice survives closing the tool window,
+     * reopening the project and restarting the IDE.
+     */
+    private val hiddenColumns: MutableSet<String> = loadHiddenColumns(project)
 
     /**
      * A process the IDE ran, captured on the EDT (descriptor access) for the refresh.
@@ -659,14 +664,6 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
     }
 
     /** Shows env profiles by their file name (full path as tooltip), marking the active one(s). */
-    private class EnvProfileListRenderer(private val activePaths: Set<String>) : SimpleListCellRenderer<String>() {
-        override fun customize(list: javax.swing.JList<out String>, value: String?, index: Int, selected: Boolean, hasFocus: Boolean) {
-            if (value != null) {
-                setText(RunConfigurationHelper.envFileDisplayName(value) + (if (activePaths.contains(value)) "  (active)" else ""))
-                setToolTipText(value)
-            }
-        }
-    }
 
     /** Opens the port(s) of the clicked row in the browser (a menu when there is more than one). */
     private fun openPortsAt(e: MouseEvent) {
@@ -693,27 +690,6 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
     }
 
     /** Renders the Ports cell as a clickable hyperlink when the row has any listening port. */
-    private class PortsCellRenderer : DefaultTableCellRenderer() {
-        override fun getTableCellRendererComponent(
-            table: JTable, value: Any?, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int,
-        ): Component {
-            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
-            val text = value?.toString() ?: ""
-            val hasPorts = parsePorts(text).isNotEmpty()
-            if (hasPorts) {
-                if (!isSelected) {
-                    setForeground(JBColor.BLUE)
-                }
-                val attributes = HashMap(getFont().getAttributes())
-                attributes[TextAttribute.UNDERLINE] = TextAttribute.UNDERLINE_ON
-                setFont(getFont().deriveFont(attributes))
-                setToolTipText("Click to open in the browser")
-            } else {
-                setToolTipText(null)
-            }
-            return this
-        }
-    }
 
     /**
      * Renders the Env cell as a clickable hyperlink when the row has a loaded environment to show.
@@ -721,47 +697,8 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
      * affordance, so it reads as a dropdown: clicking it offers the profiles to switch to (plus a
      * "view variables" entry) instead of opening the viewer straight away.
      */
-    private class EnvCellRenderer(private val clickable: Boolean, private val switchable: Boolean) : DefaultTableCellRenderer() {
-        override fun getTableCellRendererComponent(
-            table: JTable, value: Any?, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int,
-        ): Component {
-            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
-            if (switchable) {
-                setText((value?.toString() ?: "") + "  ▾")
-            }
-            if (clickable || switchable) {
-                if (!isSelected) {
-                    setForeground(JBColor.BLUE)
-                }
-                val attributes = HashMap(getFont().getAttributes())
-                attributes[TextAttribute.UNDERLINE] = TextAttribute.UNDERLINE_ON
-                setFont(getFont().deriveFont(attributes))
-                setToolTipText(if (switchable) "Click to switch the group's environment or view the loaded variables"
-                               else "Click to view the loaded environment variables")
-            } else {
-                setToolTipText(null)
-            }
-            return this
-        }
-    }
 
     /** Colors the Status cell: green for healthy/running, red for a failing readiness check. */
-    private class StatusCellRenderer : DefaultTableCellRenderer() {
-        override fun getTableCellRendererComponent(
-            table: JTable, value: Any?, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int,
-        ): Component {
-            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
-            if (!isSelected) {
-                val text = value?.toString() ?: ""
-                if (text == "down") {
-                    setForeground(JBColor.RED)
-                } else if (text == "healthy" || text == "running") {
-                    setForeground(JBColor.GREEN)
-                }
-            }
-            return this
-        }
-    }
 
     /** Restarts every selected application; everything else keeps running. */
     private inner class RestartSelectedAction : DumbAwareAction(
@@ -996,6 +933,7 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
                     } else {
                         hiddenColumns.add(name)
                     }
+                    saveHiddenColumns(project, hiddenColumns)
                     applyColumnVisibility()
                 }
             }
@@ -1546,59 +1484,6 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
      * normalized to the min/max of the series (so trends are visible at any scale); the color
      * reflects the latest memory percent: green, orange from 70%, red from 90%.
      */
-    private class SparklineCellRenderer : JComponent(), TableCellRenderer {
-        private var values: DoubleArray = DoubleArray(0)
-        private var selected = false
-        private var table: JTable? = null
-
-        /** Set by the table's prepareRenderer for a paused row: the frozen line is drawn muted. */
-        var paused = false
-
-        override fun getTableCellRendererComponent(
-            table: JTable, value: Any?, isSelected: Boolean, hasFocus: Boolean, row: Int, column: Int,
-        ): Component {
-            this.values = value as? DoubleArray ?: DoubleArray(0)
-            this.selected = isSelected
-            this.table = table
-            return this
-        }
-
-        override fun paintComponent(g: Graphics) {
-            val g2 = g as Graphics2D
-            val t = table
-            if (t != null) {
-                g2.setColor(if (selected) t.getSelectionBackground() else t.getBackground())
-                g2.fillRect(0, 0, getWidth(), getHeight())
-            }
-            if (values.size < 2) {
-                return
-            }
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            var min = Double.MAX_VALUE
-            var max = -Double.MAX_VALUE
-            for (value in values) {
-                min = minOf(min, value)
-                max = maxOf(max, value)
-            }
-            val span = maxOf(max - min, 0.0001)
-            val width = maxOf(getWidth() - 6, 1)
-            val height = maxOf(getHeight() - 6, 1)
-            val xs = IntArray(values.size)
-            val ys = IntArray(values.size)
-            for (i in values.indices) {
-                xs[i] = 3 + Math.round(i.toDouble() * width / (values.size - 1)).toInt()
-                ys[i] = 3 + Math.round(height - (values[i] - min) / span * height).toInt()
-            }
-            val last = values[values.size - 1]
-            g2.setColor(when {
-                paused -> UIUtil.getLabelDisabledForeground()
-                last >= 90 -> JBColor.RED
-                last >= 70 -> JBColor.ORANGE
-                else -> JBColor.GREEN
-            })
-            g2.drawPolyline(xs, ys, values.size)
-        }
-    }
 
     override fun dispose() {
         timer.stop()
@@ -1674,6 +1559,29 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
                 }
             }
             return ArrayList(profiles)
+        }
+
+        /**
+         * Key under which the hidden-column choice is stored, per project.
+         * Kept as a list, never a joined string: column headers contain spaces and slashes
+         * ("Mem Usage / Limit"), so any separator would be a bug waiting to happen.
+         */
+        private const val HIDDEN_COLUMNS_KEY = "lanes.monitor.hiddenColumns"
+
+        /** Restores the hidden-column choice of this project (empty when nothing was stored). */
+        private fun loadHiddenColumns(project: Project): MutableSet<String> {
+            val stored = PropertiesComponent.getInstance(project).getList(HIDDEN_COLUMNS_KEY)
+            return if (stored == null) LinkedHashSet() else LinkedHashSet(stored)
+        }
+
+        /** Persists the hidden-column choice; an empty selection clears the stored value. */
+        private fun saveHiddenColumns(project: Project, columns: Set<String>) {
+            val properties = PropertiesComponent.getInstance(project)
+            if (columns.isEmpty()) {
+                properties.unsetValue(HIDDEN_COLUMNS_KEY)
+            } else {
+                properties.setList(HIDDEN_COLUMNS_KEY, ArrayList(columns))
+            }
         }
 
         /**

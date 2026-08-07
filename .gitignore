@@ -13,3 +13,12 @@ dist
 !gradle/wrapper/gradle-wrapper.jar
 .idea/
 .claude/
+
+# Never let credentials/recovery codes reach a commit, even by `git add -A`.
+# Secrets should not live in the working tree at all - this is only a safety net.
+*_backup_code*.txt
+*secret*
+*credentials*
+*.key
+*.pem
+.env.local

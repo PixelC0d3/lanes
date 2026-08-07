@@ -21,6 +21,11 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
 
     intellijPlatform {
+        // Platform test fixtures: give a test a real (headless) Project/Application, so the code
+        // that only exists against the platform - the process registry, run configuration
+        // persistence - can be tested instead of only its pure helpers.
+        testFramework org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform.INSTANCE
+
         // target platform: IntelliJ IDEA Ultimate (was Community until 2.0.15). Ultimate bundles the
         // JavaScript + NodeJS plugins, which we need on the COMPILE classpath for the optional Node
         // env-file module (see below). Compiling against Ultimate does not restrict where the plugin
