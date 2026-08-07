@@ -8,8 +8,16 @@ Uninstall the original plugin before installing this one.
 ## [1.0.13] — The monitor keeps the applications that already stopped
 - The Lanes Monitor now works like `docker ps -a`: an application that exits **stays in the list**
   as history instead of disappearing, so you can see what ran and restart it with one click. The
-  row is greyed out and its live columns (PID, ports, memory, CPU) are blanked; the Status column
-  reports the exit the docker way (`exited (0)`), and Uptime keeps how long the app ran.
+  row is greyed out and **keeps the last values it had** (PID, ports, memory, CPU, trend) frozen at
+  the moment it stopped.
+- **Running applications stay at the top**; the history of stopped ones follows below.
+- The Status column says **stopped** when you stop or kill an application (the exit code there is
+  just how the signal surfaced), **paused** while monitoring is paused, and keeps a real failure's
+  code (`exited (1)`) because that one is worth seeing.
+- Starting an application on a port a stopped one was using **replaces that history row**, instead
+  of leaving two rows claiming the same port.
+- **Pause/Resume Monitoring are disabled for stopped applications.** Resume used to be offered on a
+  stopped app and looked like a start button, but it never started anything - use Restart.
 - **Running applications are marked with the green dot** the IDE puts on its own Run button, so a
   running app is told apart from a stopped one at a glance (a paused app keeps its dot - it is
   still running, just not sampled).
