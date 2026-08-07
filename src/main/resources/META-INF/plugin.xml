@@ -70,9 +70,13 @@
         <p><strong>1.0.13</strong>:</p>
         <ul>
             <li>The Lanes Monitor now works like <code>docker ps -a</code>: an application that exits
-                stays in the list as history instead of disappearing, greyed out, with its live
-                columns blanked and the exit reported in the Status column (<code>exited (0)</code>).
-                Restart brings it back with one click.</li>
+                stays in the list as history instead of disappearing, greyed out and frozen at the
+                last values it had (PID, ports, memory, CPU). Restart brings it back with one click.
+                Running applications stay at the top of the list.</li>
+            <li>The Status column says "stopped" when you stop or kill an application and "paused"
+                while monitoring is paused; a real failure still shows its exit code. Starting an
+                app on the port of a stopped one replaces that history row, and Pause/Resume
+                Monitoring are disabled for applications that are not running.</li>
             <li>Running applications are marked with the same green dot the IDE puts on its Run
                 button, so running and stopped rows are told apart at a glance.</li>
             <li>New "Remove from List" action for stopped applications (toolbar and right-click):

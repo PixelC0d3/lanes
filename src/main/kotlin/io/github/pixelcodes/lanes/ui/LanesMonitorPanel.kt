@@ -873,14 +873,17 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
         override fun update(e: AnActionEvent) {
-            e.getPresentation().setEnabled(selectedRows().any { it.handler != null && !pausedHandlers.contains(it.handler) })
+            // only a running app can be taken out of sampling; a stopped one is restarted, not resumed
+            e.getPresentation().setEnabled(selectedRows().any {
+                it.handler != null && it.running && !pausedHandlers.contains(it.handler)
+            })
         }
 
         override fun actionPerformed(e: AnActionEvent) {
             var changed = false
             for (row in selectedRows()) {
                 val handler = row.handler ?: continue
-                if (pausedHandlers.add(handler)) {
+                if (row.running && pausedHandlers.add(handler)) {
                     changed = true
                 }
             }
@@ -898,14 +901,18 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
         override fun update(e: AnActionEvent) {
-            e.getPresentation().setEnabled(selectedRows().any { it.handler != null && pausedHandlers.contains(it.handler) })
+            // never offered for a stopped app: resuming does not start anything, which read as a
+            // broken "start" button before
+            e.getPresentation().setEnabled(selectedRows().any {
+                it.handler != null && it.running && pausedHandlers.contains(it.handler)
+            })
         }
 
         override fun actionPerformed(e: AnActionEvent) {
             var changed = false
             for (row in selectedRows()) {
                 val handler = row.handler ?: continue
-                if (pausedHandlers.remove(handler)) {
+                if (row.running && pausedHandlers.remove(handler)) {
                     changed = true
                 }
             }
@@ -1467,41 +1474,51 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
 
         // drop the state of processes that are gone
         val liveHandlers = HashSet<ProcessHandler>()
+        val runningHandlers = HashSet<ProcessHandler>()
         for (snapshot in snapshots) {
             liveHandlers.add(snapshot.handler)
+            if (snapshot.running) {
+                runningHandlers.add(snapshot.handler)
+            }
         }
         memHistory.keys.retainAll(liveHandlers)
         fullHistory.keys.retainAll(liveHandlers)
         lastRowByHandler.keys.retainAll(liveHandlers)
-        pausedHandlers.retainAll(liveHandlers)
+        // pausing only means something while the app runs: a stopped one must not come back paused,
+        // and this is what keeps Resume Monitoring from lighting up on a history row
+        pausedHandlers.retainAll(runningHandlers)
 
-        return rows
+        // a live app takes over the port of the stopped one it replaced; running rows stay on top
+        return runningFirst(dropSupersededByPort(rows))
     }
 
     /** The app's icon with the platform's green "live" dot, the same mark the Run button uses. */
     private fun runningIcon(icon: Icon): Icon = ExecutionUtil.getLiveIndicator(icon)
 
     /**
-     * A history row for an application that already exited: no live metrics left to show, so the
-     * sampled columns are blanked and the Status column reports the exit, docker-ps style
-     * (`exited (0)`). The Lanes/Env labels and how long it ran are kept from its last sampled row
-     * when there is one. The descriptor is kept so Restart still reruns exactly this app.
+     * A history row for an application that already exited. Its last sampled values (PID, ports,
+     * memory, CPU, trend) are kept exactly as they were the moment it stopped - that is the whole
+     * point of the history: what this app was using before it went away. Only the Status column
+     * changes, to report how it ended. The descriptor is kept so Restart reruns exactly this app.
      */
     private fun stoppedRow(snapshot: ProcessSnapshot): Row {
+        val status = stoppedStatusText(snapshot.handler.getExitCode())
         val last = lastRowByHandler[snapshot.handler]
-        return Row(last?.name ?: snapshot.name, plainIcon(snapshot),
-                    last?.lanesName ?: "-", last?.envFileName ?: "-",
-                    snapshot.handler, snapshot.descriptor, last?.meta,
-                    "-", "-", last?.uptime ?: "-", exitStatusText(snapshot.handler),
-                    "-", "-", "-", DoubleArray(0), last?.envProfiles, false, false)
+        if (last == null) {
+            // it stopped before the monitor ever sampled it: nothing to freeze
+            return Row(snapshot.name, plainIcon(snapshot), "-", "-", snapshot.handler, snapshot.descriptor,
+                        null, "-", "-", "-", status, "-", "-", "-", DoubleArray(0), emptyList(), false, false)
+        }
+        return Row(last.name, plainIcon(snapshot), last.lanesName, last.envFileName,
+                    snapshot.handler, snapshot.descriptor, last.meta,
+                    last.pid, last.ports, last.uptime, status,
+                    last.memUsage, last.memPercent, last.cpuPercent, last.memTrend,
+                    last.envProfiles, false, false)
     }
 
     /** The app's plain icon, without the live dot: it is not running anymore. */
     private fun plainIcon(snapshot: ProcessSnapshot): Icon =
         snapshot.icon ?: AllIcons.RunConfigurations.Application
-
-    /** `exited (0)` / `exited (1)` like docker ps, or a plain `exited` when the code is unknown. */
-    private fun exitStatusText(handler: ProcessHandler): String = exitStatusText(handler.getExitCode())
 
     /**
      * A frozen display row for a paused app: its last sampled values kept as-is (memory, CPU,
@@ -1517,8 +1534,10 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
             return Row(snapshot.name, icon, "-", "-", snapshot.handler, snapshot.descriptor, null,
                         "n/a", "-", "n/a", "paused", "n/a", "n/a", "n/a", DoubleArray(0), emptyList(), true)
         }
+        // the Status column says "paused" rather than repeating the frozen health state, so the
+        // reason the numbers stopped moving is visible in the table itself
         return Row(last.name, last.icon, last.lanesName, last.envFileName, snapshot.handler, snapshot.descriptor,
-                    last.meta, last.pid, last.ports, last.uptime, last.status, last.memUsage, last.memPercent,
+                    last.meta, last.pid, last.ports, last.uptime, "paused", last.memUsage, last.memPercent,
                     last.cpuPercent, last.memTrend, last.envProfiles, true)
     }
 
@@ -1658,13 +1677,47 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         }
 
         /**
-         * Status text of an application that exited, in the docker-ps shape: `exited (0)`.
-         * The exit code is null when the platform never captured one (a process the IDE only
-         * detached from), and the status is then just `exited`.
+         * Orders the table: running applications first (in their original order), then the history
+         * of the ones that stopped. Stable, so a refresh never shuffles rows around.
          */
         @JvmStatic
-        fun exitStatusText(exitCode: Int?): String =
-            if (exitCode == null) "exited" else "exited ($exitCode)"
+        fun runningFirst(rows: List<Row>): List<Row> =
+            rows.filter { it.running } + rows.filterNot { it.running }
+
+        /**
+         * Drops the history rows whose ports a running application has taken over. Restarting an
+         * app - or starting another one on the same port - makes the old stopped row stale and
+         * confusing (two rows claiming port 3003), so the live one replaces it.
+         */
+        @JvmStatic
+        fun dropSupersededByPort(rows: List<Row>): List<Row> {
+            val livePorts = HashSet<Int>()
+            for (row in rows) {
+                if (row.running) {
+                    livePorts.addAll(parsePorts(row.ports))
+                }
+            }
+            if (livePorts.isEmpty()) {
+                return rows
+            }
+            return rows.filter { row -> row.running || parsePorts(row.ports).none { livePorts.contains(it) } }
+        }
+
+        /**
+         * Exit codes that mean "someone stopped this app", not "this app failed": the shell
+         * convention 128+signal for SIGINT/SIGTERM/SIGKILL (which is how Stop and Force Kill end a
+         * process), plus the bare signal numbers some launchers report instead.
+         */
+        private val STOP_EXIT_CODES = setOf(130, 143, 137, 2, 15, 9)
+
+        /**
+         * Status text of an application that is no longer running. Stopping or killing it reads as
+         * `stopped` - the exit code there is just how the signal surfaced and says nothing useful.
+         * A genuine failure keeps its code (`exited (1)`), because that is worth seeing.
+         */
+        @JvmStatic
+        fun stoppedStatusText(exitCode: Int?): String =
+            if (exitCode == null || STOP_EXIT_CODES.contains(exitCode)) "stopped" else "exited ($exitCode)"
 
         /** Group names (from the rows) whose configured profiles include the chosen one - the batch targets. */
         @JvmStatic

@@ -21,18 +21,28 @@ class LanesMonitorPanelTest {
             "n/a", "n/a", "n/a", DoubleArray(0), profiles.toList())
     }
 
-    // --- history rows of applications that exited -------------------------------------------
+    // --- history rows of applications that are no longer running ------------------------------
 
-    @Test
-    fun exitStatusShowsTheExitCodeLikeDockerPs() {
-        assertEquals("exited (0)", LanesMonitorPanel.exitStatusText(0))
-        assertEquals("exited (1)", LanesMonitorPanel.exitStatusText(1))
-        assertEquals("exited (137)", LanesMonitorPanel.exitStatusText(137))
+    private fun row(name: String, ports: String, running: Boolean): LanesMonitorPanel.Row {
+        return LanesMonitorPanel.Row(
+            name, null, "-", "-", null, null, null, "123", ports, "1m",
+            if (running) "running" else "stopped",
+            "n/a", "n/a", "n/a", DoubleArray(0), emptyList(), false, running)
     }
 
     @Test
-    fun exitStatusWithoutAKnownCodeIsPlain() {
-        assertEquals("exited", LanesMonitorPanel.exitStatusText(null))
+    fun stoppingAnAppReadsAsStoppedNotAsAnExitCode() {
+        // Stop/Force Kill surface as a signal; the number carries no information worth showing
+        assertEquals("stopped", LanesMonitorPanel.stoppedStatusText(130))
+        assertEquals("stopped", LanesMonitorPanel.stoppedStatusText(143))
+        assertEquals("stopped", LanesMonitorPanel.stoppedStatusText(137))
+        assertEquals("stopped", LanesMonitorPanel.stoppedStatusText(null))
+    }
+
+    @Test
+    fun aRealFailureKeepsItsExitCode() {
+        assertEquals("exited (1)", LanesMonitorPanel.stoppedStatusText(1))
+        assertEquals("exited (0)", LanesMonitorPanel.stoppedStatusText(0))
     }
 
     @Test
@@ -43,10 +53,68 @@ class LanesMonitorPanelTest {
 
     @Test
     fun stoppedRowsAreNotRestartedByTheUnhealthySweep() {
-        // a history row reports its exit, never "down", so Restart Unhealthy must skip it
-        val exited = rowWithStatus(LanesMonitorPanel.exitStatusText(0))
+        // a history row reports how it ended, never "down", so Restart Unhealthy must skip it
+        val stopped = rowWithStatus(LanesMonitorPanel.stoppedStatusText(130))
 
-        assertTrue(LanesMonitorPanel.unhealthyRows(listOf(exited)).isEmpty())
+        assertTrue(LanesMonitorPanel.unhealthyRows(listOf(stopped)).isEmpty())
+    }
+
+    @Test
+    fun runningRowsComeBeforeTheHistory() {
+        val stoppedA = row("a", "-", false)
+        val running = row("b", "3003", true)
+        val stoppedB = row("c", "-", false)
+
+        val ordered = LanesMonitorPanel.runningFirst(listOf(stoppedA, running, stoppedB))
+
+        assertEquals(listOf("b", "a", "c"), ordered.map { it.name })
+    }
+
+    @Test
+    fun orderingKeepsTheRelativeOrderOfEachGroup() {
+        val rows = listOf(row("r1", "-", true), row("s1", "-", false),
+                          row("r2", "-", true), row("s2", "-", false))
+
+        val ordered = LanesMonitorPanel.runningFirst(rows)
+
+        assertEquals(listOf("r1", "r2", "s1", "s2"), ordered.map { it.name })
+    }
+
+    @Test
+    fun aLiveAppTakesOverThePortOfTheStoppedRowItReplaced() {
+        val stopped = row("old", "3003", false)
+        val running = row("new", "3003", true)
+
+        val kept = LanesMonitorPanel.dropSupersededByPort(listOf(stopped, running))
+
+        assertEquals(listOf("new"), kept.map { it.name })
+    }
+
+    @Test
+    fun historyOnOtherPortsSurvives() {
+        val stopped = row("old", "3011", false)
+        val running = row("new", "3003", true)
+
+        val kept = LanesMonitorPanel.dropSupersededByPort(listOf(stopped, running))
+
+        assertEquals(listOf("old", "new"), kept.map { it.name })
+    }
+
+    @Test
+    fun historyWithoutPortsIsNeverDropped() {
+        val stopped = row("old", "-", false)
+        val running = row("new", "3003", true)
+
+        assertEquals(2, LanesMonitorPanel.dropSupersededByPort(listOf(stopped, running)).size)
+    }
+
+    @Test
+    fun twoStoppedRowsOnTheSamePortBothStay() {
+        // nothing live claims the port, so neither row is stale yet
+        val first = row("old", "3003", false)
+        val second = row("older", "3003", false)
+
+        assertEquals(2, LanesMonitorPanel.dropSupersededByPort(listOf(first, second)).size)
     }
 
     @Test
