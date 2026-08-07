@@ -5,6 +5,14 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.12] — Fixes a crash when stopping several applications at once
+- Stopping a group no longer reports an internal error
+  (`ArrayIndexOutOfBoundsException` from `LanesProcessRegistry.unregister`). The platform fires the
+  termination callbacks of the stopped applications on several threads at once, and removing the
+  entries used a list walk that is not atomic, so one callback could shrink the list while another
+  was still indexing into it. The applications did stop correctly - the error was raised after the
+  fact - but it surfaced as an IDE error report.
+
 ## [1.0.11] — Much cheaper monitoring
 - The monitor's sampling no longer walks the machine's whole process table once **per application**.
   `ProcessHandle.descendants()` scans every process on the system on each call (~94 ms with ~640

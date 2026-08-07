@@ -67,6 +67,13 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.0.12</strong>:</p>
+        <ul>
+            <li>Fixes an internal error (ArrayIndexOutOfBoundsException) reported when stopping
+                several applications at once: the platform fires their termination callbacks on
+                several threads and removing the registry entries was not atomic. The apps did stop
+                correctly, but the IDE reported an error afterwards.</li>
+        </ul>
         <p><strong>1.0.11</strong>:</p>
         <ul>
             <li>Much cheaper monitoring. Sampling no longer walks the machine's whole process table
