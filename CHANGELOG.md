@@ -5,6 +5,22 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.13] — The monitor keeps the applications that already stopped
+- The Lanes Monitor now works like `docker ps -a`: an application that exits **stays in the list**
+  as history instead of disappearing, so you can see what ran and restart it with one click. The
+  row is greyed out and its live columns (PID, ports, memory, CPU) are blanked; the Status column
+  reports the exit the docker way (`exited (0)`), and Uptime keeps how long the app ran.
+- **Running applications are marked with the green dot** the IDE puts on its own Run button, so a
+  running app is told apart from a stopped one at a glance (a paused app keeps its dot - it is
+  still running, just not sampled).
+- New **Remove from List** action (toolbar and right-click), enabled for stopped applications: it
+  drops them from the monitor and forgets their history. Running applications are not removable -
+  they would be listed again on the next refresh, and *Pause Monitoring* is the way to take a
+  running app out of sampling.
+- The history lives for the IDE session and follows the run tabs: closing an application's run tab
+  also drops it from the monitor.
+- Stop and Force Kill are disabled on rows of applications that already exited.
+
 ## [1.0.12] — Fixes a crash when stopping several applications at once
 - Stopping a group no longer reports an internal error
   (`ArrayIndexOutOfBoundsException` from `LanesProcessRegistry.unregister`). The platform fires the
