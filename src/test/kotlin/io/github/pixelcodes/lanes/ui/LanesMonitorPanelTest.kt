@@ -21,6 +21,34 @@ class LanesMonitorPanelTest {
             "n/a", "n/a", "n/a", DoubleArray(0), profiles.toList())
     }
 
+    // --- history rows of applications that exited -------------------------------------------
+
+    @Test
+    fun exitStatusShowsTheExitCodeLikeDockerPs() {
+        assertEquals("exited (0)", LanesMonitorPanel.exitStatusText(0))
+        assertEquals("exited (1)", LanesMonitorPanel.exitStatusText(1))
+        assertEquals("exited (137)", LanesMonitorPanel.exitStatusText(137))
+    }
+
+    @Test
+    fun exitStatusWithoutAKnownCodeIsPlain() {
+        assertEquals("exited", LanesMonitorPanel.exitStatusText(null))
+    }
+
+    @Test
+    fun rowsAreRunningUnlessSaidOtherwise() {
+        // every existing call site builds live rows, so the flag has to default to running
+        assertTrue(rowWithStatus("running").running)
+    }
+
+    @Test
+    fun stoppedRowsAreNotRestartedByTheUnhealthySweep() {
+        // a history row reports its exit, never "down", so Restart Unhealthy must skip it
+        val exited = rowWithStatus(LanesMonitorPanel.exitStatusText(0))
+
+        assertTrue(LanesMonitorPanel.unhealthyRows(listOf(exited)).isEmpty())
+    }
+
     @Test
     fun unhealthyRowsKeepsOnlyDownRows() {
         val down = rowWithStatus("down")

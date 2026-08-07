@@ -103,12 +103,17 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
     /** Column header names the user chose to hide (empty = everything visible). */
     private val hiddenColumns: MutableSet<String> = LinkedHashSet()
 
-    /** A process the IDE is running, captured on the EDT (descriptor access) for the refresh. */
+    /**
+     * A process the IDE ran, captured on the EDT (descriptor access) for the refresh.
+     * [running] is false once the process terminated: the row stays in the table as history
+     * (docker-ps-style) until the user removes it or closes its run tab.
+     */
     private class ProcessSnapshot(
         val name: String,
         val icon: Icon?,
         val handler: ProcessHandler,
         val descriptor: RunContentDescriptor,
+        val running: Boolean,
     )
 
     /** Immutable display row; built off the EDT with all texts precomputed. */
@@ -133,6 +138,11 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         envProfiles: List<String>?,
         /** True when the user paused monitoring for this app: values are frozen, the row is greyed. */
         @JvmField val paused: Boolean = false,
+        /**
+         * False once the application terminated: the row stays as history, greyed and without the
+         * live indicator on its icon, and can be removed from the list by the user.
+         */
+        @JvmField val running: Boolean = true,
     ) {
         @JvmField val envProfiles: List<String> = envProfiles ?: emptyList()
     }
@@ -162,6 +172,13 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
 
     /** Last built row per handler, so a paused app can keep showing its frozen last values. */
     private val lastRowByHandler: MutableMap<ProcessHandler, Row> = HashMap()
+
+    /**
+     * Terminated apps the user removed from the list. The table is rebuilt from the IDE's run
+     * descriptors on every refresh, so a removed app would come straight back without this;
+     * entries drop out on their own once the app's run tab is closed.
+     */
+    private val removedHandlers: MutableSet<ProcessHandler> = Collections.newSetFromMap(ConcurrentHashMap())
     private val sparklineRenderer = SparklineCellRenderer()
     private val portsRenderer = PortsCellRenderer()
     private val statusRenderer = StatusCellRenderer()
@@ -227,10 +244,12 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
             override fun prepareRenderer(renderer: TableCellRenderer, row: Int, column: Int): Component {
                 val component = super.prepareRenderer(renderer, row, column)
                 val item = this@LanesMonitorPanel.model.getItem(convertRowIndexToModel(row))
-                val paused = item != null && item.paused
+                // both a paused app and one that already exited are drawn muted; they are told
+                // apart by the live dot on the icon, which only a running app has
+                val muted = item != null && (item.paused || !item.running)
                 if (component is SparklineCellRenderer) {
-                    component.paused = paused
-                } else if (paused && !isCellSelected(row, column)) {
+                    component.paused = muted
+                } else if (muted && !isCellSelected(row, column)) {
                     component.setForeground(UIUtil.getLabelDisabledForeground())
                 }
                 return component
@@ -247,6 +266,7 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         val killSelected: AnAction = KillSelectedAction()
         val pauseMonitoring: AnAction = PauseMonitoringAction()
         val resumeMonitoring: AnAction = ResumeMonitoringAction()
+        val removeFromList: AnAction = RemoveFromListAction()
         val restartUnhealthy: AnAction = RestartUnhealthyAction()
 
         val rowActions = DefaultActionGroup()
@@ -256,6 +276,7 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         rowActions.addSeparator()
         rowActions.add(pauseMonitoring)
         rowActions.add(resumeMonitoring)
+        rowActions.add(removeFromList)
         rowActions.addSeparator()
         rowActions.add(restartUnhealthy)
 
@@ -268,7 +289,7 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         // add the row actions individually (avoids the deprecated DefaultActionGroup.addAll(ActionGroup))
         toolbarGroup.addAll(restartSelected, stopSelected, killSelected)
         toolbarGroup.addSeparator()
-        toolbarGroup.addAll(pauseMonitoring, resumeMonitoring)
+        toolbarGroup.addAll(pauseMonitoring, resumeMonitoring, removeFromList)
         toolbarGroup.addSeparator()
         toolbarGroup.add(restartUnhealthy)
         toolbarGroup.add(MemoryAnalysisAction())
@@ -778,12 +799,15 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
         override fun update(e: AnActionEvent) {
-            e.getPresentation().setEnabled(selectedRows().isNotEmpty())
+            // nothing to stop on a history row of an app that already exited
+            e.getPresentation().setEnabled(selectedRows().any { it.running })
         }
 
         override fun actionPerformed(e: AnActionEvent) {
             for (row in selectedRows()) {
-                row.handler?.destroyProcess()
+                if (row.running) {
+                    row.handler?.destroyProcess()
+                }
             }
         }
     }
@@ -796,11 +820,12 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
         override fun update(e: AnActionEvent) {
-            e.getPresentation().setEnabled(selectedRows().isNotEmpty())
+            // nothing to kill on a history row of an app that already exited
+            e.getPresentation().setEnabled(selectedRows().any { it.running })
         }
 
         override fun actionPerformed(e: AnActionEvent) {
-            val rows = selectedRows()
+            val rows = selectedRows().filter { it.running }
             if (rows.isEmpty()) {
                 return
             }
@@ -883,6 +908,41 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
                 if (pausedHandlers.remove(handler)) {
                     changed = true
                 }
+            }
+            if (changed) {
+                refresh()
+            }
+        }
+    }
+
+    /**
+     * Removes the selected stopped app(s) from the list, dropping their history (memory chart
+     * samples included). Only stopped apps can be removed: a running one would be listed again on
+     * the next refresh, and taking it out of monitoring is what Pause Monitoring is for.
+     */
+    private inner class RemoveFromListAction : DumbAwareAction(
+        "Remove from List",
+        "Remove the selected stopped application(s) from the monitor and forget their history",
+        AllIcons.General.Remove) {
+
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+
+        override fun update(e: AnActionEvent) {
+            e.getPresentation().setEnabled(selectedRows().any { it.handler != null && !it.running })
+        }
+
+        override fun actionPerformed(e: AnActionEvent) {
+            var changed = false
+            for (row in selectedRows()) {
+                val handler = row.handler ?: continue
+                if (row.running || !removedHandlers.add(handler)) {
+                    continue
+                }
+                memHistory.remove(handler)
+                fullHistory.remove(handler)
+                lastRowByHandler.remove(handler)
+                pausedHandlers.remove(handler)
+                changed = true
             }
             if (changed) {
                 refresh()
@@ -1186,14 +1246,22 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         if (!sampling.compareAndSet(false, true)) {
             return
         }
-        // descriptors must be collected on the EDT; heavy sampling then runs pooled
+        // descriptors must be collected on the EDT; heavy sampling then runs pooled.
+        // terminated processes are kept as history rows - the IDE keeps their descriptor until the
+        // run tab is closed, which is exactly the lifetime the history should have
         val snapshots = ArrayList<ProcessSnapshot>()
+        val knownHandlers = HashSet<ProcessHandler>()
         for (descriptor in RunContentManager.getInstance(project).getAllDescriptors()) {
-            val handler = descriptor.getProcessHandler()
-            if (handler != null && !handler.isProcessTerminated()) {
-                snapshots.add(ProcessSnapshot(descriptor.getDisplayName(), descriptor.getIcon(), handler, descriptor))
+            val handler = descriptor.getProcessHandler() ?: continue
+            knownHandlers.add(handler)
+            if (removedHandlers.contains(handler)) {
+                continue
             }
+            snapshots.add(ProcessSnapshot(descriptor.getDisplayName(), descriptor.getIcon(),
+                                          handler, descriptor, !handler.isProcessTerminated()))
         }
+        // a removed app only needs to stay suppressed while its run tab still exists
+        removedHandlers.retainAll(knownHandlers)
         val entries = LanesProcessRegistry.getEntries(project)
         // the env profiles configured on each Lanes group - read on the EDT (RunManager),
         // so the Env column can offer them as a dropdown and the batch env switch can list them
@@ -1267,7 +1335,8 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         // resolve the process tree of every row first, then sample everything in single ps/lsof calls.
         // paused apps are skipped entirely here - the whole point is to stop spending the tree walk /
         // ps / lsof on them; their row is rebuilt from the last known values below.
-        val sampled = snapshots.filterNot { pausedHandlers.contains(it.handler) }
+        // stopped apps are history rows and paused apps were opted out: neither is sampled
+        val sampled = snapshots.filter { it.running && !pausedHandlers.contains(it.handler) }
         val rootPidBySnapshot = LinkedHashMap<ProcessSnapshot, Long>()
         for (snapshot in sampled) {
             rootPidBySnapshot[snapshot] = LanesProcessRegistry.pidOf(snapshot.handler)
@@ -1290,6 +1359,11 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
 
         val rows = ArrayList<Row>(snapshots.size)
         for (snapshot in snapshots) {
+            if (!snapshot.running) {
+                // history row: the app already exited, so there is nothing left to sample
+                rows.add(stoppedRow(snapshot))
+                continue
+            }
             if (pausedHandlers.contains(snapshot.handler)) {
                 // frozen row: keep the last known values, greyed out, no fresh sampling
                 rows.add(pausedRow(snapshot))
@@ -1312,8 +1386,9 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
                                else LanesProcessRegistry.findMetadataByName(project, snapshot.name)
 
             val name = live?.appName ?: snapshot.name
-            val icon: Icon = if (live != null) configuredAppIcon
-                             else snapshot.icon ?: AllIcons.RunConfigurations.Application
+            // the running indicator is the same green dot the platform puts on the Run button
+            val icon: Icon = runningIcon(if (live != null) configuredAppIcon
+                                         else snapshot.icon ?: AllIcons.RunConfigurations.Application)
             val lanesName = meta?.lanesName ?: "-"
             // grouped app: its Lanes env; standalone app: the env the plugin loaded into it
             // (active .env file name, or "-" when it runs with only its own variables)
@@ -1403,6 +1478,31 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         return rows
     }
 
+    /** The app's icon with the platform's green "live" dot, the same mark the Run button uses. */
+    private fun runningIcon(icon: Icon): Icon = ExecutionUtil.getLiveIndicator(icon)
+
+    /**
+     * A history row for an application that already exited: no live metrics left to show, so the
+     * sampled columns are blanked and the Status column reports the exit, docker-ps style
+     * (`exited (0)`). The Lanes/Env labels and how long it ran are kept from its last sampled row
+     * when there is one. The descriptor is kept so Restart still reruns exactly this app.
+     */
+    private fun stoppedRow(snapshot: ProcessSnapshot): Row {
+        val last = lastRowByHandler[snapshot.handler]
+        return Row(last?.name ?: snapshot.name, plainIcon(snapshot),
+                    last?.lanesName ?: "-", last?.envFileName ?: "-",
+                    snapshot.handler, snapshot.descriptor, last?.meta,
+                    "-", "-", last?.uptime ?: "-", exitStatusText(snapshot.handler),
+                    "-", "-", "-", DoubleArray(0), last?.envProfiles, false, false)
+    }
+
+    /** The app's plain icon, without the live dot: it is not running anymore. */
+    private fun plainIcon(snapshot: ProcessSnapshot): Icon =
+        snapshot.icon ?: AllIcons.RunConfigurations.Application
+
+    /** `exited (0)` / `exited (1)` like docker ps, or a plain `exited` when the code is unknown. */
+    private fun exitStatusText(handler: ProcessHandler): String = exitStatusText(handler.getExitCode())
+
     /**
      * A frozen display row for a paused app: its last sampled values kept as-is (memory, CPU,
      * ports, uptime, status), only marked [Row.paused] so the table greys it out. Identity fields
@@ -1412,7 +1512,8 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
     private fun pausedRow(snapshot: ProcessSnapshot): Row {
         val last = lastRowByHandler[snapshot.handler]
         if (last == null) {
-            val icon = snapshot.icon ?: AllIcons.RunConfigurations.Application
+            // still running, just not sampled: it keeps the live indicator
+            val icon = runningIcon(snapshot.icon ?: AllIcons.RunConfigurations.Application)
             return Row(snapshot.name, icon, "-", "-", snapshot.handler, snapshot.descriptor, null,
                         "n/a", "-", "n/a", "paused", "n/a", "n/a", "n/a", DoubleArray(0), emptyList(), true)
         }
@@ -1555,6 +1656,15 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
             }
             return ArrayList(profiles)
         }
+
+        /**
+         * Status text of an application that exited, in the docker-ps shape: `exited (0)`.
+         * The exit code is null when the platform never captured one (a process the IDE only
+         * detached from), and the status is then just `exited`.
+         */
+        @JvmStatic
+        fun exitStatusText(exitCode: Int?): String =
+            if (exitCode == null) "exited" else "exited ($exitCode)"
 
         /** Group names (from the rows) whose configured profiles include the chosen one - the batch targets. */
         @JvmStatic
