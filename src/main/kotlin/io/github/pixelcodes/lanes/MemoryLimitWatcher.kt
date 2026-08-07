@@ -89,21 +89,66 @@ class MemoryLimitWatcher private constructor() {
                 rssKb * 100.0 / (limitMb * 1024L) >= thresholdPercent
         }
 
+        /** Process trees and their usage, resolved once per tick and shared by every check. */
+        private class Sample(
+            val treeByEntry: Map<LanesProcessRegistry.Entry, Set<Long>>,
+            val statsByPid: Map<Long, ProcessStatsSampler.Stats>,
+        )
+
         private fun checkAll() {
             try {
                 val snapshot = LanesProcessRegistry.snapshot()
+                // one process-table scan and one ps call feed both the memory-limit and the CPU
+                // check; they used to resolve the trees and shell out to ps separately each tick
+                val sample = sampleAll(snapshot)
                 for ((project, entries) in snapshot) {
                     if (!project.isDisposed()) {
-                        check(project, entries)
+                        check(project, entries, sample)
                         checkHealth(project, entries)
                     }
                 }
-                // CPU needs a delta across the whole tick, so it is sampled once for all projects
-                checkCpu(snapshot)
+                // CPU needs a delta across the whole tick, so it is evaluated once for all projects
+                checkCpu(snapshot, sample)
             } catch (t: Throwable) {
                 // never let an exception kill the scheduled task
                 LOG.warn("Lanes watcher failed", t)
             }
+        }
+
+        /**
+         * Resolves the process tree and usage of every application this tick has to look at - the
+         * ones with a memory limit and the ones with a CPU threshold, in a single pass.
+         */
+        private fun sampleAll(snapshot: Map<Project, List<LanesProcessRegistry.Entry>>): Sample {
+            val rootPidByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Long>()
+            for ((project, entries) in snapshot) {
+                if (project.isDisposed()) {
+                    continue
+                }
+                for (entry in entries) {
+                    val watchesMemory = entry.memoryLimitMb != null && entry.memoryLimitMb > 0
+                    val watchesCpu = entry.cpuAlertThreshold > 0
+                    if ((watchesMemory || watchesCpu) && !entry.handler.isProcessTerminated()) {
+                        rootPidByEntry[entry] = LanesProcessRegistry.pidOf(entry.handler)
+                    }
+                }
+            }
+            if (rootPidByEntry.isEmpty()) {
+                return Sample(emptyMap(), emptyMap())
+            }
+
+            val treeByRootPid = ProcessStatsSampler.processTreePidsFor(rootPidByEntry.values)
+            val treeByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Set<Long>>()
+            val allPids = LinkedHashSet<Long>()
+            for ((entry, rootPid) in rootPidByEntry) {
+                val treePids = treeByRootPid[rootPid] ?: continue
+                treeByEntry[entry] = treePids
+                allPids.addAll(treePids)
+            }
+            if (allPids.isEmpty()) {
+                return Sample(emptyMap(), emptyMap())
+            }
+            return Sample(treeByEntry, ProcessStatsSampler.samplePids(allPids))
         }
 
         /** Next consecutive-down streak given the previous one and whether the app is down right now. */
@@ -120,40 +165,29 @@ class MemoryLimitWatcher private constructor() {
          * checks. Cross-platform (uses the same sampler as the monitor). The alert re-arms when the app
          * drops back under the threshold. The first tick only records the baseline.
          */
-        private fun checkCpu(snapshot: Map<Project, List<LanesProcessRegistry.Entry>>) {
+        private fun checkCpu(snapshot: Map<Project, List<LanesProcessRegistry.Entry>>, sample: Sample) {
             val now = System.nanoTime()
             val elapsedSeconds = if (prevCpuNanos == 0L) -1.0 else (now - prevCpuNanos) / 1_000_000_000.0
 
-            val rootPidByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Long>()
             val projectByEntry = HashMap<LanesProcessRegistry.Entry, Project>()
             for ((project, entries) in snapshot) {
                 if (project.isDisposed()) {
                     continue
                 }
                 for (entry in entries) {
-                    if (entry.cpuAlertThreshold <= 0 || entry.handler.isProcessTerminated()) {
-                        continue
-                    }
-                    rootPidByEntry[entry] = LanesProcessRegistry.pidOf(entry.handler)
                     projectByEntry[entry] = project
                 }
             }
-            // one process-table scan for every tree, instead of one walk per application
-            val treeByRootPid = ProcessStatsSampler.processTreePidsFor(rootPidByEntry.values)
-            val treeByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Set<Long>>()
-            val allPids = LinkedHashSet<Long>()
-            for ((entry, rootPid) in rootPidByEntry) {
-                val treePids = treeByRootPid[rootPid] ?: continue
-                treeByEntry[entry] = treePids
-                allPids.addAll(treePids)
-            }
-            if (allPids.isEmpty()) {
+            // only the applications with a CPU threshold are evaluated; the shared sample may also
+            // carry trees that are there just for the memory-limit check
+            val treeByEntry = sample.treeByEntry.filterKeys { it.cpuAlertThreshold > 0 }
+            val statsByPid = sample.statsByPid
+            if (treeByEntry.isEmpty() || statsByPid.isEmpty()) {
                 prevCpuByPid.clear()
                 prevCpuNanos = now
                 return
             }
 
-            val statsByPid = ProcessStatsSampler.samplePids(allPids)
             val prev = HashMap(prevCpuByPid)
             if (elapsedSeconds > 0) {
                 for ((entry, pids) in treeByEntry) {
@@ -239,33 +273,17 @@ class MemoryLimitWatcher private constructor() {
             }
         }
 
-        private fun check(project: Project, entries: List<LanesProcessRegistry.Entry>) {
-            // only applications with a configured limit are worth a ps call
-            val rootPidByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Long>()
-            for (entry in entries) {
-                val limit = entry.memoryLimitMb
-                if (limit == null || limit <= 0 || entry.handler.isProcessTerminated()) {
-                    continue
-                }
-                rootPidByEntry[entry] = LanesProcessRegistry.pidOf(entry.handler)
+        private fun check(project: Project, entries: List<LanesProcessRegistry.Entry>, sample: Sample) {
+            // only this project's applications with a configured limit, out of the shared sample
+            val ofThisProject = HashSet(entries)
+            val treeByEntry = sample.treeByEntry.filterKeys { entry ->
+                ofThisProject.contains(entry) && (entry.memoryLimitMb ?: 0) > 0
             }
-            if (rootPidByEntry.isEmpty()) {
-                return
-            }
-            // one process-table scan for every tree, instead of one walk per application
-            val treeByRootPid = ProcessStatsSampler.processTreePidsFor(rootPidByEntry.values)
-            val treeByEntry = LinkedHashMap<LanesProcessRegistry.Entry, Set<Long>>()
-            val allPids = LinkedHashSet<Long>()
-            for ((entry, rootPid) in rootPidByEntry) {
-                val treePids = treeByRootPid[rootPid] ?: continue
-                treeByEntry[entry] = treePids
-                allPids.addAll(treePids)
-            }
-            if (allPids.isEmpty()) {
+            if (treeByEntry.isEmpty()) {
                 return
             }
 
-            val statsByPid = ProcessStatsSampler.samplePids(allPids)
+            val statsByPid = sample.statsByPid
             for ((entry, pids) in treeByEntry) {
                 val stats = ProcessStatsSampler.aggregate(statsByPid, pids)
                 val limit = entry.memoryLimitMb ?: continue
