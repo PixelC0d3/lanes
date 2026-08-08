@@ -67,6 +67,14 @@
 
     <change-notes>
         <![CDATA[
+        <p><strong>1.0.14</strong>:</p>
+        <ul>
+            <li>The monitor, the status bar widget and the memory/CPU watcher no longer scan the
+                machine's process table separately - they share one scan when their schedules
+                coincide (measured ~600 ms down to ~95 ms for that moment). Force Kill and the
+                memory chart still take a fresh scan.</li>
+            <li>Fixes columns you un-hid coming back hidden the next time the monitor opened.</li>
+        </ul>
         <p><strong>1.0.13</strong>:</p>
         <ul>
             <li>The Lanes Monitor now works like <code>docker ps -a</code>: an application that exits

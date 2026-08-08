@@ -39,10 +39,73 @@ class ProcessStatsSampler private constructor() {
         /** Linux scheduler tick rate, needed to convert /proc cpu ticks into seconds. */
         private val CLOCK_TICKS_PER_SECOND: Double = detectClockTicksPerSecond()
 
-        /** The pid itself plus every live descendant (children, grandchildren, ...). */
+        /**
+         * How long a process-table scan may be reused. Well under the monitor's 2 s refresh, so a
+         * shared scan is at worst a fraction of one refresh old, while the loops that fire at the
+         * same moment pay for it once.
+         */
+        const val TREE_SCAN_MAX_AGE_MS = 750L
+
+        private val TREE_SCAN_LOCK = Any()
+        private var cachedChildrenByParent: Map<Long, List<Long>>? = null
+        private var cachedAtNanos: Long = 0
+
+        /**
+         * The parent -> children map of every live process, reusing the last scan while it is
+         * younger than [maxAgeMs]. Serialized: two loops arriving together do one scan, not two.
+         */
+        private fun childrenByParent(maxAgeMs: Long): Map<Long, List<Long>> {
+            synchronized(TREE_SCAN_LOCK) {
+                val cached = cachedChildrenByParent
+                if (cached != null && maxAgeMs > 0) {
+                    val ageMs = (System.nanoTime() - cachedAtNanos) / 1_000_000
+                    if (ageMs in 0 until maxAgeMs) {
+                        return cached
+                    }
+                }
+                val fresh = scanProcessTable()
+                cachedChildrenByParent = fresh
+                cachedAtNanos = System.nanoTime()
+                return fresh
+            }
+        }
+
+        /** One pass over the process table; empty when the platform will not enumerate processes. */
+        private fun scanProcessTable(): Map<Long, List<Long>> {
+            val childrenByParent = HashMap<Long, MutableList<Long>>()
+            try {
+                ProcessHandle.allProcesses().forEach { handle ->
+                    handle.parent().ifPresent { parent ->
+                        childrenByParent.getOrPut(parent.pid()) { ArrayList() }.add(handle.pid())
+                    }
+                }
+            } catch (t: Throwable) {
+                // a process table snapshot can fail on a restricted platform - degrade to roots only
+                LOG.debug("Lanes monitor: cannot enumerate processes", t)
+            }
+            return childrenByParent
+        }
+
+        /** Drops the cached scan; for tests that must not see a scan taken by another test. */
+        @JvmStatic
+        fun invalidateProcessTableCache() {
+            synchronized(TREE_SCAN_LOCK) {
+                cachedChildrenByParent = null
+                cachedAtNanos = 0
+            }
+        }
+
+        /**
+         * The pid itself plus every live descendant (children, grandchildren, ...), resolved from
+         * a **fresh** scan of the process table.
+         *
+         * Use this when the answer has to be exact right now - Force Kill has to see children
+         * spawned since the last refresh. Periodic sampling should use [processTreePidsFor], which
+         * may reuse a scan taken moments ago.
+         */
         @JvmStatic
         fun processTreePids(rootPid: Long): Set<Long> {
-            return processTreePidsFor(listOf(rootPid))[rootPid] ?: emptySet()
+            return processTreePidsFor(listOf(rootPid), 0)[rootPid] ?: emptySet()
         }
 
         /**
@@ -57,25 +120,25 @@ class ProcessStatsSampler private constructor() {
          * no matter how many applications are monitored (~130 ms for the same 10 apps, and flat as
          * apps are added). Verified to produce trees identical to the per-app `descendants()` walk.
          *
+         * Three loops sample on their own schedule - the monitor every 2 s, the status bar widget
+         * every 5 s, the memory/CPU watcher every 10 s - and they used to scan the process table
+         * separately even when they fired together. The scan is therefore cached for
+         * [maxAgeMs] (default [TREE_SCAN_MAX_AGE_MS]), so overlapping loops share one, and a tree
+         * is never more stale than a fraction of the fastest refresh. Pass 0 to force a fresh scan.
+         *
          * Roots <= 0 are skipped; a root with no live process maps to just itself.
          */
+        @JvmOverloads
         @JvmStatic
-        fun processTreePidsFor(rootPids: Collection<Long>): Map<Long, Set<Long>> {
+        fun processTreePidsFor(
+            rootPids: Collection<Long>,
+            maxAgeMs: Long = TREE_SCAN_MAX_AGE_MS,
+        ): Map<Long, Set<Long>> {
             val roots = rootPids.filter { it > 0 }
             if (roots.isEmpty()) {
                 return emptyMap()
             }
-            val childrenByParent = HashMap<Long, MutableList<Long>>()
-            try {
-                ProcessHandle.allProcesses().forEach { handle ->
-                    handle.parent().ifPresent { parent ->
-                        childrenByParent.getOrPut(parent.pid()) { ArrayList() }.add(handle.pid())
-                    }
-                }
-            } catch (t: Throwable) {
-                // a process table snapshot can fail on a restricted platform - degrade to roots only
-                LOG.debug("Lanes monitor: cannot enumerate processes", t)
-            }
+            val childrenByParent = childrenByParent(maxAgeMs)
 
             val trees = LinkedHashMap<Long, Set<Long>>()
             for (root in roots) {

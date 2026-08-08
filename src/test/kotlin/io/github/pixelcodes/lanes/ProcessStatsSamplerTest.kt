@@ -254,6 +254,42 @@ class ProcessStatsSamplerTest {
                      ProcessStatsSampler.processTreePidsFor(listOf(myPid))[myPid])
     }
 
+    // --- shared process-table scan -------------------------------------------------------------
+
+    @Test
+    fun aFreshScanIsForcedWhenNoStalenessIsAllowed() {
+        val myPid = ProcessHandle.current().pid()
+        ProcessStatsSampler.invalidateProcessTableCache()
+
+        // maxAge 0 must never reuse a scan - Force Kill depends on seeing children spawned since
+        // the last refresh
+        val first = ProcessStatsSampler.processTreePidsFor(listOf(myPid), 0)
+        val second = ProcessStatsSampler.processTreePidsFor(listOf(myPid), 0)
+
+        assertEquals(first[myPid], second[myPid])
+        assertTrue(first[myPid]!!.contains(myPid))
+    }
+
+    @Test
+    fun aCachedScanIsReusedWithinItsWindow() {
+        val myPid = ProcessHandle.current().pid()
+        ProcessStatsSampler.invalidateProcessTableCache()
+
+        // a generous window: the second call must be served from the first call's scan
+        val first = ProcessStatsSampler.processTreePidsFor(listOf(myPid), 60_000)
+        val second = ProcessStatsSampler.processTreePidsFor(listOf(myPid), 60_000)
+
+        assertEquals(first[myPid], second[myPid])
+    }
+
+    @Test
+    fun theDefaultWindowIsShorterThanTheMonitorRefresh() {
+        // a shared scan must never be older than a fraction of the 2 s refresh, or the monitor
+        // would show trees that no longer exist
+        assertTrue("the scan window must stay well under the 2s refresh",
+                   ProcessStatsSampler.TREE_SCAN_MAX_AGE_MS in 1..1000)
+    }
+
     @Test
     fun batchTreesTolerateRepeatedRoots() {
         val myPid = ProcessHandle.current().pid()

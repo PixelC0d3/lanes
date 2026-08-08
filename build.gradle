@@ -8,7 +8,7 @@ plugins {
 }
 
 group = 'io.github.pixelcodes'
-version = '1.0.13'
+version = '1.0.14'
 
 repositories {
     mavenCentral()
@@ -105,9 +105,19 @@ intellijPlatform {
         // "Compatible" with warnings. The one known internal-API usage (ExecutionManager.
         // startRunProfile, the core launch call inherited from the original Multirun) and the
         // deprecated usages stay visible in the reports without failing the build.
+        //
+        // MISSING_DEPENDENCIES is deliberately NOT a failure level. The only dependency this
+        // plugin declares beyond the platform is the OPTIONAL JavaScript plugin, and IDEA
+        // Community does not bundle it - so verifying against IC (which is precisely the case we
+        // want to prove works) always reports it unresolved, while the verdict for the plugin
+        // itself stays "Compatible". Keeping it here failed every single verification run.
+        // ignoredProblemsFile does not help: it filters compatibility problems, not dependency
+        // resolution (measured - the run still failed with [MISSING_DEPENDENCIES]).
+        // Trade-off: a genuinely required dependency going missing would no longer fail the
+        // build, so read the "dependencies" section of the report when adding one. Everything
+        // else - real compatibility breaks and an invalid descriptor - still fails.
         failureLevel = [
                 org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
-                org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
                 org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
         ]
         ides {
