@@ -5,6 +5,14 @@ All notable changes to **Lanes** are documented here. Newest first.
 Fork of the original [Multirun](https://github.com/rkhmelyuk/multirun) by Ruslan Khmeliuk.
 Uninstall the original plugin before installing this one.
 
+## [1.0.14] — One process scan for every sampler, and a column-visibility fix
+- The monitor, the status bar widget and the memory/CPU watcher run on different schedules (2s, 5s
+  and 10s) and each scanned the machine's process table on its own. They now **share one scan**
+  when they fire together: measured ~600 ms down to ~95 ms for that moment. Actions that must be
+  exact - Force Kill, the memory chart - still take a fresh scan.
+- **Fixes columns you un-hid coming back hidden** the next time the monitor opened: clearing the
+  stored selection did not actually remove it.
+
 ## [1.0.13] — The monitor keeps the applications that already stopped
 - The Lanes Monitor now works like `docker ps -a`: an application that exits **stays in the list**
   as history instead of disappearing, so you can see what ran and restart it with one click. The

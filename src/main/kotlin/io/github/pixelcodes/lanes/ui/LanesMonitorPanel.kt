@@ -1577,19 +1577,23 @@ class LanesMonitorPanel(private val project: Project) : SimpleToolWindowPanel(fa
         private const val HIDDEN_COLUMNS_KEY = "lanes.monitor.hiddenColumns"
 
         /** Restores the hidden-column choice of this project (empty when nothing was stored). */
-        private fun loadHiddenColumns(project: Project): MutableSet<String> {
+        @JvmStatic
+        internal fun loadHiddenColumns(project: Project): MutableSet<String> {
             val stored = PropertiesComponent.getInstance(project).getList(HIDDEN_COLUMNS_KEY)
             return if (stored == null) LinkedHashSet() else LinkedHashSet(stored)
         }
 
-        /** Persists the hidden-column choice; an empty selection clears the stored value. */
-        private fun saveHiddenColumns(project: Project, columns: Set<String>) {
+        /**
+         * Persists the hidden-column choice; showing every column again clears the stored value.
+         *
+         * Clearing goes through `setList(key, null)`, not `unsetValue`: the latter does not remove
+         * a value written by `setList`, so un-hiding every column left the previous list stored and
+         * the columns came back hidden on the next open.
+         */
+        @JvmStatic
+        internal fun saveHiddenColumns(project: Project, columns: Set<String>) {
             val properties = PropertiesComponent.getInstance(project)
-            if (columns.isEmpty()) {
-                properties.unsetValue(HIDDEN_COLUMNS_KEY)
-            } else {
-                properties.setList(HIDDEN_COLUMNS_KEY, ArrayList(columns))
-            }
+            properties.setList(HIDDEN_COLUMNS_KEY, if (columns.isEmpty()) null else ArrayList(columns))
         }
 
         /**
